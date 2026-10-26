@@ -1,0 +1,387 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "subject",
+  "customer",
+  "contact",
+  "started_by",
+  "visibility",
+  "conversation_type",
+  "column_break_1",
+  "status",
+  "channel",
+  "helpdesk_ticket",
+  "assigned_agent",
+  "whatsapp_section",
+  "whatsapp_number",
+  "whatsapp_profile_name",
+  "column_break_wa",
+  "whatsapp_window_expires",
+  "whatsapp_auto_replied",
+  "visitor_section",
+  "is_guest",
+  "guest_name",
+  "guest_email",
+  "guest_phone",
+  "column_break_v",
+  "source_page",
+  "guest_last_seen",
+  "guest_ip",
+  "guest_token_hash",
+  "chat_rating",
+  "integration_section",
+  "external_provider",
+  "external_conversation_id",
+  "last_activity_at",
+  "last_message_reference",
+  "column_break_2",
+  "unread_customer",
+  "unread_agent",
+  "messages_section",
+  "messages_html"
+ ],
+ "fields": [
+  {
+   "fieldname": "subject",
+   "fieldtype": "Data",
+   "label": "Subject",
+   "reqd": 1,
+   "in_list_view": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Empty for guest chats until an agent links the visitor to a customer",
+   "idx": 2
+  },
+  {
+   "fieldname": "contact",
+   "fieldtype": "Link",
+   "label": "Contact",
+   "options": "Contact",
+   "idx": 3
+  },
+  {
+   "fieldname": "started_by",
+   "fieldtype": "Link",
+   "label": "Started By",
+   "options": "User",
+   "read_only": 1,
+   "idx": 4
+  },
+  {
+   "fieldname": "visibility",
+   "fieldtype": "Select",
+   "label": "Visibility",
+   "options": "Participant\nOrganization",
+   "default": "Participant",
+   "description": "Organization: visible to the customer's Organization Managers too",
+   "idx": 5
+  },
+  {
+   "fieldname": "conversation_type",
+   "fieldtype": "Select",
+   "label": "Conversation Type",
+   "options": "Ticket Discussion\nCustomer Chat\nService Conversation\nLive Chat",
+   "default": "Customer Chat",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 6
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break",
+   "idx": 7
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Open\nWaiting\nClosed",
+   "default": "Open",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 8
+  },
+  {
+   "fieldname": "channel",
+   "fieldtype": "Select",
+   "label": "Channel",
+   "options": "Portal\nLive Chat\nWhatsApp",
+   "default": "Portal",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 9
+  },
+  {
+   "fieldname": "helpdesk_ticket",
+   "fieldtype": "Data",
+   "label": "Helpdesk Ticket",
+   "description": "Linked Helpdesk ticket (resolved against the installed version)",
+   "idx": 10
+  },
+  {
+   "fieldname": "assigned_agent",
+   "fieldtype": "Link",
+   "label": "Assigned Agent",
+   "options": "User",
+   "idx": 11
+  },
+  {
+   "fieldname": "whatsapp_section",
+   "fieldtype": "Section Break",
+   "label": "WhatsApp",
+   "depends_on": "eval:doc.channel==\"WhatsApp\"",
+   "idx": 12
+  },
+  {
+   "fieldname": "whatsapp_number",
+   "fieldtype": "Data",
+   "label": "WhatsApp Number",
+   "read_only": 1,
+   "search_index": 1,
+   "idx": 13
+  },
+  {
+   "fieldname": "whatsapp_profile_name",
+   "fieldtype": "Data",
+   "label": "Whatsapp Profile Name",
+   "read_only": 1,
+   "idx": 14
+  },
+  {
+   "fieldname": "column_break_wa",
+   "fieldtype": "Column Break",
+   "idx": 15
+  },
+  {
+   "fieldname": "whatsapp_window_expires",
+   "fieldtype": "Datetime",
+   "label": "Reply Window Ends",
+   "read_only": 1,
+   "description": "Free-form replies are allowed until 24 hours after the customer's last message",
+   "idx": 16
+  },
+  {
+   "fieldname": "whatsapp_auto_replied",
+   "fieldtype": "Check",
+   "label": "Whatsapp Auto Replied",
+   "read_only": 1,
+   "hidden": 1,
+   "idx": 17
+  },
+  {
+   "fieldname": "visitor_section",
+   "fieldtype": "Section Break",
+   "label": "Visitor",
+   "depends_on": "eval:doc.is_guest",
+   "idx": 18
+  },
+  {
+   "fieldname": "is_guest",
+   "fieldtype": "Check",
+   "label": "Guest Chat",
+   "read_only": 1,
+   "in_standard_filter": 1,
+   "idx": 19
+  },
+  {
+   "fieldname": "guest_name",
+   "fieldtype": "Data",
+   "label": "Guest Name",
+   "read_only": 1,
+   "idx": 20
+  },
+  {
+   "fieldname": "guest_email",
+   "fieldtype": "Data",
+   "label": "Guest Email",
+   "options": "Email",
+   "read_only": 1,
+   "idx": 21
+  },
+  {
+   "fieldname": "guest_phone",
+   "fieldtype": "Data",
+   "label": "Guest Phone",
+   "read_only": 1,
+   "idx": 22
+  },
+  {
+   "fieldname": "column_break_v",
+   "fieldtype": "Column Break",
+   "idx": 23
+  },
+  {
+   "fieldname": "source_page",
+   "fieldtype": "Data",
+   "label": "Source Page",
+   "read_only": 1,
+   "idx": 24
+  },
+  {
+   "fieldname": "guest_last_seen",
+   "fieldtype": "Datetime",
+   "label": "Guest Last Seen",
+   "read_only": 1,
+   "idx": 25
+  },
+  {
+   "fieldname": "guest_ip",
+   "fieldtype": "Data",
+   "label": "Visitor IP",
+   "read_only": 1,
+   "idx": 26
+  },
+  {
+   "fieldname": "guest_token_hash",
+   "fieldtype": "Data",
+   "label": "Guest Token Hash",
+   "read_only": 1,
+   "hidden": 1,
+   "idx": 27
+  },
+  {
+   "fieldname": "chat_rating",
+   "fieldtype": "Rating",
+   "label": "Chat Rating",
+   "read_only": 1,
+   "idx": 28
+  },
+  {
+   "fieldname": "integration_section",
+   "fieldtype": "Section Break",
+   "label": "Integration",
+   "idx": 29
+  },
+  {
+   "fieldname": "external_provider",
+   "fieldtype": "Select",
+   "label": "External Provider",
+   "options": "Portal Native\nRaven",
+   "default": "Portal Native",
+   "idx": 30
+  },
+  {
+   "fieldname": "external_conversation_id",
+   "fieldtype": "Data",
+   "label": "External Conversation Id",
+   "read_only": 1,
+   "idx": 31
+  },
+  {
+   "fieldname": "last_activity_at",
+   "fieldtype": "Datetime",
+   "label": "Last Activity At",
+   "read_only": 1,
+   "idx": 32
+  },
+  {
+   "fieldname": "last_message_reference",
+   "fieldtype": "Data",
+   "label": "Last Message Reference",
+   "read_only": 1,
+   "idx": 33
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break",
+   "idx": 34
+  },
+  {
+   "fieldname": "unread_customer",
+   "fieldtype": "Int",
+   "label": "Unread Customer",
+   "read_only": 1,
+   "idx": 35
+  },
+  {
+   "fieldname": "unread_agent",
+   "fieldtype": "Int",
+   "label": "Unread Agent",
+   "read_only": 1,
+   "idx": 36
+  },
+  {
+   "fieldname": "messages_section",
+   "fieldtype": "Section Break",
+   "label": "Messages",
+   "idx": 37
+  },
+  {
+   "fieldname": "messages_html",
+   "fieldtype": "HTML",
+   "label": "Messages Html",
+   "idx": 38
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Conversation Link",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Agent",
+   "read": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "SCV-.YYYY.-.#####",
+ "title_field": "subject"
+}

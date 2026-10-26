@@ -1,0 +1,172 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "customer",
+  "category",
+  "file",
+  "enabled",
+  "column_break_1",
+  "required_capability",
+  "restricted_to_user",
+  "valid_until",
+  "max_downloads",
+  "download_count",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "reqd": 1,
+   "in_list_view": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "label": "Category",
+   "options": "Manual\nRelease Notes\nContract\nCertificate\nReport\nLicence\nOther",
+   "default": "Other",
+   "in_list_view": 1,
+   "idx": 3
+  },
+  {
+   "fieldname": "file",
+   "fieldtype": "Attach",
+   "label": "File",
+   "reqd": 1,
+   "idx": 4
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "1",
+   "idx": 5
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break",
+   "idx": 6
+  },
+  {
+   "fieldname": "required_capability",
+   "fieldtype": "Select",
+   "label": "Required Capability",
+   "options": "documents.read\ninvoices.read\nservices.organization",
+   "default": "documents.read",
+   "idx": 7
+  },
+  {
+   "fieldname": "restricted_to_user",
+   "fieldtype": "Link",
+   "label": "Restricted To User",
+   "options": "User",
+   "description": "Optional: only this user may download",
+   "idx": 8
+  },
+  {
+   "fieldname": "valid_until",
+   "fieldtype": "Date",
+   "label": "Valid Until",
+   "idx": 9
+  },
+  {
+   "fieldname": "max_downloads",
+   "fieldtype": "Int",
+   "label": "Max Downloads",
+   "description": "0 = unlimited",
+   "idx": 10
+  },
+  {
+   "fieldname": "download_count",
+   "fieldtype": "Int",
+   "label": "Download Count",
+   "read_only": 1,
+   "idx": 11
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description",
+   "idx": 12
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Download Grant",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Agent",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "SDG-.#####",
+ "title_field": "title"
+}

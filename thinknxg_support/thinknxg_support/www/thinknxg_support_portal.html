@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="{{ lang }}" dir="{{ dir }}" data-theme="{{ theme }}">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex, nofollow">
+	<title>{{ portal_title | e }}</title>
+	<link rel="icon" href="/assets/thinknxg_support/images/logo.svg">
+	{{ include_style("support_portal.bundle.css") }}
+	{{ include_style("support_chat.bundle.css") }}
+	<style>:root { --brand: {{ primary_color | e }}; --txc-brand: {{ primary_color | e }}; }</style>
+</head>
+<body>
+	<div id="support-app">
+		<div class="tx-boot"><div class="tx-spinner" aria-label="Loading"></div></div>
+	</div>
+	<noscript>This portal requires JavaScript.</noscript>
+	<script>window.thinknxg_support_boot = {{ boot_json }};</script>
+	{{ include_script("support_portal.bundle.js") }}
+</body>
+</html>

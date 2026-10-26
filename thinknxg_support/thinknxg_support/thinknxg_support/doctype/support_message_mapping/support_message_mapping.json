@@ -1,0 +1,142 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "dedupe_key",
+  "conversation",
+  "provider",
+  "direction",
+  "column_break_1",
+  "portal_message",
+  "external_message_id",
+  "delivery_state",
+  "attempts",
+  "last_error"
+ ],
+ "fields": [
+  {
+   "fieldname": "dedupe_key",
+   "fieldtype": "Data",
+   "label": "Dedupe Key",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "conversation",
+   "fieldtype": "Link",
+   "label": "Conversation",
+   "options": "Support Conversation Link",
+   "in_list_view": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "provider",
+   "fieldtype": "Select",
+   "label": "Provider",
+   "options": "Portal Native\nRaven\nHelpdesk\nWhatsApp",
+   "in_list_view": 1,
+   "idx": 3
+  },
+  {
+   "fieldname": "direction",
+   "fieldtype": "Select",
+   "label": "Direction",
+   "options": "Inbound\nOutbound",
+   "idx": 4
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break",
+   "idx": 5
+  },
+  {
+   "fieldname": "portal_message",
+   "fieldtype": "Link",
+   "label": "Portal Message",
+   "options": "Support Portal Message",
+   "idx": 6
+  },
+  {
+   "fieldname": "external_message_id",
+   "fieldtype": "Data",
+   "label": "External Message Id",
+   "search_index": 1,
+   "idx": 7
+  },
+  {
+   "fieldname": "delivery_state",
+   "fieldtype": "Select",
+   "label": "Delivery State",
+   "options": "Pending\nDelivered\nFailed\nSkipped",
+   "default": "Pending",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 8
+  },
+  {
+   "fieldname": "attempts",
+   "fieldtype": "Int",
+   "label": "Attempts",
+   "idx": 9
+  },
+  {
+   "fieldname": "last_error",
+   "fieldtype": "Small Text",
+   "label": "Last Error",
+   "idx": 10
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Message Mapping",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "hash"
+}

@@ -1,0 +1,769 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "branding_tab",
+  "portal_title",
+  "logo",
+  "primary_color",
+  "column_break_brand",
+  "support_email",
+  "support_phone",
+  "default_language",
+  "footer_text",
+  "announcement_section",
+  "show_announcement",
+  "announcement",
+  "modules_tab",
+  "enable_tickets",
+  "enable_conversations",
+  "enable_knowledge",
+  "column_break_mod",
+  "enable_services",
+  "enable_account",
+  "enable_documents",
+  "integrations_tab",
+  "helpdesk_section",
+  "enable_helpdesk",
+  "auto_create_helpdesk_customer",
+  "default_ticket_type",
+  "default_priority",
+  "reopen_window_days",
+  "helpdesk_status",
+  "raven_section",
+  "enable_raven",
+  "raven_bot",
+  "raven_workspace",
+  "raven_default_members",
+  "column_break_raven",
+  "raven_relay_mode",
+  "raven_reply_prefix",
+  "raven_status",
+  "erpnext_section",
+  "invoice_print_format",
+  "show_subscriptions",
+  "order_lookback_days",
+  "diagnostics_section",
+  "schema_map",
+  "last_verified_on",
+  "live_chat_tab",
+  "enable_live_chat",
+  "allow_guest_chat",
+  "show_chat_on_website",
+  "chat_position",
+  "column_break_chat",
+  "chat_title",
+  "chat_greeting",
+  "chat_offline_message",
+  "chat_privacy_note",
+  "chat_hours_section",
+  "chat_days",
+  "chat_start_time",
+  "chat_end_time",
+  "column_break_hours",
+  "chat_auto_close_hours",
+  "guest_chat_rate_limit",
+  "guest_chat_retention_days",
+  "whatsapp_tab",
+  "enable_whatsapp",
+  "whatsapp_display_number",
+  "show_whatsapp_button",
+  "whatsapp_prefill_text",
+  "column_break_wa",
+  "whatsapp_phone_number_id",
+  "whatsapp_business_account_id",
+  "whatsapp_api_version",
+  "whatsapp_access_token",
+  "whatsapp_app_secret",
+  "whatsapp_verify_token",
+  "whatsapp_webhook_section",
+  "whatsapp_webhook_url",
+  "whatsapp_template_name",
+  "whatsapp_template_language",
+  "column_break_wa2",
+  "whatsapp_link_contacts",
+  "whatsapp_auto_reply",
+  "whatsapp_status",
+  "security_tab",
+  "require_contact_link",
+  "allowed_attachment_extensions",
+  "max_attachment_mb",
+  "max_attachments_per_message",
+  "column_break_sec",
+  "message_rate_limit",
+  "ticket_rate_limit",
+  "event_retention_days"
+ ],
+ "fields": [
+  {
+   "fieldname": "branding_tab",
+   "fieldtype": "Tab Break",
+   "label": "Branding",
+   "idx": 1
+  },
+  {
+   "fieldname": "portal_title",
+   "fieldtype": "Data",
+   "label": "Portal Title",
+   "reqd": 1,
+   "default": "thinkNXG Support",
+   "idx": 2
+  },
+  {
+   "fieldname": "logo",
+   "fieldtype": "Attach Image",
+   "label": "Logo",
+   "idx": 3
+  },
+  {
+   "fieldname": "primary_color",
+   "fieldtype": "Color",
+   "label": "Primary Color",
+   "default": "#0F766E",
+   "idx": 4
+  },
+  {
+   "fieldname": "column_break_brand",
+   "fieldtype": "Column Break",
+   "idx": 5
+  },
+  {
+   "fieldname": "support_email",
+   "fieldtype": "Data",
+   "label": "Support Email",
+   "options": "Email",
+   "idx": 6
+  },
+  {
+   "fieldname": "support_phone",
+   "fieldtype": "Data",
+   "label": "Support Phone",
+   "idx": 7
+  },
+  {
+   "fieldname": "default_language",
+   "fieldtype": "Select",
+   "label": "Default Language",
+   "options": "en\nar",
+   "default": "en",
+   "idx": 8
+  },
+  {
+   "fieldname": "footer_text",
+   "fieldtype": "Small Text",
+   "label": "Footer Text",
+   "idx": 9
+  },
+  {
+   "fieldname": "announcement_section",
+   "fieldtype": "Section Break",
+   "label": "Announcement",
+   "idx": 10
+  },
+  {
+   "fieldname": "show_announcement",
+   "fieldtype": "Check",
+   "label": "Show Announcement",
+   "idx": 11
+  },
+  {
+   "fieldname": "announcement",
+   "fieldtype": "Small Text",
+   "label": "Announcement",
+   "description": "Plain text shown on the customer dashboard",
+   "idx": 12
+  },
+  {
+   "fieldname": "modules_tab",
+   "fieldtype": "Tab Break",
+   "label": "Modules",
+   "idx": 13
+  },
+  {
+   "fieldname": "enable_tickets",
+   "fieldtype": "Check",
+   "label": "Tickets",
+   "default": "1",
+   "idx": 14
+  },
+  {
+   "fieldname": "enable_conversations",
+   "fieldtype": "Check",
+   "label": "Conversations",
+   "default": "1",
+   "idx": 15
+  },
+  {
+   "fieldname": "enable_knowledge",
+   "fieldtype": "Check",
+   "label": "Knowledge Base",
+   "default": "1",
+   "idx": 16
+  },
+  {
+   "fieldname": "column_break_mod",
+   "fieldtype": "Column Break",
+   "idx": 17
+  },
+  {
+   "fieldname": "enable_services",
+   "fieldtype": "Check",
+   "label": "Service Catalogue",
+   "default": "1",
+   "idx": 18
+  },
+  {
+   "fieldname": "enable_account",
+   "fieldtype": "Check",
+   "label": "Orders & Invoices",
+   "default": "1",
+   "idx": 19
+  },
+  {
+   "fieldname": "enable_documents",
+   "fieldtype": "Check",
+   "label": "Documents",
+   "default": "1",
+   "idx": 20
+  },
+  {
+   "fieldname": "integrations_tab",
+   "fieldtype": "Tab Break",
+   "label": "Integrations",
+   "idx": 21
+  },
+  {
+   "fieldname": "helpdesk_section",
+   "fieldtype": "Section Break",
+   "label": "Helpdesk",
+   "idx": 22
+  },
+  {
+   "fieldname": "enable_helpdesk",
+   "fieldtype": "Check",
+   "label": "Enable Helpdesk Adapter",
+   "default": "1",
+   "idx": 23
+  },
+  {
+   "fieldname": "auto_create_helpdesk_customer",
+   "fieldtype": "Check",
+   "label": "Auto-create HD Customer",
+   "default": "1",
+   "description": "Create a Helpdesk customer with the ERPNext customer name when missing",
+   "idx": 24
+  },
+  {
+   "fieldname": "default_ticket_type",
+   "fieldtype": "Data",
+   "label": "Default Ticket Type",
+   "description": "Helpdesk ticket type used when none is selected",
+   "idx": 25
+  },
+  {
+   "fieldname": "default_priority",
+   "fieldtype": "Data",
+   "label": "Default Priority",
+   "idx": 26
+  },
+  {
+   "fieldname": "reopen_window_days",
+   "fieldtype": "Int",
+   "label": "Reopen Window Days",
+   "default": "7",
+   "idx": 27
+  },
+  {
+   "fieldname": "helpdesk_status",
+   "fieldtype": "Small Text",
+   "label": "Helpdesk Status",
+   "read_only": 1,
+   "idx": 28
+  },
+  {
+   "fieldname": "raven_section",
+   "fieldtype": "Section Break",
+   "label": "Raven",
+   "idx": 29
+  },
+  {
+   "fieldname": "enable_raven",
+   "fieldtype": "Check",
+   "label": "Enable Raven Bridge",
+   "idx": 30
+  },
+  {
+   "fieldname": "raven_bot",
+   "fieldtype": "Data",
+   "label": "Raven Bot",
+   "description": "Raven Bot name used to post customer messages into agent channels (required)",
+   "idx": 31
+  },
+  {
+   "fieldname": "raven_workspace",
+   "fieldtype": "Data",
+   "label": "Raven Workspace",
+   "description": "Raven workspace for support channels (Raven versions with workspaces)",
+   "idx": 32
+  },
+  {
+   "fieldname": "raven_default_members",
+   "fieldtype": "Small Text",
+   "label": "Raven Default Members",
+   "description": "Agent user IDs (one per line) added to every support channel",
+   "idx": 33
+  },
+  {
+   "fieldname": "column_break_raven",
+   "fieldtype": "Column Break",
+   "idx": 34
+  },
+  {
+   "fieldname": "raven_relay_mode",
+   "fieldtype": "Select",
+   "label": "Raven Relay Mode",
+   "options": "Prefix Required\nAll Agent Messages",
+   "default": "Prefix Required",
+   "description": "Prefix Required: only agent messages starting with the prefix reach the customer (safe default)",
+   "idx": 35
+  },
+  {
+   "fieldname": "raven_reply_prefix",
+   "fieldtype": "Data",
+   "label": "Raven Reply Prefix",
+   "default": "/r",
+   "idx": 36
+  },
+  {
+   "fieldname": "raven_status",
+   "fieldtype": "Small Text",
+   "label": "Raven Status",
+   "read_only": 1,
+   "idx": 37
+  },
+  {
+   "fieldname": "erpnext_section",
+   "fieldtype": "Section Break",
+   "label": "thinkNXG ERP",
+   "idx": 38
+  },
+  {
+   "fieldname": "invoice_print_format",
+   "fieldtype": "Link",
+   "label": "Invoice Print Format",
+   "options": "Print Format",
+   "idx": 39
+  },
+  {
+   "fieldname": "show_subscriptions",
+   "fieldtype": "Check",
+   "label": "Show Subscriptions",
+   "default": "1",
+   "idx": 40
+  },
+  {
+   "fieldname": "order_lookback_days",
+   "fieldtype": "Int",
+   "label": "Order Lookback Days",
+   "default": "730",
+   "idx": 41
+  },
+  {
+   "fieldname": "diagnostics_section",
+   "fieldtype": "Section Break",
+   "label": "Diagnostics",
+   "collapsible": 1,
+   "idx": 42
+  },
+  {
+   "fieldname": "schema_map",
+   "fieldtype": "Code",
+   "label": "Schema Map",
+   "options": "JSON",
+   "read_only": 1,
+   "idx": 43
+  },
+  {
+   "fieldname": "last_verified_on",
+   "fieldtype": "Datetime",
+   "label": "Last Verified On",
+   "read_only": 1,
+   "idx": 44
+  },
+  {
+   "fieldname": "live_chat_tab",
+   "fieldtype": "Tab Break",
+   "label": "Live Chat",
+   "idx": 45
+  },
+  {
+   "fieldname": "enable_live_chat",
+   "fieldtype": "Check",
+   "label": "Enable Live Chat",
+   "default": "1",
+   "description": "Show the chat button inside the customer portal",
+   "idx": 46
+  },
+  {
+   "fieldname": "allow_guest_chat",
+   "fieldtype": "Check",
+   "label": "Allow Guests",
+   "default": "1",
+   "description": "Visitors who are not logged in can start a chat after giving their name and email",
+   "idx": 47
+  },
+  {
+   "fieldname": "show_chat_on_website",
+   "fieldtype": "Check",
+   "label": "Show on Website",
+   "default": "1",
+   "description": "Show the chat button on all public website pages, including the login page",
+   "idx": 48
+  },
+  {
+   "fieldname": "chat_position",
+   "fieldtype": "Select",
+   "label": "Chat Position",
+   "options": "Right\nLeft",
+   "default": "Right",
+   "idx": 49
+  },
+  {
+   "fieldname": "column_break_chat",
+   "fieldtype": "Column Break",
+   "idx": 50
+  },
+  {
+   "fieldname": "chat_title",
+   "fieldtype": "Data",
+   "label": "Chat Title",
+   "default": "Chat with support",
+   "idx": 51
+  },
+  {
+   "fieldname": "chat_greeting",
+   "fieldtype": "Small Text",
+   "label": "Chat Greeting",
+   "default": "Hi! How can we help you today?",
+   "idx": 52
+  },
+  {
+   "fieldname": "chat_offline_message",
+   "fieldtype": "Small Text",
+   "label": "Chat Offline Message",
+   "default": "We're offline right now. Leave a message and we'll reply by email.",
+   "idx": 53
+  },
+  {
+   "fieldname": "chat_privacy_note",
+   "fieldtype": "Small Text",
+   "label": "Chat Privacy Note",
+   "default": "We use your name and email only to answer this chat.",
+   "idx": 54
+  },
+  {
+   "fieldname": "chat_hours_section",
+   "fieldtype": "Section Break",
+   "label": "Support Hours",
+   "idx": 55
+  },
+  {
+   "fieldname": "chat_days",
+   "fieldtype": "Data",
+   "label": "Chat Days",
+   "default": "Sun,Mon,Tue,Wed,Thu",
+   "description": "Comma separated (Mon,Tue,Wed,Thu,Fri,Sat,Sun). Uses the system time zone.",
+   "idx": 56
+  },
+  {
+   "fieldname": "chat_start_time",
+   "fieldtype": "Time",
+   "label": "Chat Start Time",
+   "default": "08:00:00",
+   "idx": 57
+  },
+  {
+   "fieldname": "chat_end_time",
+   "fieldtype": "Time",
+   "label": "Chat End Time",
+   "default": "17:00:00",
+   "idx": 58
+  },
+  {
+   "fieldname": "column_break_hours",
+   "fieldtype": "Column Break",
+   "idx": 59
+  },
+  {
+   "fieldname": "chat_auto_close_hours",
+   "fieldtype": "Int",
+   "label": "Chat Auto Close Hours",
+   "default": "24",
+   "description": "Close idle live chats after this many hours",
+   "idx": 60
+  },
+  {
+   "fieldname": "guest_chat_rate_limit",
+   "fieldtype": "Int",
+   "label": "Guest Chat Rate Limit",
+   "default": "20",
+   "description": "Guest messages per IP address per 10 minutes",
+   "idx": 61
+  },
+  {
+   "fieldname": "guest_chat_retention_days",
+   "fieldtype": "Int",
+   "label": "Guest Chat Retention Days",
+   "default": "365",
+   "description": "Delete closed guest chats (and visitor details) after this many days. 0 keeps them.",
+   "idx": 62
+  },
+  {
+   "fieldname": "whatsapp_tab",
+   "fieldtype": "Tab Break",
+   "label": "WhatsApp",
+   "idx": 63
+  },
+  {
+   "fieldname": "enable_whatsapp",
+   "fieldtype": "Check",
+   "label": "Enable WhatsApp",
+   "description": "Receive and answer WhatsApp messages through the WhatsApp Cloud API (Meta)",
+   "idx": 64
+  },
+  {
+   "fieldname": "whatsapp_display_number",
+   "fieldtype": "Data",
+   "label": "WhatsApp Number",
+   "description": "Public number with country code, e.g. +968 9xxx xxxx. Used for the 'Chat on WhatsApp' button",
+   "idx": 65
+  },
+  {
+   "fieldname": "show_whatsapp_button",
+   "fieldtype": "Check",
+   "label": "Show 'Chat on WhatsApp' Button",
+   "default": "1",
+   "idx": 66
+  },
+  {
+   "fieldname": "whatsapp_prefill_text",
+   "fieldtype": "Data",
+   "label": "Whatsapp Prefill Text",
+   "default": "Hello, I need help with",
+   "description": "Text pre-filled when a visitor opens WhatsApp from the chat window",
+   "idx": 67
+  },
+  {
+   "fieldname": "column_break_wa",
+   "fieldtype": "Column Break",
+   "idx": 68
+  },
+  {
+   "fieldname": "whatsapp_phone_number_id",
+   "fieldtype": "Data",
+   "label": "Phone Number ID",
+   "idx": 69
+  },
+  {
+   "fieldname": "whatsapp_business_account_id",
+   "fieldtype": "Data",
+   "label": "WhatsApp Business Account ID",
+   "idx": 70
+  },
+  {
+   "fieldname": "whatsapp_api_version",
+   "fieldtype": "Data",
+   "label": "Graph API Version",
+   "default": "v22.0",
+   "idx": 71
+  },
+  {
+   "fieldname": "whatsapp_access_token",
+   "fieldtype": "Password",
+   "label": "Access Token",
+   "length": 500,
+   "description": "Permanent System User token with whatsapp_business_messaging permission",
+   "idx": 72
+  },
+  {
+   "fieldname": "whatsapp_app_secret",
+   "fieldtype": "Password",
+   "label": "App Secret",
+   "description": "Used to verify webhook signatures",
+   "idx": 73
+  },
+  {
+   "fieldname": "whatsapp_verify_token",
+   "fieldtype": "Password",
+   "label": "Webhook Verify Token",
+   "description": "Any random string; enter the same value in the Meta app webhook settings",
+   "idx": 74
+  },
+  {
+   "fieldname": "whatsapp_webhook_section",
+   "fieldtype": "Section Break",
+   "label": "Webhook & Templates",
+   "idx": 75
+  },
+  {
+   "fieldname": "whatsapp_webhook_url",
+   "fieldtype": "Data",
+   "label": "Webhook Callback URL",
+   "read_only": 1,
+   "idx": 76
+  },
+  {
+   "fieldname": "whatsapp_template_name",
+   "fieldtype": "Data",
+   "label": "Re-engagement Template",
+   "description": "Approved template sent when the 24-hour customer service window has closed",
+   "idx": 77
+  },
+  {
+   "fieldname": "whatsapp_template_language",
+   "fieldtype": "Data",
+   "label": "Template Language",
+   "default": "en",
+   "idx": 78
+  },
+  {
+   "fieldname": "column_break_wa2",
+   "fieldtype": "Column Break",
+   "idx": 79
+  },
+  {
+   "fieldname": "whatsapp_link_contacts",
+   "fieldtype": "Check",
+   "label": "Match Numbers to Contacts",
+   "default": "1",
+   "description": "Link WhatsApp chats to the Contact and Customer that own the number",
+   "idx": 80
+  },
+  {
+   "fieldname": "whatsapp_auto_reply",
+   "fieldtype": "Small Text",
+   "label": "Out-of-hours Auto Reply",
+   "description": "Sent once per chat when a message arrives outside support hours. Leave empty to disable",
+   "idx": 81
+  },
+  {
+   "fieldname": "whatsapp_status",
+   "fieldtype": "Small Text",
+   "label": "Whatsapp Status",
+   "read_only": 1,
+   "idx": 82
+  },
+  {
+   "fieldname": "security_tab",
+   "fieldtype": "Tab Break",
+   "label": "Security",
+   "idx": 83
+  },
+  {
+   "fieldname": "require_contact_link",
+   "fieldtype": "Check",
+   "label": "Require Contact Link",
+   "default": "1",
+   "description": "Access grants only apply when the user's Contact is linked to the Customer",
+   "idx": 84
+  },
+  {
+   "fieldname": "allowed_attachment_extensions",
+   "fieldtype": "Small Text",
+   "label": "Allowed Attachment Extensions",
+   "idx": 85
+  },
+  {
+   "fieldname": "max_attachment_mb",
+   "fieldtype": "Int",
+   "label": "Max Attachment Mb",
+   "default": "10",
+   "idx": 86
+  },
+  {
+   "fieldname": "max_attachments_per_message",
+   "fieldtype": "Int",
+   "label": "Max Attachments Per Message",
+   "default": "5",
+   "idx": 87
+  },
+  {
+   "fieldname": "column_break_sec",
+   "fieldtype": "Column Break",
+   "idx": 88
+  },
+  {
+   "fieldname": "message_rate_limit",
+   "fieldtype": "Int",
+   "label": "Message Rate Limit",
+   "description": "Messages / replies per user per minute",
+   "default": "30",
+   "idx": 89
+  },
+  {
+   "fieldname": "ticket_rate_limit",
+   "fieldtype": "Int",
+   "label": "Ticket Rate Limit",
+   "description": "New tickets / requests per user per minute",
+   "default": "10",
+   "idx": 90
+  },
+  {
+   "fieldname": "event_retention_days",
+   "fieldtype": "Int",
+   "label": "Event Retention Days",
+   "default": "365",
+   "idx": 91
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Portal Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

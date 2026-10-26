@@ -1,0 +1,220 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "service_name",
+  "enabled",
+  "category",
+  "sort_order",
+  "description",
+  "eligibility_section",
+  "eligibility",
+  "customer_group",
+  "customers",
+  "required_capability",
+  "routing_section",
+  "handling",
+  "ticket_type",
+  "agent_group",
+  "priority",
+  "column_break_r",
+  "response_target",
+  "instructions"
+ ],
+ "fields": [
+  {
+   "fieldname": "service_name",
+   "fieldtype": "Data",
+   "label": "Service Name",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "1",
+   "in_list_view": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Data",
+   "label": "Category",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 3
+  },
+  {
+   "fieldname": "sort_order",
+   "fieldtype": "Int",
+   "label": "Sort Order",
+   "idx": 4
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description",
+   "idx": 5
+  },
+  {
+   "fieldname": "eligibility_section",
+   "fieldtype": "Section Break",
+   "label": "Eligibility",
+   "idx": 6
+  },
+  {
+   "fieldname": "eligibility",
+   "fieldtype": "Select",
+   "label": "Eligibility",
+   "options": "All Customers\nCustomer Group\nSelected Customers",
+   "default": "All Customers",
+   "reqd": 1,
+   "idx": 7
+  },
+  {
+   "fieldname": "customer_group",
+   "fieldtype": "Link",
+   "label": "Customer Group",
+   "options": "Customer Group",
+   "depends_on": "eval:doc.eligibility==\"Customer Group\"",
+   "idx": 8
+  },
+  {
+   "fieldname": "customers",
+   "fieldtype": "Table",
+   "label": "Customers",
+   "options": "Support Service Customer",
+   "depends_on": "eval:doc.eligibility==\"Selected Customers\"",
+   "idx": 9
+  },
+  {
+   "fieldname": "required_capability",
+   "fieldtype": "Select",
+   "label": "Required Capability",
+   "options": "services.request\nservices.organization",
+   "default": "services.request",
+   "idx": 10
+  },
+  {
+   "fieldname": "routing_section",
+   "fieldtype": "Section Break",
+   "label": "Routing",
+   "idx": 11
+  },
+  {
+   "fieldname": "handling",
+   "fieldtype": "Select",
+   "label": "Handling",
+   "options": "Support Request\nHelpdesk Ticket",
+   "default": "Support Request",
+   "reqd": 1,
+   "idx": 12
+  },
+  {
+   "fieldname": "ticket_type",
+   "fieldtype": "Data",
+   "label": "Ticket Type",
+   "depends_on": "eval:doc.handling==\"Helpdesk Ticket\"",
+   "idx": 13
+  },
+  {
+   "fieldname": "agent_group",
+   "fieldtype": "Data",
+   "label": "Helpdesk Team",
+   "depends_on": "eval:doc.handling==\"Helpdesk Ticket\"",
+   "idx": 14
+  },
+  {
+   "fieldname": "priority",
+   "fieldtype": "Data",
+   "label": "Priority",
+   "idx": 15
+  },
+  {
+   "fieldname": "column_break_r",
+   "fieldtype": "Column Break",
+   "idx": 16
+  },
+  {
+   "fieldname": "response_target",
+   "fieldtype": "Data",
+   "label": "Response Target",
+   "description": "Customer-facing expectation, e.g. 'Within 1 business day'",
+   "idx": 17
+  },
+  {
+   "fieldname": "instructions",
+   "fieldtype": "Small Text",
+   "label": "Instructions",
+   "description": "Shown to the customer on the request form",
+   "idx": 18
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Service",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Agent",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "field:service_name",
+ "naming_rule": "By fieldname"
+}

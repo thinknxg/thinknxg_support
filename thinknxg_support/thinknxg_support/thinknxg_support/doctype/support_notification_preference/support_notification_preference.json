@@ -1,0 +1,119 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "email_ticket_updates",
+  "portal_ticket_updates",
+  "email_message_alerts",
+  "column_break_1",
+  "portal_message_alerts",
+  "email_invoice_alerts",
+  "email_request_updates"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "email_ticket_updates",
+   "fieldtype": "Check",
+   "label": "Email Ticket Updates",
+   "default": "1",
+   "idx": 2
+  },
+  {
+   "fieldname": "portal_ticket_updates",
+   "fieldtype": "Check",
+   "label": "Portal Ticket Updates",
+   "default": "1",
+   "idx": 3
+  },
+  {
+   "fieldname": "email_message_alerts",
+   "fieldtype": "Check",
+   "label": "Email Message Alerts",
+   "default": "1",
+   "idx": 4
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break",
+   "idx": 5
+  },
+  {
+   "fieldname": "portal_message_alerts",
+   "fieldtype": "Check",
+   "label": "Portal Message Alerts",
+   "default": "1",
+   "idx": 6
+  },
+  {
+   "fieldname": "email_invoice_alerts",
+   "fieldtype": "Check",
+   "label": "Email Invoice Alerts",
+   "default": "0",
+   "idx": 7
+  },
+  {
+   "fieldname": "email_request_updates",
+   "fieldtype": "Check",
+   "label": "Email Request Updates",
+   "default": "1",
+   "idx": 8
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Notification Preference",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "field:user",
+ "naming_rule": "By fieldname"
+}

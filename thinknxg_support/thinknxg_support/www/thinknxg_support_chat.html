@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="{{ lang }}" dir="{{ dir }}">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>{{ chat_title | e }} · {{ portal_title | e }}</title>
+	<link rel="icon" href="/assets/thinknxg_support/images/logo.svg">
+	{{ include_style("support_chat.bundle.css") }}
+	<style>:root { --txc-brand: {{ primary_color | e }}; } html, body { margin: 0; height: 100%; }</style>
+</head>
+<body class="txc-page-body">
+	<div id="support-chat-page" data-inline="1"></div>
+	<script>window.thinknxg_support_boot = {{ boot_json }};</script>
+	{{ include_script("support_chat.bundle.js") }}
+</body>
+</html>
