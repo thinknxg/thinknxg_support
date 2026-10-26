@@ -1,6 +1,0 @@
-.DS_Store
-*.pyc
-*.egg-info
-__pycache__
-node_modules
-thinknxg_support/public/dist

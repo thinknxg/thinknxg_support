@@ -1,5 +1,7 @@
-__pycache__/
-*.pyc
-node_modules/
 .DS_Store
-*.egg-info/
+*.pyc
+*.egg-info
+__pycache__
+node_modules
+thinknxg_support/public/dist
+.ruff_cache/
