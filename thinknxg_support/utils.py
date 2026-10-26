@@ -9,11 +9,20 @@ from frappe.utils import cint, cstr
 from frappe.utils.html_utils import sanitize_html
 
 
+def _store() -> dict:
+    """Per-request cache. Frappe v16 frappe.local has no __dict__."""
+    store = getattr(frappe.local, "thinknxg_support_cache", None)
+    if store is None:
+        store = {}
+        frappe.local.thinknxg_support_cache = store
+    return store
+
+
 def settings():
     key = "thinknxg_support_settings"
-    if key not in frappe.local.__dict__:
-        frappe.local.__dict__[key] = frappe.get_cached_doc("Support Portal Settings")
-    return frappe.local.__dict__[key]
+    if key not in _store():
+        _store()[key] = frappe.get_cached_doc("Support Portal Settings")
+    return _store()[key]
 
 
 def module_enabled(module: str) -> bool:
@@ -98,5 +107,5 @@ def pick(d: dict, keys) -> dict:
 
 def clear_request_cache():
     """Drop per-request memoised values (portal user, settings, schema). Used by tests and jobs."""
-    for key in [k for k in list(frappe.local.__dict__) if str(k).startswith("thinknxg_support")]:
-        frappe.local.__dict__.pop(key, None)
+    for key in [k for k in list(_store()) if str(k).startswith("thinknxg_support")]:
+        _store().pop(key, None)

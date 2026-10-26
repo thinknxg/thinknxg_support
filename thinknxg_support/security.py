@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import frappe
+from thinknxg_support.utils import _store
 from frappe import _
 from frappe.utils import getdate, nowdate
 
@@ -91,7 +92,7 @@ def get_portal_user(allow_staff_without_grant: bool = False) -> PortalUser:
         raise frappe.AuthenticationError(_("Please log in to use the support portal."))
 
     cache_key = f"thinknxg_support:pu:{user}"
-    cached = frappe.local.__dict__.get(cache_key)
+    cached = _store().get(cache_key)
     if cached:
         return cached
 
@@ -113,7 +114,7 @@ def get_portal_user(allow_staff_without_grant: bool = False) -> PortalUser:
             _("Your account is not yet linked to an authorised organisation. Please contact support.")
         )
 
-    frappe.local.__dict__[cache_key] = pu
+    _store()[cache_key] = pu
     return pu
 
 
