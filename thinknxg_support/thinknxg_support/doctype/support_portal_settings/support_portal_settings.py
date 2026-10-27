@@ -21,10 +21,26 @@ class SupportPortalSettings(Document):
             ) if not self.get(field)]
             if missing:
                 frappe.throw(_("To enable WhatsApp, fill in: {0}").format(", ".join(missing)))
+        self._validate_links()
         if self.whatsapp_display_number:
             digits = "".join(ch for ch in self.whatsapp_display_number if ch.isdigit())
             if len(digits) < 8:
                 frappe.throw(_("Enter the WhatsApp number with its country code."))
+
+    def _validate_links(self):
+        from thinknxg_support.utils import safe_link
+
+        for row in self.menu_links:
+            if not safe_link(row.url):
+                frappe.throw(_("Menu link {0}: use a web address starting with https://, http:// or /").format(row.label))
+        for row in self.landing_sections:
+            if row.button_link and not safe_link(row.button_link):
+                frappe.throw(_("Section {0}: the button link must start with https://, http://, / , mailto: or tel:").format(row.idx))
+            if row.section_type == "Cards":
+                for line in (row.items or "").splitlines():
+                    parts = [p.strip() for p in line.split("|")]
+                    if len(parts) >= 3 and parts[2] and not safe_link(parts[2]):
+                        frappe.throw(_("Section {0}: card link not allowed: {1}").format(row.idx, parts[2]))
 
     def on_update(self):
         from thinknxg_support.audit import log_event

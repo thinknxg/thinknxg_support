@@ -5,6 +5,7 @@ from __future__ import annotations
 import frappe
 from frappe import _
 
+from thinknxg_support import ratelimit
 from thinknxg_support.api.v1._base import context
 from thinknxg_support.integrations import live_chat
 from thinknxg_support.utils import uploaded_files
@@ -32,9 +33,27 @@ def messages(conversation, token=None):
     return live_chat.guest_messages(conversation, _token(token))
 
 
+@frappe.whitelist(allow_guest=True, methods=["GET"])
+def state(conversation, token=None):
+    ratelimit.check("chat_state", 240, 60)
+    return live_chat.guest_state(conversation, _token(token))
+
+
 @frappe.whitelist(allow_guest=True, methods=["POST"])
-def send(conversation, message, token=None, client_message_id=None):
-    return live_chat.guest_send(conversation, _token(token), message, client_message_id)
+def send(conversation, message, token=None, client_message_id=None, payload=None):
+    return live_chat.guest_send(conversation, _token(token), message, client_message_id, payload)
+
+
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+def typing(conversation, token=None):
+    ratelimit.check("chat_typing", 40, 60)
+    return live_chat.guest_typing(conversation, _token(token))
+
+
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+def feedback(conversation, message, value, token=None):
+    conv = live_chat._guest_conv(conversation, _token(token))
+    return live_chat.feedback(conv, message, value)
 
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])
@@ -54,10 +73,30 @@ def my_chat(organization=None):
     return live_chat.customer_chat(pu, customer)
 
 
-@frappe.whitelist(methods=["POST"])
-def customer_send(message, organization=None, client_message_id=None):
+@frappe.whitelist(methods=["GET"])
+def my_state(organization=None):
+    ratelimit.check("chat_state", 240, 60)
     pu, customer = _customer(organization)
-    return live_chat.customer_send(pu, customer, message, client_message_id, files=uploaded_files())
+    return live_chat.customer_state(pu, customer)
+
+
+@frappe.whitelist(methods=["POST"])
+def customer_send(message, organization=None, client_message_id=None, payload=None):
+    pu, customer = _customer(organization)
+    return live_chat.customer_send(pu, customer, message, client_message_id, files=uploaded_files(), payload=payload)
+
+
+@frappe.whitelist(methods=["POST"])
+def customer_typing(organization=None):
+    ratelimit.check("chat_typing", 40, 60)
+    pu, customer = _customer(organization)
+    return live_chat.customer_typing(pu, customer)
+
+
+@frappe.whitelist(methods=["POST"])
+def customer_feedback(message, value, organization=None):
+    pu, customer = _customer(organization)
+    return live_chat.customer_feedback(pu, customer, message, value)
 
 
 @frappe.whitelist(methods=["POST"])

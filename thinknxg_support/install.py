@@ -15,6 +15,10 @@ PORTAL_ROLES = {
 def after_install():
     ensure_roles()
     ensure_defaults()
+    ensure_ai_defaults()
+    from thinknxg_support.landing import ensure_defaults as ensure_landing
+
+    ensure_landing()
     from thinknxg_support.integrations import capabilities
 
     capabilities.refresh(save=True)
@@ -38,6 +42,51 @@ def ensure_roles():
         frappe.get_doc(
             {"doctype": "Role", "role_name": role, "desk_access": desk, "is_custom": 0}
         ).insert(ignore_permissions=True)
+
+
+def ensure_ai_defaults():
+    """Assistant settings, a starter chatbot (disabled) and a default queue. Never overwrites existing records."""
+    ai = frappe.get_single("Support AI Settings")
+    defaults = {"assistant_name": "Assistant", "provider": "OpenAI Compatible", "api_base_url": "https://api.openai.com/v1",
+                "embedding_base_url": "https://api.openai.com/v1", "temperature": 0.2, "max_output_tokens": 600,
+                "timeout_seconds": 30, "top_k": 4, "min_relevance": 0.3, "chunk_size": 900, "max_ai_replies": 15,
+                "handoff_on": "Low", "usage_retention_days": 90, "answer_guests": 1, "answer_customers": 1,
+                "channel_live_chat": 1, "only_answer_from_kb": 1, "show_sources": 1, "suggest_follow_ups": 1,
+                "index_helpdesk_articles": 1, "index_snippets": 1, "redact_contact_details": 1,
+                "disclaimer": "Answers are written by AI from our help articles and can be wrong.",
+                "no_answer_message": "I couldn't find that in our help articles, so I'm passing you to a member of our team."}
+    if not ai.assistant_name:
+        ai.update(defaults)
+        ai.flags.ignore_permissions = True
+        ai.flags.ignore_mandatory = True
+        ai.save()
+    if not frappe.db.exists("Support Chatbot", "Starter Bot"):
+        frappe.get_doc({
+            "doctype": "Support Chatbot", "bot_name": "Starter Bot", "enabled": 0, "display_name": "Assistant",
+            "channel_live_chat": 1,
+            "welcome_message": "Hi! I can help with common questions, or connect you with our team.",
+            "welcome_buttons": "Opening hours | opening-hours\nTrack an order | track-order\nTalk to a person | @agent",
+            "fallback_action": "Ask AI, Then Hand Off",
+            "fallback_message": "Let me connect you with someone from our team.",
+            "handoff_keywords": "agent, human, person, representative, someone, staff, موظف, شخص",
+            "rules": [
+                {"rule_name": "opening-hours", "enabled": 1, "priority": 10, "trigger_type": "Keywords",
+                 "trigger": "opening hours, working hours, open today, office hours, ساعات العمل", "action": "Reply",
+                 "response": "Our support team works Sunday to Thursday, 08:00 to 17:00 (Muscat time).",
+                 "buttons": "Talk to a person | @agent"},
+                {"rule_name": "track-order", "enabled": 1, "priority": 5, "trigger_type": "Keywords",
+                 "trigger": "track order, order status, delivery status, where is my order", "action": "Reply",
+                 "response": "Logged-in customers can see every order and its delivery progress under Orders & invoices in the portal.",
+                 "buttons": "Ask another question | @ai\nTalk to a person | @agent"},
+                {"rule_name": "complaint", "enabled": 1, "priority": 20, "trigger_type": "Keywords",
+                 "trigger": "complaint, refund, cancel my, شكوى", "action": "Reply and Hand Off",
+                 "response": "I'm sorry to hear that. I'm connecting you with a member of our team now."},
+            ],
+        }).insert(ignore_permissions=True)
+    if not frappe.db.exists("Support Chat Queue", "General Support"):
+        frappe.get_doc({"doctype": "Support Chat Queue", "queue_name": "General Support", "enabled": 1,
+                        "assignment_rule": "Least Busy", "only_online_agents": 1, "channel_live_chat": 1,
+                        "channel_whatsapp": 1, "channel_portal": 1}).insert(ignore_permissions=True)
 
 
 def ensure_defaults():

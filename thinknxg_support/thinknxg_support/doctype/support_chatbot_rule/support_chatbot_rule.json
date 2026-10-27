@@ -1,0 +1,107 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "rule_name",
+  "enabled",
+  "priority",
+  "trigger_type",
+  "trigger",
+  "action",
+  "response",
+  "buttons"
+ ],
+ "fields": [
+  {
+   "fieldname": "rule_name",
+   "fieldtype": "Data",
+   "label": "Rule Name",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 2,
+   "description": "Unique in this chatbot. Buttons point to rules by this name",
+   "idx": 1
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "1",
+   "in_list_view": 1,
+   "columns": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "priority",
+   "fieldtype": "Int",
+   "label": "Priority",
+   "default": "0",
+   "in_list_view": 1,
+   "columns": 1,
+   "description": "Higher runs first",
+   "idx": 3
+  },
+  {
+   "fieldname": "trigger_type",
+   "fieldtype": "Select",
+   "label": "Trigger Type",
+   "options": "Keywords\nAll Keywords\nExact Phrase\nRegex\nButton Only",
+   "default": "Keywords",
+   "in_list_view": 1,
+   "columns": 2,
+   "idx": 4
+  },
+  {
+   "fieldname": "trigger",
+   "fieldtype": "Small Text",
+   "label": "Trigger",
+   "in_list_view": 1,
+   "columns": 2,
+   "description": "Keywords: comma separated, any one matches. All Keywords: every one must appear. Button Only: reached only from a button",
+   "idx": 5
+  },
+  {
+   "fieldname": "action",
+   "fieldtype": "Select",
+   "label": "Action",
+   "options": "Reply\nReply and Hand Off\nReply and Ask AI\nCreate Ticket\nEnd Chat",
+   "default": "Reply",
+   "in_list_view": 1,
+   "columns": 2,
+   "idx": 6
+  },
+  {
+   "fieldname": "response",
+   "fieldtype": "Small Text",
+   "label": "Response",
+   "description": "Plain text sent to the customer",
+   "idx": 7
+  },
+  {
+   "fieldname": "buttons",
+   "fieldtype": "Small Text",
+   "label": "Buttons",
+   "description": "One per line: Label | rule name. Use @agent to hand over to a person, @ai to ask the assistant",
+   "idx": 8
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 1,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Chatbot Rule",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

@@ -1,0 +1,204 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "bot_name",
+  "enabled",
+  "display_name",
+  "column_break_c1",
+  "channel_live_chat",
+  "channel_whatsapp",
+  "channel_portal",
+  "welcome_section",
+  "welcome_message",
+  "welcome_buttons",
+  "fallback_section",
+  "fallback_action",
+  "fallback_message",
+  "column_break_c2",
+  "handoff_keywords",
+  "rules_section",
+  "rules"
+ ],
+ "fields": [
+  {
+   "fieldname": "bot_name",
+   "fieldtype": "Data",
+   "label": "Bot Name",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "in_list_view": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "display_name",
+   "fieldtype": "Data",
+   "label": "Display Name",
+   "default": "Assistant",
+   "description": "Name shown to customers",
+   "idx": 3
+  },
+  {
+   "fieldname": "column_break_c1",
+   "fieldtype": "Column Break",
+   "idx": 4
+  },
+  {
+   "fieldname": "channel_live_chat",
+   "fieldtype": "Check",
+   "label": "Live Chat",
+   "default": "1",
+   "idx": 5
+  },
+  {
+   "fieldname": "channel_whatsapp",
+   "fieldtype": "Check",
+   "label": "WhatsApp",
+   "idx": 6
+  },
+  {
+   "fieldname": "channel_portal",
+   "fieldtype": "Check",
+   "label": "Portal Messages",
+   "idx": 7
+  },
+  {
+   "fieldname": "welcome_section",
+   "fieldtype": "Section Break",
+   "label": "Welcome",
+   "idx": 8
+  },
+  {
+   "fieldname": "welcome_message",
+   "fieldtype": "Small Text",
+   "label": "Welcome Message",
+   "description": "Live chat shows it with the buttons before the first message. WhatsApp sends it on a new conversation",
+   "idx": 9
+  },
+  {
+   "fieldname": "welcome_buttons",
+   "fieldtype": "Small Text",
+   "label": "Welcome Buttons",
+   "description": "One per line: Label | rule name, @agent or @ai",
+   "idx": 10
+  },
+  {
+   "fieldname": "fallback_section",
+   "fieldtype": "Section Break",
+   "label": "When No Rule Matches",
+   "idx": 11
+  },
+  {
+   "fieldname": "fallback_action",
+   "fieldtype": "Select",
+   "label": "Fallback Action",
+   "options": "Ask AI, Then Hand Off\nHand Off\nReply Only",
+   "default": "Ask AI, Then Hand Off",
+   "idx": 12
+  },
+  {
+   "fieldname": "fallback_message",
+   "fieldtype": "Small Text",
+   "label": "Fallback Message",
+   "default": "Let me connect you with someone from our team.",
+   "idx": 13
+  },
+  {
+   "fieldname": "column_break_c2",
+   "fieldtype": "Column Break",
+   "idx": 14
+  },
+  {
+   "fieldname": "handoff_keywords",
+   "fieldtype": "Small Text",
+   "label": "Handoff Keywords",
+   "default": "agent, human, person, representative, someone, staff, موظف, شخص",
+   "description": "Comma separated. Any of these hands the chat to a person at once",
+   "idx": 15
+  },
+  {
+   "fieldname": "rules_section",
+   "fieldtype": "Section Break",
+   "label": "Rules",
+   "idx": 16
+  },
+  {
+   "fieldname": "rules",
+   "fieldtype": "Table",
+   "label": "Rules",
+   "options": "Support Chatbot Rule",
+   "idx": 17
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Chatbot",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Agent",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "field:bot_name",
+ "naming_rule": "By fieldname"
+}

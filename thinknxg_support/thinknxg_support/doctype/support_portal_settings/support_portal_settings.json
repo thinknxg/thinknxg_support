@@ -89,6 +89,17 @@
   "whatsapp_link_contacts",
   "whatsapp_auto_reply",
   "whatsapp_status",
+  "landing_tab",
+  "landing_enabled",
+  "customer_home",
+  "column_break_land",
+  "public_knowledge",
+  "index_landing",
+  "meta_description",
+  "landing_sections_section",
+  "landing_sections",
+  "menu_tab",
+  "menu_links",
   "security_tab",
   "require_contact_link",
   "allowed_attachment_extensions",
@@ -659,10 +670,86 @@
    "idx": 82
   },
   {
+   "fieldname": "landing_tab",
+   "fieldtype": "Tab Break",
+   "label": "Landing Page",
+   "idx": 83
+  },
+  {
+   "fieldname": "landing_enabled",
+   "fieldtype": "Check",
+   "label": "Public Landing Page",
+   "default": "1",
+   "description": "Visitors can open the portal home page without logging in. Off: the portal asks everyone to log in",
+   "idx": 84
+  },
+  {
+   "fieldname": "customer_home",
+   "fieldtype": "Select",
+   "label": "Home Page for Logged-in Customers",
+   "options": "Landing Page\nDashboard",
+   "default": "Landing Page",
+   "idx": 85
+  },
+  {
+   "fieldname": "column_break_land",
+   "fieldtype": "Column Break",
+   "idx": 86
+  },
+  {
+   "fieldname": "public_knowledge",
+   "fieldtype": "Check",
+   "label": "Public Knowledge Base",
+   "default": "1",
+   "description": "Visitors can search and read published help articles without logging in",
+   "idx": 87
+  },
+  {
+   "fieldname": "index_landing",
+   "fieldtype": "Check",
+   "label": "Let Search Engines Index the Landing Page",
+   "description": "Off by default. Other portal pages are never indexed",
+   "idx": 88
+  },
+  {
+   "fieldname": "meta_description",
+   "fieldtype": "Small Text",
+   "label": "Search Engine Description",
+   "idx": 89
+  },
+  {
+   "fieldname": "landing_sections_section",
+   "fieldtype": "Section Break",
+   "label": "Sections",
+   "description": "Shown from top to bottom in this order. Drag rows to reorder, untick Enabled to hide, and set Audience to show a section only to visitors or only to logged-in customers",
+   "idx": 90
+  },
+  {
+   "fieldname": "landing_sections",
+   "fieldtype": "Table",
+   "label": "Landing Sections",
+   "options": "Support Portal Section",
+   "idx": 91
+  },
+  {
+   "fieldname": "menu_tab",
+   "fieldtype": "Tab Break",
+   "label": "Menu",
+   "idx": 92
+  },
+  {
+   "fieldname": "menu_links",
+   "fieldtype": "Table",
+   "label": "Menu Links",
+   "options": "Support Portal Menu Link",
+   "description": "Links shown in the portal's top bar (Header) or at the bottom of the page (Footer)",
+   "idx": 93
+  },
+  {
    "fieldname": "security_tab",
    "fieldtype": "Tab Break",
    "label": "Security",
-   "idx": 83
+   "idx": 94
   },
   {
    "fieldname": "require_contact_link",
@@ -670,32 +757,32 @@
    "label": "Require Contact Link",
    "default": "1",
    "description": "Access grants only apply when the user's Contact is linked to the Customer",
-   "idx": 84
+   "idx": 95
   },
   {
    "fieldname": "allowed_attachment_extensions",
    "fieldtype": "Small Text",
    "label": "Allowed Attachment Extensions",
-   "idx": 85
+   "idx": 96
   },
   {
    "fieldname": "max_attachment_mb",
    "fieldtype": "Int",
    "label": "Max Attachment Mb",
    "default": "10",
-   "idx": 86
+   "idx": 97
   },
   {
    "fieldname": "max_attachments_per_message",
    "fieldtype": "Int",
    "label": "Max Attachments Per Message",
    "default": "5",
-   "idx": 87
+   "idx": 98
   },
   {
    "fieldname": "column_break_sec",
    "fieldtype": "Column Break",
-   "idx": 88
+   "idx": 99
   },
   {
    "fieldname": "message_rate_limit",
@@ -703,7 +790,7 @@
    "label": "Message Rate Limit",
    "description": "Messages / replies per user per minute",
    "default": "30",
-   "idx": 89
+   "idx": 100
   },
   {
    "fieldname": "ticket_rate_limit",
@@ -711,14 +798,14 @@
    "label": "Ticket Rate Limit",
    "description": "New tickets / requests per user per minute",
    "default": "10",
-   "idx": 90
+   "idx": 101
   },
   {
    "fieldname": "event_retention_days",
    "fieldtype": "Int",
    "label": "Event Retention Days",
    "default": "365",
-   "idx": 91
+   "idx": 102
   }
  ],
  "index_web_pages_for_search": 0,

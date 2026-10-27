@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.3.0 — 2026-10-27
+* Public landing page at `/thinkdesk` with 12 configurable section types (add, remove, reorder, audience, style)
+* Configurable header and footer menu links (external or internal, Arabic labels, audience, new tab)
+* Public knowledge base for visitors (optional); visitors are sent to log in only for customer pages
+* Dashboard moved to `/thinkdesk/dashboard`; choose Landing Page or Dashboard as the customers' home
+* Language switch for visitors; chat opens from landing quick actions
+
+## 1.2.0 — 2026-10-27
+* AI assistant: provider-agnostic adapter (OpenAI-compatible, Anthropic) with streaming, knowledge retrieval
+  (embeddings or keywords) over Helpdesk articles and new Knowledge Snippets, sources, follow-ups, feedback,
+  confidence-based handoff, reply limit, daily token budget, redaction, usage logs
+* Chatbot: welcome buttons, keyword / phrase / regex / button rules, handoff words, actions (reply, hand off,
+  ask AI, create ticket, end chat), numbered options on WhatsApp
+* Handoff and routing: chat queues with Least Busy / Round Robin / Manual, agent presence, assignments,
+  take over, return to assistant, transfer
+* Widget: sender badges, streamed AI replies, quick replies, typing indicators, read receipts, waiting banner
+* Agent console: assistant status, filters for "Waiting for agent" and "With assistant", queue filter
+* Report: Live Chat Performance
+
 ## 1.1.2 — 2026-10-26
 * Portal moved to `/thinkdesk` (guest chat: `/thinkdesk/chat`). ERPNext's `/support` page is still left untouched
 

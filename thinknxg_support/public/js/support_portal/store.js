@@ -29,6 +29,12 @@ export const state = reactive({
 	agentUrl: null,
 	maxMb: 10,
 	extensions: "",
+	isGuest: false,
+	menuLinks: [],
+	landingEnabled: true,
+	customerHome: "Landing Page",
+	publicKnowledge: false,
+	whatsappUrl: null,
 	unreadNotifications: 0,
 	unreadMessages: 0,
 	toast: null,
@@ -57,6 +63,12 @@ export function setOrg(customer) {
 
 export function applyBoot(data) {
 	state.linked = data.linked !== false;
+	state.isGuest = !!data.guest;
+	state.menuLinks = data.menu_links || [];
+	state.landingEnabled = data.landing_enabled !== false;
+	state.customerHome = data.customer_home || "Landing Page";
+	state.publicKnowledge = !!data.public_knowledge;
+	state.whatsappUrl = data.whatsapp_url || null;
 	state.unlinkedMessage = data.message || "";
 	state.branding = data.branding || {};
 	state.user = data.user && typeof data.user === "object" ? data.user : null;
@@ -113,4 +125,17 @@ export function fmtSize(bytes) {
 	if (b < 1024) return `${b} B`;
 	if (b < 1024 * 1024) return `${(b / 1024).toFixed(0)} KB`;
 	return `${(b / 1024 / 1024).toFixed(1)} MB`;
+}
+
+export function loginUrl(path) {
+	return "/login?redirect-to=" + encodeURIComponent(path || window.location.pathname + window.location.search);
+}
+
+export function menuLabel(m) {
+	return state.lang === "ar" && m.label_ar ? m.label_ar : m.label;
+}
+
+/** Open the chat window from anywhere on the page (quick actions, buttons). */
+export function openChat() {
+	window.dispatchEvent(new CustomEvent("thinknxg-support:open-chat"));
 }

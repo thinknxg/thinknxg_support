@@ -9,6 +9,11 @@ export const STRINGS = {
 		failed: "Not sent. Tap to retry.", network: "Can't reach the server. Check your connection.",
 		you: "You", support: "Support", attach: "Attach a file", expired: "This chat is no longer available.",
 		email_hint: "We'll email you if you leave before we reply.", unread: "new messages",
+		ai_badge: "AI", bot_badge: "Bot", assistant: "Assistant", talk_person: "Talk to a person",
+		waiting_agent: "Waiting for a member of our team. You can keep typing.",
+		waiting_offline: "Our team is offline. We'll reply here and by email when we're back.",
+		with_agent: "You're chatting with {0}", typing: "{0} is typing…", seen: "Seen", sources: "Sources",
+		helpful: "Helpful", not_helpful: "Not helpful", thanks_fb: "Thanks for the feedback",
 	},
 	ar: {
 		launcher: "تحدث مع الدعم", close: "تصغير المحادثة", online: "نحن متصلون", offline: "نحن غير متصلين الآن",
@@ -20,5 +25,10 @@ export const STRINGS = {
 		sending: "جارٍ الإرسال…", failed: "لم تُرسل. اضغط لإعادة المحاولة.", network: "تعذر الاتصال بالخادم.",
 		you: "أنت", support: "الدعم", attach: "إرفاق ملف", expired: "هذه المحادثة لم تعد متاحة.",
 		email_hint: "سنراسلك عبر البريد إذا غادرت قبل ردنا.", unread: "رسائل جديدة",
+		ai_badge: "ذكاء اصطناعي", bot_badge: "روبوت", assistant: "المساعد", talk_person: "التحدث مع موظف",
+		waiting_agent: "بانتظار أحد أعضاء فريقنا. يمكنك متابعة الكتابة.",
+		waiting_offline: "فريقنا غير متصل الآن. سنرد هنا وعبر البريد عند عودتنا.",
+		with_agent: "أنت تتحدث مع {0}", typing: "{0} يكتب…", seen: "تمت المشاهدة", sources: "المصادر",
+		helpful: "مفيد", not_helpful: "غير مفيد", thanks_fb: "شكراً على تقييمك",
 	},
 };

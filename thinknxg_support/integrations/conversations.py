@@ -1,6 +1,8 @@
 """Provider-agnostic conversation service (portal-native store + optional Raven bridge)."""
 from __future__ import annotations
 
+import json
+
 import frappe
 from frappe import _
 from frappe.utils import cint, now_datetime, strip_html
@@ -87,26 +89,49 @@ def start(pu: PortalUser, customer: str, subject: str, message: str, conversatio
     return {"name": conv.name}
 
 
+CUSTOMER_FIELDS = ["name", "direction", "sender", "sender_name", "content", "attachment", "creation", "sender_type",
+                   "actions_json", "feedback", "read_by_agent"]
+
+
+def customer_view(r, me: str | None = None) -> dict:
+    """The only shape in which messages leave the server for customers and guests (internal notes never reach it)."""
+    inbound = r.direction == "Inbound"
+    st = r.get("sender_type") or ("Customer" if inbound else "Agent")
+    try:
+        actions = json.loads(r.get("actions_json") or "{}") or {}
+    except ValueError:
+        actions = {}
+    if inbound:
+        author = r.sender_name
+    elif st in ("AI", "Bot"):
+        author = r.sender_name or _("Assistant")
+    elif st == "System":
+        author = ""
+    else:
+        author = (r.sender_name or "").split(" ")[0] or _("Support")
+    return {
+        "id": r.name,
+        "from_customer": inbound,
+        "is_me": bool(me and r.sender == me and me != "Guest"),
+        "author": author,
+        "sender_type": st,
+        "content": r.content,
+        "has_attachment": bool(r.attachment),
+        "attachment_name": (r.attachment or "").rsplit("/", 1)[-1] or None,
+        "created": r.creation,
+        "buttons": actions.get("buttons") or [],
+        "follow_ups": actions.get("follow_ups") or [],
+        "sources": actions.get("sources") or [],
+        "feedback": r.get("feedback") or None,
+        "can_feedback": st == "AI",
+        "seen": bool(inbound and r.get("read_by_agent")),
+    }
+
+
 def messages(pu: PortalUser, conv) -> list[dict]:
-    rows = frappe.get_all(
-        MSG,
-        filters={"conversation": conv.name, "is_internal": 0},
-        fields=["name", "direction", "sender", "sender_name", "content", "attachment", "creation"],
-        order_by="creation asc",
-        limit=1000,
-    )
-    out = []
-    for r in rows:
-        out.append({
-            "id": r.name,
-            "from_customer": r.direction == "Inbound",
-            "is_me": r.sender == pu.user,
-            "author": r.sender_name if r.direction == "Inbound" else ((r.sender_name or "").split(" ")[0] or _("Support")),
-            "content": r.content,
-            "has_attachment": bool(r.attachment),
-            "attachment_name": (r.attachment or "").rsplit("/", 1)[-1] or None,
-            "created": r.creation,
-        })
+    rows = frappe.get_all(MSG, filters={"conversation": conv.name, "is_internal": 0}, fields=CUSTOMER_FIELDS,
+                          order_by="creation asc", limit=1000)
+    out = [customer_view(r, pu.user) for r in rows]
     if conv.started_by == pu.user and cint(conv.unread_customer):
         frappe.db.set_value(CONV, conv.name, "unread_customer", 0, update_modified=False)
         frappe.db.sql(
@@ -117,14 +142,15 @@ def messages(pu: PortalUser, conv) -> list[dict]:
 
 
 def post_customer_message(pu: PortalUser, conv, content: str, client_message_id: str | None = None,
-                          files=None) -> dict:
+                          files=None, button_payload: str | None = None) -> dict:
     return add_inbound_message(conv, content, sender=pu.user, sender_name=pu.full_name,
-                               client_message_id=client_message_id, files=files)
+                               client_message_id=client_message_id, files=files, button_payload=button_payload)
 
 
 def add_inbound_message(conv, content: str, *, sender: str | None, sender_name: str,
                         client_message_id: str | None = None, files=None, external_id: str | None = None,
-                        attachment_url: str | None = None, allow_html: bool = True, reopen: bool = False) -> dict:
+                        attachment_url: str | None = None, allow_html: bool = True, reopen: bool = False,
+                        button_payload: str | None = None) -> dict:
     """Single entry point for messages FROM the customer side: portal users, guests and WhatsApp."""
     if conv.status == "Closed" and not reopen:
         frappe.throw(_("This conversation is closed. Please start a new one."))
@@ -152,6 +178,8 @@ def add_inbound_message(conv, content: str, *, sender: str | None, sender_name: 
         "external_message_id": external_id,
         "channel": conv.get("channel") or "Portal",
         "attachment": attachment_url,
+        "sender_type": "Customer",
+        "button_payload": clean_text(button_payload, 140) or None,
     })
     msg.insert(ignore_permissions=True)
     if files:
@@ -166,7 +194,19 @@ def add_inbound_message(conv, content: str, *, sender: str | None, sender_name: 
         "status='Open', last_message_reference=%s where name=%s",
         (now_datetime(), msg.name, conv.name),
     )
+    from thinknxg_support.integrations import realtime
+
+    if not conv.get("handling"):
+        from thinknxg_support.integrations.ai.engine import initial_handling
+
+        conv.handling = initial_handling(conv)
+        frappe.db.set_value(CONV, conv.name, "handling", conv.handling, update_modified=False)
+    realtime.bump(conv.name)
     publish_agent_event(conv, "message")
+    if conv.handling == "Bot":
+        frappe.enqueue("thinknxg_support.integrations.ai.engine.respond", queue="default", enqueue_after_commit=True,
+                       conversation=conv.name, message=msg.name)
+        return {"name": msg.name}
     if raven.available():
         raven.push_customer_message(conv, msg)
     else:
@@ -192,25 +232,34 @@ def publish_agent_event(conv, kind: str):
 
 
 def post_agent_message(conv, content: str, internal: int = 0, source: str = "desk", sender: str | None = None,
-                       external_id: str | None = None) -> dict:
+                       external_id: str | None = None, sender_type: str = "Agent", response_source: str | None = None,
+                       sender_name: str | None = None, actions: dict | None = None, confidence: str | None = None,
+                       ai_usage: str | None = None) -> dict:
+    """Every message TO the customer goes through here: agents, the assistant, chatbot rules and system notes."""
     sender = sender or frappe.session.user
     if external_id:
         dup = frappe.db.get_value(MSG, {"external_message_id": external_id}, "name")
         if dup:
             return {"name": dup, "duplicate": True}
-    if conv.status == "Closed" and not cint(internal) and conv.get("channel") == "Live Chat" and conv.get("is_guest"):
+    human = sender_type == "Agent"
+    if human and conv.status == "Closed" and not cint(internal) and conv.get("channel") == "Live Chat" and conv.get("is_guest"):
         frappe.throw(_("The visitor has ended this chat. Reply by email instead."))
     msg = frappe.get_doc({
         "doctype": MSG,
         "conversation": conv.name,
         "direction": "Outbound",
         "sender": sender,
-        "sender_name": frappe.db.get_value("User", sender, "full_name") or sender,
+        "sender_name": sender_name or frappe.db.get_value("User", sender, "full_name") or sender,
         "content": clean_html(content),
         "is_internal": cint(internal),
         "external_message_id": external_id,
         "channel": conv.get("channel") or "Portal",
         "delivery_status": "Pending" if conv.get("channel") == "WhatsApp" and not cint(internal) else None,
+        "sender_type": sender_type,
+        "response_source": response_source or ("Human" if human else sender_type),
+        "confidence": confidence,
+        "actions_json": json.dumps(actions) if actions else None,
+        "ai_usage": ai_usage,
     })
     msg.insert(ignore_permissions=True)
     if not cint(internal):
@@ -219,16 +268,23 @@ def post_agent_message(conv, content: str, internal: int = 0, source: str = "des
             "last_activity_at=%s, status='Waiting', last_message_reference=%s where name=%s",
             (now_datetime(), msg.name, conv.name),
         )
+        if human:
+            from thinknxg_support.integrations import routing
+
+            routing.agent_replied(conv, sender)
         if conv.get("channel") == "WhatsApp":
             from thinknxg_support.integrations import whatsapp
 
             frappe.enqueue(whatsapp.deliver, queue="short", enqueue_after_commit=True, message=msg.name)
-        else:
+        elif human:
             from thinknxg_support.integrations.notifications import notify_customer_message
 
             notify_customer_message(conv, msg)
         if source == "desk":
             raven.mirror_agent_message(conv, msg)
+    from thinknxg_support.integrations import realtime
+
+    realtime.bump(conv.name)
     publish_agent_event(conv, "reply")
     return {"name": msg.name}
 
@@ -264,7 +320,7 @@ def escalate_to_ticket(conv, actor: str = "customer", pu: PortalUser | None = No
     )
     conv.db_set({"helpdesk_ticket": ticket, "conversation_type": "Ticket Discussion"})
     post_agent_message(conv, _("This conversation is now tracked as ticket #{0}.").format(ticket),
-                       sender="Administrator", source="system")
+                       sender="Administrator", source="system", sender_type="System", response_source="Escalation")
     from thinknxg_support.audit import log_event
 
     log_event("Escalation", reference_doctype=CONV, reference_name=conv.name,

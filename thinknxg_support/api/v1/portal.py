@@ -11,7 +11,33 @@ from thinknxg_support.utils import module_enabled, settings
 LANGS = ("en", "ar")
 
 
-@frappe.whitelist(methods=["GET"])
+def _public(s, audience: str) -> dict:
+    from thinknxg_support import landing
+    from thinknxg_support.integrations import live_chat
+
+    return {
+        "menu_links": landing.menu_links(audience),
+        "landing_enabled": bool(s.landing_enabled),
+        "customer_home": s.customer_home or "Landing Page",
+        "public_knowledge": landing.kb_open("Visitors"),
+        "whatsapp_url": live_chat.whatsapp_url(),
+    }
+
+
+@frappe.whitelist(allow_guest=True, methods=["GET"])
+def landing():
+    """Landing page sections for the current viewer (visitor or customer)."""
+    from thinknxg_support import landing as landing_mod
+    from thinknxg_support import ratelimit
+
+    if frappe.session.user == "Guest":
+        ratelimit.check("landing", 120, 60)
+        if not settings().landing_enabled:
+            raise frappe.AuthenticationError(_("Please log in."))
+    return landing_mod.build()
+
+
+@frappe.whitelist(allow_guest=True, methods=["GET"])
 def boot():
     """Everything the SPA needs to render its shell."""
     s = settings()
@@ -24,10 +50,20 @@ def boot():
         "support_phone": s.support_phone,
         "footer_text": s.footer_text,
     }
+    lang = s.default_language or "en"
+    if frappe.session.user == "Guest":
+        return {"guest": True, "linked": False, "branding": branding, "user": None, "language": lang,
+                "modules": {"knowledge": module_enabled("knowledge") and helpdesk.kb_available() and bool(s.public_knowledge)},
+                **_public(s, "Visitors")}
     try:
         pu = get_portal_user(allow_staff_without_grant=True)
     except PortalAccessError as e:
-        return {"linked": False, "message": str(e), "branding": branding, "user": frappe.session.user}
+        u = frappe.db.get_value("User", frappe.session.user, ["full_name", "email"], as_dict=True) or {}
+        lang = frappe.db.get_value("Support Portal Profile", frappe.session.user, "language") or lang
+        return {"guest": False, "linked": False, "message": str(e), "branding": branding, "language": lang,
+                "user": {"name": frappe.session.user, "full_name": u.get("full_name"), "email": u.get("email")},
+                "modules": {"knowledge": module_enabled("knowledge") and helpdesk.kb_available() and bool(s.public_knowledge)},
+                **_public(s, "Visitors")}
 
     available = {
         "tickets": module_enabled("tickets") and helpdesk.available(),
@@ -65,6 +101,8 @@ def boot():
         "max_attachment_mb": cint(s.max_attachment_mb) or 10,
         "allowed_extensions": s.allowed_attachment_extensions,
         "helpdesk_agent_url": "/helpdesk" if pu.is_staff and helpdesk.available() else None,
+        "guest": False,
+        **_public(s, "Customers" if pu.grants else "Visitors"),
     }
     if pu.is_admin:
         warnings = list(caps.get("warnings") or [])

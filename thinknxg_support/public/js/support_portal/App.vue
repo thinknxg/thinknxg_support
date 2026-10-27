@@ -3,21 +3,50 @@
 		<Loader :loading="!bootError" :error="bootError" @retry="load" />
 	</div>
 
-	<div v-else-if="!state.linked" class="tx-unlinked">
-		<div class="tx-card tx-unlinked__card">
-			<img :src="state.branding.logo" alt="" class="tx-unlinked__logo" />
-			<h1>{{ state.t("errors.unlinked") }}</h1>
-			<p>{{ state.t("errors.unlinked_help") }}</p>
-			<p v-if="state.branding.support_email">
-				<a :href="'mailto:' + state.branding.support_email">{{ state.branding.support_email }}</a>
-			</p>
-			<a class="tx-btn tx-btn--ghost" href="/?cmd=web_logout">{{ state.t("nav.logout") }}</a>
-		</div>
+	<!-- Visitors (not logged in, or logged in without portal access): public layout -->
+	<div v-else-if="isPublic" class="tx-public" :class="{ 'tx-public--menu': menuOpen }">
+		<header class="tx-pubhead">
+			<div class="tx-pubhead__inner">
+				<a :href="link('')" data-nav class="tx-brand">
+					<img :src="state.branding.logo" alt="" />
+					<span>{{ state.branding.title }}</span>
+				</a>
+				<nav class="tx-pubnav" :aria-label="state.t('land.menu')">
+					<a v-if="state.publicKnowledge" :href="link('knowledge')" data-nav class="tx-pubnav__link"
+						:class="{ on: route.name === 'knowledge' || route.name === 'article' }">{{ state.t("nav.knowledge") }}</a>
+					<a v-for="m in headerLinks" :key="m.url + m.label" :href="m.url" class="tx-pubnav__link"
+						v-bind="m.new_tab ? { target: '_blank', rel: 'noopener' } : {}">
+						{{ menuLabel(m) }}<Icon v-if="m.external" name="external" size="12" />
+					</a>
+				</nav>
+				<div class="tx-pubhead__end">
+					<button type="button" class="tx-langbtn" @click="toggleLang">{{ state.t("land.language") }}</button>
+					<a v-if="state.isGuest" :href="loginUrl()" class="tx-btn tx-btn--primary tx-btn--sm">
+						<Icon name="login" size="16" />{{ state.t("land.login") }}</a>
+					<a v-else href="/?cmd=web_logout" class="tx-btn tx-btn--ghost tx-btn--sm">{{ state.t("land.logout") }}</a>
+					<button type="button" class="tx-iconbtn tx-pubhead__burger" :aria-label="state.t('land.menu')"
+						:aria-expanded="menuOpen" @click="menuOpen = !menuOpen"><Icon :name="menuOpen ? 'x' : 'menu'" /></button>
+				</div>
+			</div>
+		</header>
+		<main class="tx-pubmain" @click="menuOpen = false">
+			<component :is="publicView" :key="route.name + (route.params.id || '')" />
+		</main>
+		<footer class="tx-pubfoot">
+			<div class="tx-pubfoot__inner">
+				<span>{{ state.branding.footer_text || state.branding.title }}</span>
+				<nav v-if="footerLinks.length">
+					<a v-for="m in footerLinks" :key="m.url + m.label" :href="m.url" v-bind="m.new_tab ? { target: '_blank', rel: 'noopener' } : {}">{{ menuLabel(m) }}</a>
+				</nav>
+			</div>
+		</footer>
+		<ChatWidget context="portal" :lang="state.lang" />
 	</div>
 
+	<!-- Customers: application layout -->
 	<div v-else class="tx-shell" :class="{ 'tx-shell--nav-open': navOpen }">
 		<header class="tx-header">
-			<button class="tx-iconbtn tx-header__menu" :aria-label="state.t('nav.dashboard')" @click="navOpen = !navOpen">
+			<button class="tx-iconbtn tx-header__menu" :aria-label="state.t('land.menu')" @click="navOpen = !navOpen">
 				<Icon :name="navOpen ? 'x' : 'menu'" />
 			</button>
 			<a :href="link('')" data-nav class="tx-brand">
@@ -25,6 +54,10 @@
 				<span>{{ state.branding.title }}</span>
 			</a>
 
+			<nav v-if="headerLinks.length" class="tx-hlinks" :aria-label="state.t('land.menu')">
+				<a v-for="m in headerLinks" :key="m.url + m.label" :href="m.url" v-bind="m.new_tab ? { target: '_blank', rel: 'noopener' } : {}">
+					{{ menuLabel(m) }}<Icon v-if="m.external" name="external" size="12" /></a>
+			</nav>
 			<div class="tx-header__spacer"></div>
 
 			<label v-if="state.orgs.length > 1" class="tx-orgswitch">
@@ -81,6 +114,11 @@
 				<span>{{ state.t(item.label) }}</span>
 				<span v-if="item.name === 'conversations' && state.unreadMessages" class="tx-count">{{ state.unreadMessages }}</span>
 			</a>
+			<div v-if="headerLinks.length" class="tx-nav__links">
+				<a v-for="m in headerLinks" :key="m.url + m.label" :href="m.url" class="tx-nav__item"
+					v-bind="m.new_tab ? { target: '_blank', rel: 'noopener' } : {}">
+					<Icon name="external" /><span>{{ menuLabel(m) }}</span></a>
+			</div>
 			<div class="tx-nav__foot">
 				<span v-if="state.branding.support_email">{{ state.branding.support_email }}</span>
 				<span v-if="state.branding.support_phone" dir="ltr">{{ state.branding.support_phone }}</span>
@@ -88,7 +126,7 @@
 		</nav>
 		<div class="tx-scrim" @click="navOpen = false"></div>
 
-		<main class="tx-main" @click="closePops">
+		<main class="tx-main" :class="{ 'tx-main--landing': showLanding }" @click="closePops">
 			<div v-if="state.adminWarnings.length" class="tx-admin" role="status">
 				<Icon name="alert" />
 				<div>
@@ -98,7 +136,12 @@
 				</div>
 			</div>
 			<component :is="view" :key="viewKey" />
-			<footer v-if="state.branding.footer_text" class="tx-footer">{{ state.branding.footer_text }}</footer>
+			<footer class="tx-footer">
+				<span v-if="state.branding.footer_text">{{ state.branding.footer_text }}</span>
+				<nav v-if="footerLinks.length" class="tx-footer__links">
+					<a v-for="m in footerLinks" :key="m.url + m.label" :href="m.url" v-bind="m.new_tab ? { target: '_blank', rel: 'noopener' } : {}">{{ menuLabel(m) }}</a>
+				</nav>
+			</footer>
 		</main>
 
 		<div v-if="state.toast" class="tx-toast" :class="'tx-toast--' + state.toast.kind" role="status">
@@ -113,11 +156,12 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { call } from "./api";
 import { route, link, navigate } from "./router";
-import { state, applyBoot, setOrg, fmtDate, can } from "./store";
+import { state, applyBoot, setOrg, setLang, fmtDate, can, loginUrl, menuLabel } from "./store";
 import Icon from "./components/Icon.vue";
 import { Loader } from "./components/ui";
 import ChatWidget from "../support_chat/ChatWidget.vue";
 
+import Landing from "./views/Landing.vue";
 import Dashboard from "./views/Dashboard.vue";
 import Tickets from "./views/Tickets.vue";
 import TicketDetail from "./views/TicketDetail.vue";
@@ -138,6 +182,7 @@ const MODULE_OF = {
 	tickets: "tickets", ticket: "tickets", "ticket-new": "tickets", conversations: "conversations",
 	conversation: "conversations", knowledge: "knowledge", article: "knowledge", services: "services", account: "account",
 };
+const PUBLIC_ROUTES = ["home", "knowledge", "article"];
 
 const bootError = ref("");
 const navOpen = ref(false);
@@ -146,7 +191,19 @@ const menuOpen = ref(false);
 const notifications = ref([]);
 let poll;
 
+const isPublic = computed(() => state.isGuest || !state.linked);
+const headerLinks = computed(() => state.menuLinks.filter((m) => m.location !== "Footer"));
+const footerLinks = computed(() => state.menuLinks.filter((m) => m.location === "Footer"));
+const showLanding = computed(() => route.name === "home" && state.customerHome !== "Dashboard");
+
+const publicView = computed(() => {
+	if (route.name === "home") return Landing;
+	if ((route.name === "knowledge" || route.name === "article") && state.publicKnowledge) return Knowledge;
+	return NotFound;
+});
+
 const view = computed(() => {
+	if (route.name === "home") return state.customerHome === "Dashboard" ? Dashboard : Landing;
 	const mod = MODULE_OF[route.name];
 	if (mod && !state.modules[mod]) return NotFound;
 	return VIEWS[route.name] || NotFound;
@@ -154,8 +211,10 @@ const view = computed(() => {
 const viewKey = computed(() => `${state.org}:${route.name}:${route.params.id || ""}`);
 
 const navItems = computed(() => {
+	const landing = state.customerHome !== "Dashboard";
 	const items = [
-		{ name: "dashboard", path: "", icon: "home", label: "nav.dashboard" },
+		landing ? { name: "home", path: "", icon: "home", label: "nav.home" } : null,
+		{ name: "dashboard", path: landing ? "dashboard" : "", icon: landing ? "grid" : "home", label: "nav.dashboard" },
 		{ name: "tickets", path: "tickets", icon: "ticket", label: "nav.tickets", module: "tickets" },
 		{ name: "conversations", path: "conversations", icon: "chat", label: "nav.conversations", module: "conversations" },
 		{ name: "knowledge", path: "knowledge", icon: "book", label: "nav.knowledge", module: "knowledge" },
@@ -163,7 +222,7 @@ const navItems = computed(() => {
 		{ name: "account", path: "account", icon: "receipt", label: "nav.account", module: "account",
 			show: () => can("orders.read") || can("invoices.read") || can("documents.read") },
 		{ name: "settings", path: "settings", icon: "settings", label: "nav.settings" },
-	];
+	].filter(Boolean);
 	return items.filter((i) => (!i.module || state.modules[i.module]) && (!i.show || i.show()));
 });
 
@@ -172,14 +231,28 @@ const initials = computed(() =>
 );
 
 function isActive(item) {
-	if (item.name === "dashboard") return route.name === "dashboard";
+	if (item.name === "home") return route.name === "home";
+	if (item.name === "dashboard") return route.name === "dashboard" || (route.name === "home" && state.customerHome === "Dashboard");
 	return route.name.startsWith(item.name.replace(/s$/, ""));
+}
+
+function guardPublic() {
+	// visitors who open a customer-only page are sent to log in and brought back afterwards
+	if (state.ready && isPublic.value && state.isGuest && !PUBLIC_ROUTES.includes(route.name) && route.name !== "not-found") {
+		window.location.href = loginUrl();
+	}
+}
+
+function toggleLang() {
+	setLang(state.lang === "ar" ? "en" : "ar");
+	if (!state.isGuest) call("profile.update_profile", { language: state.lang }, { post: true, org: false }).catch(() => {});
 }
 
 async function load() {
 	bootError.value = "";
 	try {
 		applyBoot(await call("portal.boot", {}, { org: false }));
+		guardPublic();
 		refreshCounters();
 	} catch (e) {
 		bootError.value = e.message;
@@ -187,7 +260,7 @@ async function load() {
 }
 
 async function refreshCounters() {
-	if (!state.linked || document.hidden) return;
+	if (isPublic.value || document.hidden) return;
 	try {
 		const n = await call("notifications.list_notifications", { limit: 20 }, { org: false });
 		notifications.value = n.items;
@@ -220,7 +293,7 @@ function notifLink(n) {
 		"HD Ticket": `tickets/${n.document_name}`, "Support Conversation Link": `conversations/${n.document_name}`,
 		"Support Request": "services", "Sales Invoice": "account",
 	};
-	return link(map[n.document_type] || "");
+	return link(map[n.document_type] || "dashboard");
 }
 
 async function openNotif(n) {
@@ -237,7 +310,11 @@ async function markAll() {
 	state.unreadNotifications = 0;
 }
 
-watch(() => route.name, () => (navOpen.value = false));
+watch(() => route.name, () => {
+	navOpen.value = false;
+	menuOpen.value = false;
+	guardPublic();
+});
 
 onMounted(() => {
 	load();

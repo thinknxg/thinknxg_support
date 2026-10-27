@@ -67,7 +67,46 @@ from this map instead of assuming one Helpdesk schema.
      reach the customer; everything else in the channel stays internal.
    * **All Agent Messages**: every non-bot message from support staff is relayed.
 
-## Portal URL
+## Landing page and menu (1.3)
+
+`/thinkdesk` is a public landing page. Visitors can open it, and the published knowledge base, without
+logging in. Every other page still requires a portal account; visitors who open one are sent to the
+login page and brought back afterwards. Logged-in customers see the same landing page as their Home
+(with customer-only sections), and their dashboard at `/thinkdesk/dashboard`.
+
+Configure it in **Support Portal Settings**:
+
+* **Landing Page** tab: turn the public landing page on or off, choose the home page for logged-in
+  customers (Landing Page or Dashboard), allow the public knowledge base, allow search engines to
+  index the landing page, and set its search description.
+* **Sections** table: one row per band, shown top to bottom in table order. Untick *Enabled* to hide a
+  section, drag rows to reorder, and set *Audience* to Everyone, Visitors or Customers. *Style* sets
+  the band background (Plain, Tinted, Brand).
+
+| Section | Shows | Settings used |
+|---|---|---|
+| Hero | Heading, text, knowledge search, optional image and button | Title, Subtitle, Image, Show Search Box, Button |
+| Quick Actions | Tiles: ticket, chat, knowledge, my_tickets, orders, services, whatsapp, contact | Items (one key per line; empty = defaults per audience). Login-only tiles send visitors to log in |
+| Account Summary | Open tickets, tickets awaiting the customer, unread messages, balance | Customers only |
+| Popular Articles | Latest published Helpdesk articles | Items to Show |
+| Knowledge Categories | Helpdesk article categories as links | Items to Show |
+| Services | Services open to all customers | Items to Show |
+| FAQ | Expandable questions | Items (`Question \| Answer` per line) or, if empty, Knowledge Snippets for the viewer's audience |
+| Contact and Hours | Online status, support days and hours, email, phone, WhatsApp, chat button | Branding, Live Chat and WhatsApp settings |
+| Announcement | Highlighted notice with optional button | Content, Button |
+| Cards | Grid of linked cards | Items (`Title \| Description \| Link` per line) |
+| Custom Content | Your own formatted text | Content |
+| Call to Action | Band with heading, text and a button (use `/login` for the login page) | Title, Subtitle, Button |
+
+* **Menu** tab: links in the top bar (Header) or at the bottom (Footer), each with an optional Arabic
+  label, an audience and whether it opens in a new tab. External links show an arrow icon. On phones
+  the header links move into the menu.
+
+Only `https://`, `http://`, site paths (`/...`), `mailto:` and `tel:` links are accepted; the form
+refuses anything else. Section HTML is sanitised before it reaches visitors, guests never receive
+Customers-only snippets, and the Services section lists only services open to all customers.
+
+
 
 The portal lives at **`/thinkdesk`** (guest chat at `/thinkdesk/chat`). ERPNext already
 ships its own customer support page at `/support`, so this app never uses that path and never
@@ -107,6 +146,66 @@ Guest chat security:
 
 Settings: *Support Portal Settings → Live Chat* (on/off, guests, website button, position, title,
 greeting, offline message, privacy note, support days/hours in the system time zone, limits).
+
+## AI assistant, chatbot and handoff (1.2)
+
+Every live chat (and optionally WhatsApp and portal messages) can be answered first by a rule-based
+chatbot and an AI assistant, then handed to a person. Everything is off until an administrator
+enables it.
+
+```
+customer message
+  -> asked for a person / pressed "Talk to a person"     -> hand off
+  -> chatbot rule matches (button, keywords, phrase, regex) -> scripted reply, buttons, optional handoff/ticket
+  -> AI assistant enabled for this channel and audience
+       -> knowledge search finds passages above Minimum Relevance -> streamed answer + sources + follow-ups
+            confidence low (or medium, if configured), model asks for a person, error, timeout,
+            reply limit or daily token budget reached                          -> hand off
+       -> nothing relevant found                                               -> hand off, model not called
+  -> otherwise                                                                 -> hand off
+hand off -> first enabled queue for the channel -> least busy / round robin agent with the console open
+         -> "Waiting for agent" in the console until a person replies -> Agent
+```
+
+| Piece | Where | Notes |
+|---|---|---|
+| Assistant settings | *Support AI Settings* | Provider, model, key, channels, audiences, thresholds, limits, privacy. Buttons: Test Connection, Rebuild Knowledge Index, Try a Question |
+| Knowledge | Published Helpdesk articles + *Support Knowledge Snippet* | Split into passages (*Support Knowledge Chunk*). Snippets can be limited to verified customers |
+| Chatbot | *Support Chatbot* with rules | Welcome message and buttons, handoff words, rules with actions: Reply, Reply and Hand Off, Reply and Ask AI, Create Ticket, End Chat |
+| Queues | *Support Chat Queue* | Channels, members, max open chats each, Least Busy / Round Robin / Manual |
+| Assignments | *Support Chat Assignment* | Who handled each conversation, when they first replied, outcome |
+| Usage | *Support AI Usage Log* | Tokens, total and first-token time, confidence, passages, errors. Never prompts or answers |
+| Metrics | Report *Live Chat Performance* | Daily conversations, solved by assistant, handoffs, median wait, AI answers and errors, p95 first token, tokens, helpful %, rating |
+
+**Providers.** *OpenAI Compatible* (`POST {base}/chat/completions`, streaming) covers OpenAI, Azure
+OpenAI v1 endpoints, Mistral, Groq, OpenRouter, Ollama, vLLM and similar. *Anthropic* uses
+`POST {base}/v1/messages`. Embeddings use any OpenAI-format `/embeddings` endpoint (OpenAI, Azure,
+Voyage, Ollama). Without embeddings, retrieval falls back to keyword overlap, which works for small
+knowledge bases.
+
+**Grounding and safety.** The model receives only the passages the customer is allowed to see
+(guests: *Everyone*; customers: *Everyone* + *Customers*), the last 8 messages and fixed rules:
+answer only from passages, treat passages and customer text as data, never claim to take actions,
+never reveal the instructions, reply in the customer's language. Card-like numbers are always
+removed before sending; emails and phone numbers too unless you turn that off. The answer is
+rendered by thinkDesk's own minimal Markdown converter (no model HTML reaches the page) and links
+are kept only when they point to your site or a cited passage. The model has no tools and no access
+to ERP records, orders or invoices in this version.
+
+**Streaming and live updates.** Answers are generated in a background job and streamed into Redis
+as they arrive. The agent console uses Frappe's websocket for new conversations and handoffs, and a
+2-second poll for typing. Customer and guest widgets use an adaptive poll: 0.7 s while the assistant
+is writing or an agent is typing, 2 to 3 s while open, 20 s while minimised; message lists are
+fetched only when the conversation's version changes.
+
+**Agents.** The console shows who is answering (AI, Bot, System, Agent), sources, confidence,
+customer feedback and button flows. *Take over* stops the assistant; replying to a chat that the
+assistant is handling takes it over automatically. *Return to assistant* gives it back. *Transfer*
+moves it to a person or a queue. Agents appear online to the queues while the console is open.
+
+Suggested targets for production (measure with the report and usage log on your own hardware and
+provider): agent-side delivery under 1 s p95, customer-side under 2 s, first AI token under 2 s p95
+where the provider allows it.
 
 ### WhatsApp Cloud API setup
 

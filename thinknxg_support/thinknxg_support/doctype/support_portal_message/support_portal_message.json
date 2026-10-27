@@ -21,7 +21,17 @@
   "delivery_error",
   "section_body",
   "content",
-  "attachment"
+  "attachment",
+  "automation_section",
+  "sender_type",
+  "response_source",
+  "confidence",
+  "button_payload",
+  "column_break_auto",
+  "feedback",
+  "read_by_agent",
+  "ai_usage",
+  "actions_json"
  ],
  "fields": [
   {
@@ -132,6 +142,82 @@
    "fieldtype": "Attach",
    "label": "Attachment",
    "idx": 15
+  },
+  {
+   "fieldname": "automation_section",
+   "fieldtype": "Section Break",
+   "label": "Automation",
+   "collapsible": 1,
+   "idx": 16
+  },
+  {
+   "fieldname": "sender_type",
+   "fieldtype": "Select",
+   "label": "Sender Type",
+   "options": "\nCustomer\nAgent\nAI\nBot\nSystem",
+   "read_only": 1,
+   "in_list_view": 1,
+   "idx": 17
+  },
+  {
+   "fieldname": "response_source",
+   "fieldtype": "Data",
+   "label": "Response Source",
+   "read_only": 1,
+   "description": "Human, Knowledge answer, Chatbot rule name, Auto reply or System",
+   "idx": 18
+  },
+  {
+   "fieldname": "confidence",
+   "fieldtype": "Select",
+   "label": "Confidence",
+   "options": "\nHigh\nMedium\nLow",
+   "read_only": 1,
+   "idx": 19
+  },
+  {
+   "fieldname": "button_payload",
+   "fieldtype": "Data",
+   "label": "Button Payload",
+   "read_only": 1,
+   "hidden": 1,
+   "idx": 20
+  },
+  {
+   "fieldname": "column_break_auto",
+   "fieldtype": "Column Break",
+   "idx": 21
+  },
+  {
+   "fieldname": "feedback",
+   "fieldtype": "Select",
+   "label": "Feedback",
+   "options": "\nHelpful\nNot helpful",
+   "read_only": 1,
+   "idx": 22
+  },
+  {
+   "fieldname": "read_by_agent",
+   "fieldtype": "Check",
+   "label": "Read By Agent",
+   "read_only": 1,
+   "idx": 23
+  },
+  {
+   "fieldname": "ai_usage",
+   "fieldtype": "Link",
+   "label": "Ai Usage",
+   "options": "Support AI Usage Log",
+   "read_only": 1,
+   "idx": 24
+  },
+  {
+   "fieldname": "actions_json",
+   "fieldtype": "Code",
+   "label": "Buttons, Sources and Suggestions",
+   "options": "JSON",
+   "read_only": 1,
+   "idx": 25
   }
  ],
  "index_web_pages_for_search": 0,

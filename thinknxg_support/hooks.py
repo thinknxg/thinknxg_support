@@ -47,6 +47,11 @@ doc_events = {
     "Raven Message": {
         "after_insert": "thinknxg_support.integrations.raven.on_raven_message",
     },
+    # Knowledge index for the AI assistant (Helpdesk optional)
+    "HD Article": {
+        "on_update": "thinknxg_support.integrations.ai.retrieval.on_article_change",
+        "on_trash": "thinknxg_support.integrations.ai.retrieval.on_article_change",
+    },
     "User": {
         "on_trash": "thinknxg_support.security.on_user_trash",
     },
@@ -62,6 +67,10 @@ scheduler_events = {
         "thinknxg_support.tasks.expire_access_and_grants",
         "thinknxg_support.tasks.purge_old_events",
         "thinknxg_support.integrations.live_chat.purge_guest_chats",
+        "thinknxg_support.integrations.ai.housekeeping.purge_usage_logs",
+    ],
+    "daily_long": [
+        "thinknxg_support.integrations.ai.retrieval.daily_refresh",
     ],
 }
 

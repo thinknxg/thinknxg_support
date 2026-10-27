@@ -18,7 +18,7 @@ from frappe.utils import add_to_date, cint, get_datetime, get_time, now_datetime
 
 from thinknxg_support import ratelimit
 from thinknxg_support.audit import log_event
-from thinknxg_support.integrations import conversations
+from thinknxg_support.integrations import conversations, realtime
 from thinknxg_support.security import PortalAccessError, get_portal_user
 from thinknxg_support.utils import clean_text, settings
 
@@ -97,7 +97,36 @@ def widget_config(context: str = "website") -> dict:
                   "logo": s.logo or "/assets/thinknxg_support/images/logo.svg",
                   "color": s.primary_color if str(s.primary_color or "").startswith("#") else "#0F766E"},
         "max_length": 4000,
+        "assistant": _assistant_info(mode),
+        "welcome": _welcome(),
     }
+
+
+def _assistant_info(mode: str) -> dict | None:
+    try:
+        ai = frappe.get_cached_doc("Support AI Settings")
+    except Exception:
+        return None
+    on = bool(ai.enable_ai and ai.model and ai.channel_live_chat
+              and ((mode == "guest" and ai.answer_guests) or (mode == "customer" and ai.answer_customers)))
+    return {"enabled": on, "name": ai.assistant_name or _("Assistant"), "disclaimer": ai.disclaimer} if on else None
+
+
+def _welcome() -> dict | None:
+    from thinknxg_support.integrations import chatbot
+
+    try:
+        return chatbot.welcome_for_widget("Live Chat")
+    except Exception:
+        return None
+
+
+def chat_state(conv) -> dict:
+    out = realtime.live_state(conv)
+    if conv.get("assigned_agent") and conv.get("handling") == "Agent":
+        out["agent"] = (frappe.db.get_value("User", conv.assigned_agent, "first_name") or "").strip() or None
+    out["rated"] = bool(conv.get("chat_rating"))
+    return out
 
 
 # ------------------------------------------------------------------ guest sessions
@@ -189,37 +218,57 @@ def start_guest(message: str, name: str | None = None, email: str | None = None,
 def guest_messages(conversation: str, token: str) -> dict:
     conv = _guest_conv(conversation, token)
     rows = frappe.get_all(MSG, filters={"conversation": conv.name, "is_internal": 0},
-                          fields=["name", "direction", "sender_name", "content", "attachment", "creation"],
-                          order_by="creation asc", limit=500)
+                          fields=conversations.CUSTOMER_FIELDS, order_by="creation asc", limit=500)
     updates = {"unread_customer": 0}
     if not conv.guest_last_seen or get_datetime(conv.guest_last_seen) < add_to_date(now_datetime(), seconds=-20):
         updates["guest_last_seen"] = now_datetime()
     if cint(conv.unread_customer) or "guest_last_seen" in updates:
         frappe.db.set_value(CONV, conv.name, updates, update_modified=False)
     return {"conversation": conv.name, "status": conv.status, "rated": bool(conv.chat_rating),
-            "messages": [_shape(r) for r in rows]}
+            "messages": [conversations.customer_view(r) for r in rows], "state": chat_state(conv)}
 
 
-def _shape(r) -> dict:
-    inbound = r.direction == "Inbound"
-    return {
-        "id": r.name,
-        "from_customer": inbound,
-        "author": r.sender_name if inbound else ((r.sender_name or "").split(" ")[0] or _("Support")),
-        "content": r.content,
-        "has_attachment": bool(r.attachment),
-        "created": r.creation,
-    }
+def guest_state(conversation: str, token: str) -> dict:
+    """Cheap poll: token check plus Redis reads; the widget fetches messages only when `v` changes."""
+    row = frappe.db.get_value(CONV, conversation, ["name", "is_guest", "guest_token_hash", "status", "handling",
+                                                   "assigned_agent", "chat_rating", "guest_last_seen"], as_dict=True) \
+        if conversation and token else None
+    if not (row and row.is_guest and row.guest_token_hash and hmac.compare_digest(row.guest_token_hash, _hash(token))):
+        raise frappe.PermissionError(_("This chat has ended or the link has expired. Please start a new chat."))
+    if not row.guest_last_seen or get_datetime(row.guest_last_seen) < add_to_date(now_datetime(), seconds=-30):
+        frappe.db.set_value(CONV, row.name, "guest_last_seen", now_datetime(), update_modified=False)
+    return chat_state(row)
 
 
-def guest_send(conversation: str, token: str, message: str, client_message_id: str | None = None) -> dict:
+def guest_send(conversation: str, token: str, message: str, client_message_id: str | None = None,
+               payload: str | None = None) -> dict:
     conv = _guest_conv(conversation, token)
     ratelimit.check("guest_chat_msg", settings().guest_chat_rate_limit or 20, 600)
     if len(message or "") > 4000:
         frappe.throw(_("Message is too long."))
     frappe.db.set_value(CONV, conv.name, "guest_last_seen", now_datetime(), update_modified=False)
     return conversations.add_inbound_message(conv, message, sender=frappe.session.user, sender_name=conv.guest_name,
-                                             client_message_id=client_message_id, allow_html=False)
+                                             client_message_id=client_message_id, allow_html=False,
+                                             button_payload=payload)
+
+
+def guest_typing(conversation: str, token: str):
+    row = frappe.db.get_value(CONV, conversation, ["is_guest", "guest_token_hash"], as_dict=True) if conversation else None
+    if row and row.is_guest and row.guest_token_hash and hmac.compare_digest(row.guest_token_hash, _hash(token or "")):
+        realtime.set_typing(conversation, "customer")
+    return {"ok": True}
+
+
+def feedback(conv, message: str, value: str) -> dict:
+    if value not in ("Helpful", "Not helpful"):
+        frappe.throw(_("Unknown feedback."))
+    row = frappe.db.get_value(MSG, message, ["conversation", "sender_type", "is_internal"], as_dict=True)
+    if not row or row.conversation != conv.name or row.sender_type != "AI" or row.is_internal:
+        raise frappe.PermissionError(_("Message not found."))
+    frappe.db.set_value(MSG, message, "feedback", value, update_modified=False)
+    realtime.bump(conv.name)
+    log_event("Feedback", reference_doctype=CONV, reference_name=conv.name, details={"value": value})
+    return {"ok": True}
 
 
 def guest_end(conversation: str, token: str, rating=None) -> dict:
@@ -232,7 +281,13 @@ def _close(conv, rating=None):
     values = {"status": "Closed"}
     if rating and not conv.chat_rating:
         values["chat_rating"] = max(1, min(5, cint(rating))) / 5.0
+    was_open = conv.status != "Closed"
     conv.db_set(values)
+    if was_open:
+        from thinknxg_support.integrations import routing
+
+        routing.on_closed(conv)
+    realtime.bump(conv.name)
     conversations.publish_agent_event(conv, "closed")
 
 
@@ -247,17 +302,42 @@ def _active_customer_chat(pu, customer):
 def customer_chat(pu, customer) -> dict:
     conv = _active_customer_chat(pu, customer)
     if not conv:
-        return {"conversation": None, "status": None, "messages": []}
-    return {"conversation": conv.name, "status": conv.status, "messages": conversations.messages(pu, conv)}
+        return {"conversation": None, "status": None, "messages": [], "state": None}
+    return {"conversation": conv.name, "status": conv.status, "messages": conversations.messages(pu, conv),
+            "state": chat_state(conv)}
 
 
-def customer_send(pu, customer, message: str, client_message_id=None, files=None) -> dict:
+def customer_state(pu, customer) -> dict:
+    conv = _active_customer_chat(pu, customer)
+    return {"conversation": conv.name if conv else None, "state": chat_state(conv) if conv else None}
+
+
+def customer_send(pu, customer, message: str, client_message_id=None, files=None, payload=None) -> dict:
     ratelimit.check("message", settings().message_rate_limit)
     conv = _active_customer_chat(pu, customer)
     if not conv:
-        return conversations.start(pu, customer, _("Live chat"), message, conversation_type="Live Chat",
-                                   client_message_id=client_message_id, files=files, channel="Live Chat")
-    return conversations.post_customer_message(pu, conv, message, client_message_id, files=files)
+        r = conversations.start(pu, customer, _("Live chat"), message, conversation_type="Live Chat",
+                                client_message_id=client_message_id, files=files, channel="Live Chat")
+        if payload and r.get("name"):
+            first = frappe.db.get_value(MSG, {"conversation": r["name"]}, "name", order_by="creation asc")
+            frappe.db.set_value(MSG, first, "button_payload", clean_text(payload, 140))
+        return r
+    return conversations.post_customer_message(pu, conv, message, client_message_id, files=files, button_payload=payload)
+
+
+def customer_typing(pu, customer):
+    conv = _active_customer_chat(pu, customer)
+    if conv:
+        realtime.set_typing(conv.name, "customer")
+    return {"ok": True}
+
+
+def customer_feedback(pu, customer, message: str, value: str) -> dict:
+    conv_name = frappe.db.get_value(MSG, message, "conversation")
+    conv = frappe.get_doc(CONV, conv_name) if conv_name else None
+    if not conv or conv.customer != customer or conv.started_by != pu.user:
+        raise frappe.PermissionError(_("Message not found."))
+    return feedback(conv, message, value)
 
 
 def customer_end(pu, customer, rating=None) -> dict:

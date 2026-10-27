@@ -1,0 +1,182 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "conversation",
+  "kind",
+  "status",
+  "provider",
+  "model",
+  "column_break_u1",
+  "prompt_tokens",
+  "completion_tokens",
+  "total_tokens",
+  "latency_ms",
+  "first_token_ms",
+  "detail_section",
+  "confidence",
+  "passages",
+  "top_relevance",
+  "error"
+ ],
+ "fields": [
+  {
+   "fieldname": "conversation",
+   "fieldtype": "Link",
+   "label": "Conversation",
+   "options": "Support Conversation Link",
+   "in_list_view": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "kind",
+   "fieldtype": "Select",
+   "label": "Kind",
+   "options": "Answer\nEmbedding\nTest\nTrial",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Success\nError\nTimeout\nSkipped",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 3
+  },
+  {
+   "fieldname": "provider",
+   "fieldtype": "Data",
+   "label": "Provider",
+   "idx": 4
+  },
+  {
+   "fieldname": "model",
+   "fieldtype": "Data",
+   "label": "Model",
+   "idx": 5
+  },
+  {
+   "fieldname": "column_break_u1",
+   "fieldtype": "Column Break",
+   "idx": 6
+  },
+  {
+   "fieldname": "prompt_tokens",
+   "fieldtype": "Int",
+   "label": "Prompt Tokens",
+   "idx": 7
+  },
+  {
+   "fieldname": "completion_tokens",
+   "fieldtype": "Int",
+   "label": "Completion Tokens",
+   "idx": 8
+  },
+  {
+   "fieldname": "total_tokens",
+   "fieldtype": "Int",
+   "label": "Total Tokens",
+   "in_list_view": 1,
+   "idx": 9
+  },
+  {
+   "fieldname": "latency_ms",
+   "fieldtype": "Int",
+   "label": "Total Time (ms)",
+   "in_list_view": 1,
+   "idx": 10
+  },
+  {
+   "fieldname": "first_token_ms",
+   "fieldtype": "Int",
+   "label": "First Token (ms)",
+   "idx": 11
+  },
+  {
+   "fieldname": "detail_section",
+   "fieldtype": "Section Break",
+   "idx": 12
+  },
+  {
+   "fieldname": "confidence",
+   "fieldtype": "Data",
+   "label": "Confidence",
+   "idx": 13
+  },
+  {
+   "fieldname": "passages",
+   "fieldtype": "Int",
+   "label": "Passages Used",
+   "idx": 14
+  },
+  {
+   "fieldname": "top_relevance",
+   "fieldtype": "Float",
+   "label": "Top Relevance",
+   "precision": "3",
+   "idx": 15
+  },
+  {
+   "fieldname": "error",
+   "fieldtype": "Small Text",
+   "label": "Error",
+   "description": "Error text only. Prompts and answers are never stored here",
+   "idx": 16
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support AI Usage Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0,
+ "autoname": "hash",
+ "in_create": 1
+}

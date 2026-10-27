@@ -353,7 +353,8 @@ def _auto_reply(conv):
     conv.reload()
     if s.whatsapp_auto_reply and not conv.whatsapp_auto_replied and not is_online():
         conv.db_set("whatsapp_auto_replied", 1, update_modified=False)
-        conversations.post_agent_message(conv, s.whatsapp_auto_reply, sender="Administrator", source="system")
+        conversations.post_agent_message(conv, s.whatsapp_auto_reply, sender="Administrator", source="system",
+                                         sender_type="System", response_source="Auto Reply")
 
 
 def update_status(st: dict):

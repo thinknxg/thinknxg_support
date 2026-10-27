@@ -1,0 +1,434 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "general_tab",
+  "enable_ai",
+  "assistant_name",
+  "disclaimer",
+  "column_break_g1",
+  "answer_guests",
+  "answer_customers",
+  "channel_live_chat",
+  "channel_whatsapp",
+  "channel_portal",
+  "behaviour_section",
+  "only_answer_from_kb",
+  "handoff_on",
+  "max_ai_replies",
+  "column_break_b1",
+  "show_sources",
+  "suggest_follow_ups",
+  "no_answer_message",
+  "model_tab",
+  "provider",
+  "api_base_url",
+  "api_key",
+  "model",
+  "column_break_m1",
+  "temperature",
+  "max_output_tokens",
+  "timeout_seconds",
+  "daily_token_budget",
+  "instructions_section",
+  "extra_instructions",
+  "knowledge_tab",
+  "index_helpdesk_articles",
+  "index_snippets",
+  "top_k",
+  "min_relevance",
+  "chunk_size",
+  "column_break_k1",
+  "use_embeddings",
+  "embedding_base_url",
+  "embedding_api_key",
+  "embedding_model",
+  "index_section",
+  "index_status",
+  "chunk_count",
+  "last_indexed_on",
+  "privacy_tab",
+  "redact_contact_details",
+  "usage_retention_days"
+ ],
+ "fields": [
+  {
+   "fieldname": "general_tab",
+   "fieldtype": "Tab Break",
+   "label": "Assistant",
+   "idx": 1
+  },
+  {
+   "fieldname": "enable_ai",
+   "fieldtype": "Check",
+   "label": "Enable AI Assistant",
+   "description": "Answer customer questions from your knowledge base before handing over to an agent",
+   "idx": 2
+  },
+  {
+   "fieldname": "assistant_name",
+   "fieldtype": "Data",
+   "label": "Assistant Name",
+   "default": "Assistant",
+   "description": "Shown to customers next to AI answers",
+   "idx": 3
+  },
+  {
+   "fieldname": "disclaimer",
+   "fieldtype": "Small Text",
+   "label": "Disclaimer",
+   "default": "Answers are written by AI from our help articles and can be wrong.",
+   "description": "Shown in the chat window while the assistant is answering",
+   "idx": 4
+  },
+  {
+   "fieldname": "column_break_g1",
+   "fieldtype": "Column Break",
+   "idx": 5
+  },
+  {
+   "fieldname": "answer_guests",
+   "fieldtype": "Check",
+   "label": "Answer Website Guests",
+   "default": "1",
+   "idx": 6
+  },
+  {
+   "fieldname": "answer_customers",
+   "fieldtype": "Check",
+   "label": "Answer Portal Customers",
+   "default": "1",
+   "idx": 7
+  },
+  {
+   "fieldname": "channel_live_chat",
+   "fieldtype": "Check",
+   "label": "Live Chat",
+   "default": "1",
+   "idx": 8
+  },
+  {
+   "fieldname": "channel_whatsapp",
+   "fieldtype": "Check",
+   "label": "WhatsApp",
+   "idx": 9
+  },
+  {
+   "fieldname": "channel_portal",
+   "fieldtype": "Check",
+   "label": "Portal Messages",
+   "idx": 10
+  },
+  {
+   "fieldname": "behaviour_section",
+   "fieldtype": "Section Break",
+   "label": "Answers and Handoff",
+   "idx": 11
+  },
+  {
+   "fieldname": "only_answer_from_kb",
+   "fieldtype": "Check",
+   "label": "Answer Only From Knowledge Base",
+   "default": "1",
+   "description": "When nothing relevant is found, hand over to an agent without calling the AI model",
+   "idx": 12
+  },
+  {
+   "fieldname": "handoff_on",
+   "fieldtype": "Select",
+   "label": "Hand Over When Confidence Is",
+   "options": "Low\nLow or Medium",
+   "default": "Low",
+   "idx": 13
+  },
+  {
+   "fieldname": "max_ai_replies",
+   "fieldtype": "Int",
+   "label": "Max Assistant Replies per Conversation",
+   "default": "15",
+   "idx": 14
+  },
+  {
+   "fieldname": "column_break_b1",
+   "fieldtype": "Column Break",
+   "idx": 15
+  },
+  {
+   "fieldname": "show_sources",
+   "fieldtype": "Check",
+   "label": "Show Sources",
+   "default": "1",
+   "idx": 16
+  },
+  {
+   "fieldname": "suggest_follow_ups",
+   "fieldtype": "Check",
+   "label": "Suggest Follow-up Questions",
+   "default": "1",
+   "idx": 17
+  },
+  {
+   "fieldname": "no_answer_message",
+   "fieldtype": "Small Text",
+   "label": "No Answer Message",
+   "default": "I couldn't find that in our help articles, so I'm passing you to a member of our team.",
+   "idx": 18
+  },
+  {
+   "fieldname": "model_tab",
+   "fieldtype": "Tab Break",
+   "label": "Model",
+   "idx": 19
+  },
+  {
+   "fieldname": "provider",
+   "fieldtype": "Select",
+   "label": "Provider",
+   "options": "OpenAI Compatible\nAnthropic",
+   "default": "OpenAI Compatible",
+   "description": "OpenAI Compatible covers OpenAI, Azure OpenAI v1 endpoints, Mistral, Groq, OpenRouter, Ollama, vLLM and other servers that implement /chat/completions",
+   "idx": 20
+  },
+  {
+   "fieldname": "api_base_url",
+   "fieldtype": "Data",
+   "label": "API Base URL",
+   "default": "https://api.openai.com/v1",
+   "idx": 21
+  },
+  {
+   "fieldname": "api_key",
+   "fieldtype": "Password",
+   "label": "API Key",
+   "length": 500,
+   "idx": 22
+  },
+  {
+   "fieldname": "model",
+   "fieldtype": "Data",
+   "label": "Model",
+   "description": "Model name exactly as your provider lists it",
+   "idx": 23
+  },
+  {
+   "fieldname": "column_break_m1",
+   "fieldtype": "Column Break",
+   "idx": 24
+  },
+  {
+   "fieldname": "temperature",
+   "fieldtype": "Float",
+   "label": "Temperature",
+   "default": "0.2",
+   "idx": 25
+  },
+  {
+   "fieldname": "max_output_tokens",
+   "fieldtype": "Int",
+   "label": "Max Output Tokens",
+   "default": "600",
+   "idx": 26
+  },
+  {
+   "fieldname": "timeout_seconds",
+   "fieldtype": "Int",
+   "label": "Timeout Seconds",
+   "default": "30",
+   "idx": 27
+  },
+  {
+   "fieldname": "daily_token_budget",
+   "fieldtype": "Int",
+   "label": "Daily Token Budget",
+   "default": "0",
+   "description": "Stop calling the model for the rest of the day after this many tokens. 0 = no limit",
+   "idx": 28
+  },
+  {
+   "fieldname": "instructions_section",
+   "fieldtype": "Section Break",
+   "label": "Instructions",
+   "idx": 29
+  },
+  {
+   "fieldname": "extra_instructions",
+   "fieldtype": "Text",
+   "label": "Extra Instructions",
+   "description": "Your rules for the assistant: tone, company facts, what it must never promise. Added to the built-in safety instructions",
+   "idx": 30
+  },
+  {
+   "fieldname": "knowledge_tab",
+   "fieldtype": "Tab Break",
+   "label": "Knowledge",
+   "idx": 31
+  },
+  {
+   "fieldname": "index_helpdesk_articles",
+   "fieldtype": "Check",
+   "label": "Use Published Helpdesk Articles",
+   "default": "1",
+   "idx": 32
+  },
+  {
+   "fieldname": "index_snippets",
+   "fieldtype": "Check",
+   "label": "Use Knowledge Snippets",
+   "default": "1",
+   "idx": 33
+  },
+  {
+   "fieldname": "top_k",
+   "fieldtype": "Int",
+   "label": "Passages per Answer",
+   "default": "4",
+   "idx": 34
+  },
+  {
+   "fieldname": "min_relevance",
+   "fieldtype": "Float",
+   "label": "Minimum Relevance (0 to 1)",
+   "default": "0.3",
+   "idx": 35
+  },
+  {
+   "fieldname": "chunk_size",
+   "fieldtype": "Int",
+   "label": "Passage Size (characters)",
+   "default": "900",
+   "idx": 36
+  },
+  {
+   "fieldname": "column_break_k1",
+   "fieldtype": "Column Break",
+   "idx": 37
+  },
+  {
+   "fieldname": "use_embeddings",
+   "fieldtype": "Check",
+   "label": "Use Embeddings",
+   "description": "Semantic search. Without it the assistant uses keyword search",
+   "idx": 38
+  },
+  {
+   "fieldname": "embedding_base_url",
+   "fieldtype": "Data",
+   "label": "Embedding API Base URL",
+   "default": "https://api.openai.com/v1",
+   "description": "Any /embeddings endpoint in the OpenAI format (OpenAI, Azure, Voyage, Ollama, ...)",
+   "idx": 39
+  },
+  {
+   "fieldname": "embedding_api_key",
+   "fieldtype": "Password",
+   "label": "Embedding API Key",
+   "length": 500,
+   "description": "Leave empty to reuse the model API key",
+   "idx": 40
+  },
+  {
+   "fieldname": "embedding_model",
+   "fieldtype": "Data",
+   "label": "Embedding Model",
+   "idx": 41
+  },
+  {
+   "fieldname": "index_section",
+   "fieldtype": "Section Break",
+   "label": "Index Status",
+   "idx": 42
+  },
+  {
+   "fieldname": "index_status",
+   "fieldtype": "Small Text",
+   "label": "Index Status",
+   "read_only": 1,
+   "idx": 43
+  },
+  {
+   "fieldname": "chunk_count",
+   "fieldtype": "Int",
+   "label": "Indexed Passages",
+   "read_only": 1,
+   "idx": 44
+  },
+  {
+   "fieldname": "last_indexed_on",
+   "fieldtype": "Datetime",
+   "label": "Last Indexed On",
+   "read_only": 1,
+   "idx": 45
+  },
+  {
+   "fieldname": "privacy_tab",
+   "fieldtype": "Tab Break",
+   "label": "Privacy",
+   "idx": 46
+  },
+  {
+   "fieldname": "redact_contact_details",
+   "fieldtype": "Check",
+   "label": "Remove Emails and Phone Numbers Before Sending",
+   "default": "1",
+   "description": "Card-like numbers are always removed",
+   "idx": 47
+  },
+  {
+   "fieldname": "usage_retention_days",
+   "fieldtype": "Int",
+   "label": "Keep Usage Logs (days)",
+   "default": "90",
+   "idx": 48
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support AI Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -17,6 +17,7 @@ frappe.ui.form.on("Support Portal Settings", {
             });
         }
         frm.add_custom_button(__("Open Chat Console"), () => frappe.set_route("support-chat"));
+        frm.add_custom_button(__("Preview Landing Page"), () => window.open("/thinkdesk", "_blank"));
         frm.add_custom_button(__("Verify Integrations"), () => {
             frappe.call({
                 method: "thinknxg_support.thinknxg_support.doctype.support_portal_settings.support_portal_settings.verify_integrations",

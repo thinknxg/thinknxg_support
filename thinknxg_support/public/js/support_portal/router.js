@@ -3,7 +3,8 @@ import { reactive } from "vue";
 import { state } from "./store";
 
 export const ROUTES = [
-	{ name: "dashboard", pattern: "" },
+	{ name: "home", pattern: "" },
+	{ name: "dashboard", pattern: "dashboard" },
 	{ name: "ticket-new", pattern: "tickets/new" },
 	{ name: "ticket", pattern: "tickets/:id" },
 	{ name: "tickets", pattern: "tickets" },

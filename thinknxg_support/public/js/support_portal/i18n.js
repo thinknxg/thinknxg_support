@@ -2,7 +2,7 @@
 export const messages = {
 	en: {
 		nav: {
-			dashboard: "Dashboard", tickets: "Tickets", conversations: "Messages", knowledge: "Knowledge base",
+			home: "Home", dashboard: "Dashboard", tickets: "Tickets", conversations: "Messages", knowledge: "Knowledge base",
 			services: "Services", account: "Orders & invoices", settings: "Settings", logout: "Log out",
 			agent: "Agent workspace", notifications: "Notifications", organization: "Organization",
 		},
@@ -72,10 +72,32 @@ export const messages = {
 			member_requested: "Request sent to the administrator",
 		},
 		admin: { warnings: "Administrator notices", settings: "Open portal settings" },
+		land: {
+			hero: "How can we help you today?", search_ph: "Search help articles, e.g. VAT return", search: "Search",
+			actions: "Get help", articles: "Popular articles", categories: "Browse by topic", services: "Our services",
+			faq: "Frequently asked questions", contact: "Contact and support hours", summary: "Your account",
+			email: "Email", phone: "Phone", hours: "Support hours", online: "We're online now", offline: "We're offline now",
+			chat_now: "Chat now", whatsapp: "WhatsApp", login: "Log in", logout: "Log out", login_hint: "Log in required",
+			request: "Request", view_all: "View all", open_tickets: "Open tickets", waiting: "Awaiting your reply",
+			unread: "Unread messages", outstanding: "Outstanding", go_dashboard: "Go to dashboard",
+			unlinked: "Your account isn't linked to a customer yet. You can browse help and chat with us; ask your company administrator for portal access.",
+			menu: "Menu", language: "العربية", dashboard: "Dashboard", home: "Home",
+			days: { Mon: "Mon", Tue: "Tue", Wed: "Wed", Thu: "Thu", Fri: "Fri", Sat: "Sat", Sun: "Sun" },
+			qa: {
+				ticket: ["Raise a ticket", "Report a problem and track it to resolution"],
+				chat: ["Chat with us", "Talk to our assistant or a member of the team"],
+				knowledge: ["Help articles", "Guides and answers to common questions"],
+				my_tickets: ["My tickets", "Follow up on your open requests"],
+				orders: ["Orders and invoices", "Delivery status, invoices and statements"],
+				services: ["Request a service", "Training, data imports, changes and more"],
+				whatsapp: ["WhatsApp us", "Message our support number"],
+				contact: ["Contact us", "Email and phone details"],
+			},
+		},
 	},
 	ar: {
 		nav: {
-			dashboard: "لوحة التحكم", tickets: "التذاكر", conversations: "الرسائل", knowledge: "قاعدة المعرفة",
+			home: "الرئيسية", dashboard: "لوحة التحكم", tickets: "التذاكر", conversations: "الرسائل", knowledge: "قاعدة المعرفة",
 			services: "الخدمات", account: "الطلبات والفواتير", settings: "الإعدادات", logout: "تسجيل الخروج",
 			agent: "مساحة عمل الوكيل", notifications: "الإشعارات", organization: "الجهة",
 		},
@@ -140,6 +162,28 @@ export const messages = {
 			member_name: "الاسم الكامل", member_level: "مستوى الصلاحية", member_requested: "تم إرسال الطلب إلى المسؤول",
 		},
 		admin: { warnings: "تنبيهات المسؤول", settings: "فتح إعدادات البوابة" },
+		land: {
+			hero: "كيف يمكننا مساعدتك اليوم؟", search_ph: "ابحث في مقالات المساعدة، مثلاً إقرار الضريبة", search: "بحث",
+			actions: "احصل على المساعدة", articles: "المقالات الأكثر قراءة", categories: "تصفح حسب الموضوع", services: "خدماتنا",
+			faq: "الأسئلة الشائعة", contact: "التواصل وساعات الدعم", summary: "حسابك",
+			email: "البريد الإلكتروني", phone: "الهاتف", hours: "ساعات الدعم", online: "نحن متصلون الآن", offline: "نحن غير متصلين الآن",
+			chat_now: "تحدث الآن", whatsapp: "واتساب", login: "تسجيل الدخول", logout: "تسجيل الخروج", login_hint: "يتطلب تسجيل الدخول",
+			request: "طلب", view_all: "عرض الكل", open_tickets: "تذاكر مفتوحة", waiting: "بانتظار ردك",
+			unread: "رسائل غير مقروءة", outstanding: "المستحق", go_dashboard: "الذهاب إلى لوحة التحكم",
+			unlinked: "حسابك غير مرتبط بعميل بعد. يمكنك تصفح المساعدة والتحدث معنا، واطلب من مسؤول شركتك صلاحية البوابة.",
+			menu: "القائمة", language: "English", dashboard: "لوحة التحكم", home: "الرئيسية",
+			days: { Mon: "الإثنين", Tue: "الثلاثاء", Wed: "الأربعاء", Thu: "الخميس", Fri: "الجمعة", Sat: "السبت", Sun: "الأحد" },
+			qa: {
+				ticket: ["فتح تذكرة", "أبلغ عن مشكلة وتابعها حتى الحل"],
+				chat: ["تحدث معنا", "تحدث مع المساعد أو أحد أعضاء الفريق"],
+				knowledge: ["مقالات المساعدة", "أدلة وإجابات للأسئلة الشائعة"],
+				my_tickets: ["تذاكري", "تابع طلباتك المفتوحة"],
+				orders: ["الطلبات والفواتير", "حالة التسليم والفواتير وكشوف الحساب"],
+				services: ["طلب خدمة", "تدريب واستيراد بيانات وتعديلات وغيرها"],
+				whatsapp: ["راسلنا عبر واتساب", "أرسل رسالة إلى رقم الدعم"],
+				contact: ["اتصل بنا", "البريد الإلكتروني والهاتف"],
+			},
+		},
 	},
 };
 

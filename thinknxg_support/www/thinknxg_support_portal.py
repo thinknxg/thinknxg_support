@@ -9,14 +9,23 @@ sitemap = 0
 
 
 def get_context(context):
-    if frappe.session.user == "Guest":
-        path = frappe.local.request.path if getattr(frappe.local, "request", None) else PORTAL_ROUTE
+    s = frappe.get_cached_doc("Support Portal Settings")
+    path = (frappe.local.request.path if getattr(frappe.local, "request", None) else PORTAL_ROUTE).rstrip("/") or PORTAL_ROUTE
+    public_paths = {PORTAL_ROUTE} if s.landing_enabled else set()
+    if s.public_knowledge and s.landing_enabled:
+        public_paths.add(PORTAL_ROUTE + "/knowledge")
+    is_public = path in public_paths or (s.public_knowledge and s.landing_enabled
+                                         and path.startswith(PORTAL_ROUTE + "/knowledge/"))
+    if frappe.session.user == "Guest" and not is_public:
         frappe.local.flags.redirect_location = "/login?redirect-to=" + quote(path)
         raise frappe.Redirect
+    context.robots = "index, follow" if (s.index_landing and path == PORTAL_ROUTE) else "noindex, nofollow"
+    context.meta_description = (s.meta_description or "")[:300]
 
-    s = frappe.get_cached_doc("Support Portal Settings")
-    lang = frappe.db.get_value("Support Portal Profile", frappe.session.user, "language") or s.default_language or "en"
-    theme = frappe.db.get_value("Support Portal Profile", frappe.session.user, "theme") or "System"
+    user = frappe.session.user
+    lang = frappe.db.get_value("Support Portal Profile", user, "language") if user != "Guest" else None
+    lang = lang or s.default_language or "en"
+    theme = (frappe.db.get_value("Support Portal Profile", user, "theme") if user != "Guest" else None) or "System"
     context.no_cache = 1
     context.lang = lang if lang in ("en", "ar") else "en"
     context.dir = "rtl" if context.lang == "ar" else "ltr"

@@ -18,6 +18,17 @@
   "channel",
   "helpdesk_ticket",
   "assigned_agent",
+  "handling_section",
+  "handling",
+  "queue",
+  "handoff_reason",
+  "ai_replies",
+  "column_break_h",
+  "handoff_at",
+  "first_agent_reply_at",
+  "resolved_at",
+  "resolved_by_assistant",
+  "bot_options",
   "whatsapp_section",
   "whatsapp_number",
   "whatsapp_profile_name",
@@ -139,11 +150,91 @@
    "idx": 11
   },
   {
+   "fieldname": "handling_section",
+   "fieldtype": "Section Break",
+   "label": "Handling",
+   "idx": 12
+  },
+  {
+   "fieldname": "handling",
+   "fieldtype": "Select",
+   "label": "Handling",
+   "options": "\nBot\nQueued\nAgent",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Bot: the assistant answers. Queued: waiting for an agent. Agent: a person is handling it",
+   "idx": 13
+  },
+  {
+   "fieldname": "queue",
+   "fieldtype": "Link",
+   "label": "Queue",
+   "options": "Support Chat Queue",
+   "in_standard_filter": 1,
+   "idx": 14
+  },
+  {
+   "fieldname": "handoff_reason",
+   "fieldtype": "Data",
+   "label": "Handoff Reason",
+   "read_only": 1,
+   "idx": 15
+  },
+  {
+   "fieldname": "ai_replies",
+   "fieldtype": "Int",
+   "label": "Assistant Replies",
+   "read_only": 1,
+   "idx": 16
+  },
+  {
+   "fieldname": "column_break_h",
+   "fieldtype": "Column Break",
+   "idx": 17
+  },
+  {
+   "fieldname": "handoff_at",
+   "fieldtype": "Datetime",
+   "label": "Handoff At",
+   "read_only": 1,
+   "idx": 18
+  },
+  {
+   "fieldname": "first_agent_reply_at",
+   "fieldtype": "Datetime",
+   "label": "First Agent Reply At",
+   "read_only": 1,
+   "idx": 19
+  },
+  {
+   "fieldname": "resolved_at",
+   "fieldtype": "Datetime",
+   "label": "Resolved At",
+   "read_only": 1,
+   "idx": 20
+  },
+  {
+   "fieldname": "resolved_by_assistant",
+   "fieldtype": "Check",
+   "label": "Resolved By Assistant",
+   "read_only": 1,
+   "description": "Closed without a person joining, after the assistant or chatbot replied",
+   "idx": 21
+  },
+  {
+   "fieldname": "bot_options",
+   "fieldtype": "Small Text",
+   "label": "Bot Options",
+   "read_only": 1,
+   "hidden": 1,
+   "idx": 22
+  },
+  {
    "fieldname": "whatsapp_section",
    "fieldtype": "Section Break",
    "label": "WhatsApp",
    "depends_on": "eval:doc.channel==\"WhatsApp\"",
-   "idx": 12
+   "idx": 23
   },
   {
    "fieldname": "whatsapp_number",
@@ -151,19 +242,19 @@
    "label": "WhatsApp Number",
    "read_only": 1,
    "search_index": 1,
-   "idx": 13
+   "idx": 24
   },
   {
    "fieldname": "whatsapp_profile_name",
    "fieldtype": "Data",
    "label": "Whatsapp Profile Name",
    "read_only": 1,
-   "idx": 14
+   "idx": 25
   },
   {
    "fieldname": "column_break_wa",
    "fieldtype": "Column Break",
-   "idx": 15
+   "idx": 26
   },
   {
    "fieldname": "whatsapp_window_expires",
@@ -171,7 +262,7 @@
    "label": "Reply Window Ends",
    "read_only": 1,
    "description": "Free-form replies are allowed until 24 hours after the customer's last message",
-   "idx": 16
+   "idx": 27
   },
   {
    "fieldname": "whatsapp_auto_replied",
@@ -179,14 +270,14 @@
    "label": "Whatsapp Auto Replied",
    "read_only": 1,
    "hidden": 1,
-   "idx": 17
+   "idx": 28
   },
   {
    "fieldname": "visitor_section",
    "fieldtype": "Section Break",
    "label": "Visitor",
    "depends_on": "eval:doc.is_guest",
-   "idx": 18
+   "idx": 29
   },
   {
    "fieldname": "is_guest",
@@ -194,14 +285,14 @@
    "label": "Guest Chat",
    "read_only": 1,
    "in_standard_filter": 1,
-   "idx": 19
+   "idx": 30
   },
   {
    "fieldname": "guest_name",
    "fieldtype": "Data",
    "label": "Guest Name",
    "read_only": 1,
-   "idx": 20
+   "idx": 31
   },
   {
    "fieldname": "guest_email",
@@ -209,40 +300,40 @@
    "label": "Guest Email",
    "options": "Email",
    "read_only": 1,
-   "idx": 21
+   "idx": 32
   },
   {
    "fieldname": "guest_phone",
    "fieldtype": "Data",
    "label": "Guest Phone",
    "read_only": 1,
-   "idx": 22
+   "idx": 33
   },
   {
    "fieldname": "column_break_v",
    "fieldtype": "Column Break",
-   "idx": 23
+   "idx": 34
   },
   {
    "fieldname": "source_page",
    "fieldtype": "Data",
    "label": "Source Page",
    "read_only": 1,
-   "idx": 24
+   "idx": 35
   },
   {
    "fieldname": "guest_last_seen",
    "fieldtype": "Datetime",
    "label": "Guest Last Seen",
    "read_only": 1,
-   "idx": 25
+   "idx": 36
   },
   {
    "fieldname": "guest_ip",
    "fieldtype": "Data",
    "label": "Visitor IP",
    "read_only": 1,
-   "idx": 26
+   "idx": 37
   },
   {
    "fieldname": "guest_token_hash",
@@ -250,20 +341,20 @@
    "label": "Guest Token Hash",
    "read_only": 1,
    "hidden": 1,
-   "idx": 27
+   "idx": 38
   },
   {
    "fieldname": "chat_rating",
    "fieldtype": "Rating",
    "label": "Chat Rating",
    "read_only": 1,
-   "idx": 28
+   "idx": 39
   },
   {
    "fieldname": "integration_section",
    "fieldtype": "Section Break",
    "label": "Integration",
-   "idx": 29
+   "idx": 40
   },
   {
    "fieldname": "external_provider",
@@ -271,59 +362,59 @@
    "label": "External Provider",
    "options": "Portal Native\nRaven",
    "default": "Portal Native",
-   "idx": 30
+   "idx": 41
   },
   {
    "fieldname": "external_conversation_id",
    "fieldtype": "Data",
    "label": "External Conversation Id",
    "read_only": 1,
-   "idx": 31
+   "idx": 42
   },
   {
    "fieldname": "last_activity_at",
    "fieldtype": "Datetime",
    "label": "Last Activity At",
    "read_only": 1,
-   "idx": 32
+   "idx": 43
   },
   {
    "fieldname": "last_message_reference",
    "fieldtype": "Data",
    "label": "Last Message Reference",
    "read_only": 1,
-   "idx": 33
+   "idx": 44
   },
   {
    "fieldname": "column_break_2",
    "fieldtype": "Column Break",
-   "idx": 34
+   "idx": 45
   },
   {
    "fieldname": "unread_customer",
    "fieldtype": "Int",
    "label": "Unread Customer",
    "read_only": 1,
-   "idx": 35
+   "idx": 46
   },
   {
    "fieldname": "unread_agent",
    "fieldtype": "Int",
    "label": "Unread Agent",
    "read_only": 1,
-   "idx": 36
+   "idx": 47
   },
   {
    "fieldname": "messages_section",
    "fieldtype": "Section Break",
    "label": "Messages",
-   "idx": 37
+   "idx": 48
   },
   {
    "fieldname": "messages_html",
    "fieldtype": "HTML",
    "label": "Messages Html",
-   "idx": 38
+   "idx": 49
   }
  ],
  "index_web_pages_for_search": 0,

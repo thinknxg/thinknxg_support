@@ -51,7 +51,7 @@ import Icon from "../components/Icon.vue";
 import { Empty, Loader } from "../components/ui";
 
 const q = ref(route.query.q || "");
-const category = ref("");
+const category = ref(route.query.category || "");
 const categories = ref([]);
 const results = ref([]);
 const article = ref(null);

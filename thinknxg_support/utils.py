@@ -101,6 +101,16 @@ def stream_file(file_name: str, as_download: bool = True):
     frappe.local.response.type = "download" if as_download else "binary"
 
 
+def safe_link(url: str | None) -> bool:
+    """Links configured by administrators: web addresses, site paths, mailto: and tel: only."""
+    url = (url or "").strip()
+    if not url or len(url) > 500 or any(c in url for c in "\n\r<>\"'`"):
+        return False
+    if url.startswith("/") and not url.startswith("//"):
+        return True
+    return url.lower().startswith(("https://", "http://", "mailto:", "tel:"))
+
+
 def pick(d: dict, keys) -> dict:
     return {k: d.get(k) for k in keys}
 

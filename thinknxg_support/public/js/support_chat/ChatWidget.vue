@@ -8,12 +8,12 @@
 			<span v-if="unread" class="txc-unread" :aria-label="unread + ' ' + t('unread')">{{ unread }}</span>
 		</button>
 
-		<section v-if="open || inline" class="txc-panel" role="dialog" :aria-label="cfg.title" aria-live="polite">
+		<section v-if="open || inline" class="txc-panel" role="dialog" :aria-label="cfg.title">
 			<header class="txc-head">
 				<img :src="cfg.brand.logo" alt="" class="txc-logo" />
 				<div class="txc-head__text">
 					<strong>{{ cfg.title || t("launcher") }}</strong>
-					<small><span class="txc-dot" :class="{ on: cfg.online }"></span>{{ cfg.online ? t("online_hint") : t("offline") }}</small>
+					<small><span class="txc-dot" :class="{ on: cfg.online }"></span>{{ headerStatus }}</small>
 				</div>
 				<a v-if="cfg.whatsapp_url" :href="cfg.whatsapp_url" target="_blank" rel="noopener" class="txc-iconbtn txc-wa"
 					:title="t('whatsapp')" :aria-label="t('whatsapp')">
@@ -30,7 +30,9 @@
 				</button>
 			</header>
 
-			<div ref="scroller" class="txc-body">
+			<div v-if="banner" class="txc-banner" :class="'txc-banner--' + banner.kind" role="status">{{ banner.text }}</div>
+
+			<div ref="scroller" class="txc-body" aria-live="polite">
 				<div v-if="phase === 'loading'" class="txc-center"><span class="txc-spin"></span></div>
 
 				<div v-else-if="phase === 'login'" class="txc-center txc-stack">
@@ -48,7 +50,10 @@
 				</div>
 
 				<template v-else>
-					<div class="txc-msg txc-msg--them"><div class="txc-bubble">{{ cfg.greeting }}</div></div>
+					<div class="txc-msg txc-msg--them">
+						<small v-if="cfg.welcome" class="txc-author"><span class="txc-tag">{{ t("bot_badge") }}</span>{{ cfg.welcome.name }}</small>
+						<div class="txc-bubble">{{ (cfg.welcome && cfg.welcome.message) || cfg.greeting }}</div>
+					</div>
 					<p v-if="!cfg.online && cfg.offline_message" class="txc-note">{{ cfg.offline_message }}</p>
 
 					<form v-if="phase === 'prechat'" class="txc-form" @submit.prevent="startGuest">
@@ -67,17 +72,49 @@
 					</form>
 
 					<template v-else>
-						<div v-for="m in messages" :key="m.id" class="txc-msg" :class="m.from_customer ? 'txc-msg--me' : 'txc-msg--them'">
-							<small v-if="!m.from_customer" class="txc-author">{{ m.author || t("support") }}</small>
-							<div class="txc-bubble" v-html="m.content"></div>
-							<small class="txc-time">{{ time(m.created) }}</small>
-						</div>
+						<template v-for="m in messages" :key="m.id">
+							<p v-if="m.sender_type === 'System'" class="txc-sys" v-html="m.content"></p>
+							<div v-else class="txc-msg" :class="m.from_customer ? 'txc-msg--me' : 'txc-msg--them'">
+								<small v-if="!m.from_customer" class="txc-author">
+									<span v-if="m.sender_type === 'AI'" class="txc-tag">{{ t("ai_badge") }}</span>
+									<span v-else-if="m.sender_type === 'Bot'" class="txc-tag">{{ t("bot_badge") }}</span>
+									{{ m.author || t("support") }}
+								</small>
+								<div class="txc-bubble" :class="{ 'txc-bubble--ai': m.sender_type === 'AI' }" v-html="m.content"></div>
+								<div v-if="m.sources && m.sources.length" class="txc-sources">
+									<span>{{ t("sources") }}:</span>
+									<template v-for="(s, i) in m.sources" :key="i">
+										<a v-if="s.url" :href="s.url" target="_blank" rel="noopener">{{ s.title }}</a>
+										<span v-else>{{ s.title }}</span>
+									</template>
+								</div>
+								<div v-if="m.can_feedback" class="txc-fb">
+									<template v-if="!m.feedback">
+										<button type="button" @click="giveFeedback(m, 'Helpful')">{{ t("helpful") }}</button>
+										<button type="button" @click="giveFeedback(m, 'Not helpful')">{{ t("not_helpful") }}</button>
+									</template>
+									<span v-else class="txc-muted">{{ t("thanks_fb") }}</span>
+								</div>
+								<small class="txc-time">{{ time(m.created) }}<template v-if="m.from_customer && m.seen"> · {{ t("seen") }}</template></small>
+							</div>
+						</template>
 						<div v-for="p in pending" :key="p.cid" class="txc-msg txc-msg--me">
 							<button v-if="p.failed" type="button" class="txc-bubble txc-bubble--failed" @click="retry(p)">
 								{{ p.text }}<small>{{ t("failed") }}</small></button>
 							<div v-else class="txc-bubble txc-bubble--pending">{{ p.text }}</div>
 						</div>
-						<p v-if="mode === 'guest' && phase === 'chat' && !agentReplied" class="txc-note">{{ t("email_hint") }}</p>
+						<div v-if="state.ai" class="txc-msg txc-msg--them">
+							<small class="txc-author"><span class="txc-tag">{{ t("ai_badge") }}</span>{{ assistantName }}</small>
+							<div class="txc-bubble txc-bubble--ai txc-bubble--stream">
+								<span v-if="state.ai.text" class="txc-stream">{{ state.ai.text }}</span>
+								<span class="txc-dots" aria-label="…"><i></i><i></i><i></i></span>
+							</div>
+						</div>
+						<div v-else-if="state.agent_typing" class="txc-typing">
+							<span class="txc-dots"><i></i><i></i><i></i></span>
+							{{ fmt(t("typing"), state.agent_name || t("support")) }}
+						</div>
+						<p v-if="mode === 'guest' && phase === 'chat' && !agentReplied && state.handling !== 'Bot'" class="txc-note">{{ t("email_hint") }}</p>
 						<div v-if="phase === 'ended'" class="txc-ended">
 							<p>{{ expired ? t("expired") : t("ended") }}</p>
 							<template v-if="!expired && !rated">
@@ -94,6 +131,11 @@
 			</div>
 
 			<footer v-if="phase === 'chat'" class="txc-foot">
+				<div v-if="chips.length && !confirmEnd" class="txc-chips" role="group">
+					<button v-for="c in chips" :key="c.label + c.payload" type="button" class="txc-qr"
+						:class="{ 'txc-qr--agent': c.payload === '@agent' }" @click="sendChip(c)">{{ c.label }}</button>
+				</div>
+				<p v-if="showDisclaimer" class="txc-disclaimer">{{ cfg.assistant.disclaimer }}</p>
 				<div v-if="confirmEnd" class="txc-confirm">
 					<span>{{ t("end_confirm") }}</span>
 					<button type="button" class="txc-btn txc-btn--ghost" @click="confirmEnd = false">{{ t("no") }}</button>
@@ -108,7 +150,7 @@
 					<div class="txc-compose__input">
 						<span v-if="file" class="txc-chip">{{ file.name }} <button type="button" @click="file = null">×</button></span>
 						<textarea id="txc-draft" v-model="draft" rows="1" :placeholder="t('type')" :maxlength="cfg.max_length"
-							:aria-label="t('type')" @keydown.enter.exact.prevent="send"></textarea>
+							:aria-label="t('type')" @keydown.enter.exact.prevent="send" @input="onType"></textarea>
 					</div>
 					<button class="txc-send" :disabled="!draft.trim() && !file" :aria-label="t('send')">
 						<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3 20l18-8L3 4v6l12 2-12 2z" /></svg>
@@ -146,8 +188,11 @@ const expired = ref(false);
 const unread = ref(0);
 const scroller = ref(null);
 const form = reactive({ name: "", email: "", phone: "", message: "", website: "" });
-let seenAgent = 0;
+const state = reactive({ v: null, handling: "", agent_typing: false, agent_name: null, agent: null, ai: null, status: null });
+let seenReplies = 0;
 let timer = null;
+let lastTyping = 0;
+let lastSend = 0;
 let conversation = null;
 
 const OPEN_KEY = "thinknxg_support:chat-open";
@@ -155,7 +200,8 @@ const mode = computed(() => cfg.value?.mode);
 const lang = computed(() => props.lang || cfg.value?.lang || document.documentElement.lang || "en");
 const dir = computed(() => (lang.value === "ar" ? "rtl" : "ltr"));
 const hasChat = computed(() => !!conversation || messages.value.length > 0);
-const agentReplied = computed(() => messages.value.some((m) => !m.from_customer));
+const agentReplied = computed(() => messages.value.some((m) => !m.from_customer && m.sender_type === "Agent"));
+const assistantName = computed(() => cfg.value?.assistant?.name || t("assistant"));
 const loginUrl = computed(() => "/login?redirect-to=" + encodeURIComponent(window.location.pathname));
 const visible = computed(() => {
 	const c = cfg.value;
@@ -168,9 +214,37 @@ const rootClass = computed(() => ({
 	"txc-root--left": cfg.value?.position === "left",
 	"txc-root--open": open.value,
 }));
+const headerStatus = computed(() => {
+	if (state.handling === "Agent" && state.agent) return fmt(t("with_agent"), state.agent);
+	return cfg.value?.online ? t("online_hint") : t("offline");
+});
+const banner = computed(() => {
+	if (phase.value !== "chat" || state.status === "Closed") return null;
+	if (state.handling === "Queued") return { kind: "wait", text: cfg.value?.online ? t("waiting_agent") : t("waiting_offline") };
+	return null;
+});
+const botMode = computed(() => state.handling === "Bot" || (!state.handling && !messages.value.length && cfg.value?.welcome));
+const showDisclaimer = computed(() => !!(cfg.value?.assistant?.disclaimer && state.handling === "Bot"));
+const chips = computed(() => {
+	if (state.ai || busy.value) return [];
+	let list = [];
+	if (!messages.value.length && cfg.value?.welcome) list = cfg.value.welcome.buttons || [];
+	else {
+		const last = [...messages.value].reverse().find((m) => !m.from_customer && m.sender_type !== "System");
+		const lastIsBot = last && (last.sender_type === "Bot" || last.sender_type === "AI")
+			&& messages.value[messages.value.length - 1] === last;
+		if (lastIsBot) list = [...(last.buttons || []), ...(last.follow_ups || []).map((f) => ({ label: f, payload: null }))];
+	}
+	if (botMode.value && !list.some((c) => c.payload === "@agent")) list = [...list, { label: t("talk_person"), payload: "@agent" }];
+	return list.slice(0, 6);
+});
 
 function t(key) {
 	return (STRINGS[lang.value] || STRINGS.en)[key] || STRINGS.en[key] || key;
+}
+
+function fmt(s, v) {
+	return String(s).replace("{0}", v || "");
 }
 
 function time(v) {
@@ -193,41 +267,68 @@ function setOpen(v) {
 	}
 	if (v) {
 		unread.value = 0;
-		seenAgent = messages.value.filter((m) => !m.from_customer).length;
-		refresh();
+		seenReplies = messages.value.filter((m) => !m.from_customer).length;
+		refresh(true);
 		scrollDown();
 	}
 	schedule();
 }
 
-function applyMessages(list, status) {
+function applyState(s) {
+	if (!s) return;
+	const wasStreaming = !!state.ai;
+	Object.assign(state, { handling: s.handling, agent_typing: s.agent_typing, agent_name: s.agent_name, agent: s.agent || null,
+		ai: s.ai || null, status: s.status });
+	if (s.rated) rated.value = true;
+	if (s.status === "Closed" && phase.value === "chat") phase.value = "ended";
+	if (state.ai || (wasStreaming && !state.ai) || state.agent_typing) scrollDown();
+}
+
+function applyMessages(list) {
 	const before = messages.value.length;
 	messages.value = list || [];
-	const agentCount = messages.value.filter((m) => !m.from_customer).length;
-	if (open.value || props.inline) seenAgent = agentCount;
-	else unread.value = Math.max(0, agentCount - seenAgent);
-	if (status === "Closed") {
-		phase.value = "ended";
-		rated.value = rated.value || false;
-	}
+	const replies = messages.value.filter((m) => !m.from_customer).length;
+	if (open.value || props.inline) seenReplies = replies;
+	else unread.value = Math.max(0, replies - seenReplies);
 	if (messages.value.length !== before) scrollDown();
 }
 
-async function refresh() {
-	if (!cfg.value || !["chat", "ended"].includes(phase.value) || phase.value === "ended" && expired.value) return;
+async function fetchMessages() {
+	if (mode.value === "customer") {
+		const r = await chatCall("my_chat", { organization: props.organization });
+		conversation = r.conversation;
+		applyMessages(r.messages);
+		applyState(r.state);
+		state.v = r.state?.v || null;
+	} else {
+		const s = session.get();
+		if (!s) return;
+		const r = await chatCall("messages", { conversation: s.conversation }, { token: s.token });
+		conversation = r.conversation;
+		rated.value = r.rated;
+		applyMessages(r.messages);
+		applyState(r.state);
+		state.v = r.state?.v || null;
+	}
+}
+
+async function refresh(full = false) {
+	if (!cfg.value || !["chat", "ended"].includes(phase.value) || (phase.value === "ended" && expired.value)) return;
 	try {
+		if (full) return await fetchMessages();
+		let r;
 		if (mode.value === "customer") {
-			const r = await chatCall("my_chat", { organization: props.organization });
-			conversation = r.conversation;
-			applyMessages(r.messages, r.status);
+			r = await chatCall("my_state", { organization: props.organization });
+			if (r.conversation !== conversation) return await fetchMessages();
+			r = r.state;
 		} else {
 			const s = session.get();
 			if (!s) return;
-			const r = await chatCall("messages", { conversation: s.conversation }, { token: s.token });
-			conversation = r.conversation;
-			rated.value = r.rated;
-			applyMessages(r.messages, r.status);
+			r = await chatCall("state", { conversation: s.conversation }, { token: s.token });
 		}
+		if (!r) return;
+		if (r.v !== state.v) return await fetchMessages();
+		applyState(r);
 	} catch (e) {
 		if (e instanceof ChatError && e.status === 403 && mode.value !== "customer") {
 			session.clear();
@@ -239,12 +340,14 @@ async function refresh() {
 
 function schedule() {
 	clearTimeout(timer);
-	if (!cfg.value || !["chat", "ended"].includes(phase.value) || phase.value === "ended") return;
+	if (!cfg.value || phase.value !== "chat") return;
 	const active = open.value || props.inline;
+	const fast = state.ai || state.agent_typing || pending.value.length || (state.handling === "Bot" && Date.now() - lastSend < 20000);
+	const delay = !active ? 20000 : fast ? 700 : state.handling === "Agent" || state.handling === "Queued" ? 2000 : 3000;
 	timer = setTimeout(async () => {
 		if (!document.hidden) await refresh();
 		schedule();
-	}, active ? 4000 : 30000);
+	}, delay);
 }
 
 async function startGuest() {
@@ -259,7 +362,8 @@ async function startGuest() {
 		session.set({ conversation: r.conversation, token: r.token });
 		form.message = "";
 		phase.value = "chat";
-		await refresh();
+		lastSend = Date.now();
+		await refresh(true);
 		schedule();
 	} catch (e) {
 		error.value = e.status === 0 ? t("network") : e.message;
@@ -272,15 +376,16 @@ async function deliver(p) {
 	p.failed = false;
 	try {
 		if (mode.value === "customer") {
-			await chatCall("customer_send", { message: textToHtml(p.text), organization: props.organization, client_message_id: p.cid },
-				{ post: true, files: p.file ? [p.file] : [] });
+			await chatCall("customer_send", { message: textToHtml(p.text), organization: props.organization,
+				client_message_id: p.cid, payload: p.payload }, { post: true, files: p.file ? [p.file] : [] });
 		} else {
 			const s = session.get();
-			await chatCall("send", { conversation: s.conversation, message: textToHtml(p.text), client_message_id: p.cid },
-				{ post: true, token: s.token });
+			await chatCall("send", { conversation: s.conversation, message: textToHtml(p.text), client_message_id: p.cid,
+				payload: p.payload }, { post: true, token: s.token });
 		}
 		pending.value = pending.value.filter((x) => x.cid !== p.cid);
-		await refresh();
+		lastSend = Date.now();
+		await refresh(true);
 		schedule();
 	} catch (e) {
 		p.failed = true;
@@ -293,19 +398,51 @@ async function deliver(p) {
 	}
 }
 
-function send() {
-	const text = draft.value.trim();
-	if (!text && !file.value) return;
-	const p = reactive({ cid: newId(), text: text || (file.value && file.value.name), file: file.value, failed: false });
+function queue(text, payload = null) {
+	const p = reactive({ cid: newId(), text, payload, file: file.value, failed: false });
 	pending.value.push(p);
-	draft.value = "";
 	file.value = null;
 	scrollDown();
 	deliver(p);
+	schedule();
+}
+
+function send() {
+	const text = draft.value.trim();
+	if (!text && !file.value) return;
+	draft.value = "";
+	queue(text || (file.value && file.value.name));
+}
+
+function sendChip(c) {
+	queue(c.label, c.payload || null);
 }
 
 function retry(p) {
 	deliver(p);
+}
+
+function onType() {
+	if (Date.now() - lastTyping < 3000 || !hasChat.value) return;
+	lastTyping = Date.now();
+	if (mode.value === "customer") chatCall("customer_typing", { organization: props.organization }, { post: true }).catch(() => {});
+	else {
+		const s = session.get();
+		if (s) chatCall("typing", { conversation: s.conversation }, { post: true, token: s.token }).catch(() => {});
+	}
+}
+
+async function giveFeedback(m, value) {
+	m.feedback = value;
+	try {
+		if (mode.value === "customer") await chatCall("customer_feedback", { message: m.id, value, organization: props.organization }, { post: true });
+		else {
+			const s = session.get();
+			await chatCall("feedback", { conversation: s.conversation, message: m.id, value }, { post: true, token: s.token });
+		}
+	} catch (e) {
+		/* feedback is best effort */
+	}
 }
 
 function pickFile(e) {
@@ -347,6 +484,7 @@ function newChat() {
 	conversation = null;
 	expired.value = false;
 	rated.value = false;
+	Object.assign(state, { v: null, handling: "", agent_typing: false, agent_name: null, agent: null, ai: null, status: null });
 	if (mode.value === "customer") phase.value = "chat";
 	else {
 		session.clear();
@@ -371,11 +509,11 @@ async function init() {
 	else if (c.mode === "login") phase.value = "login";
 	else if (c.mode === "customer") {
 		phase.value = "chat";
-		await refresh();
+		await refresh(true);
 	} else if (c.mode === "guest") {
 		if (session.get()) {
 			phase.value = "chat";
-			await refresh();
+			await refresh(true);
 		} else phase.value = "prechat";
 	}
 	try {
@@ -383,7 +521,7 @@ async function init() {
 	} catch (e) {
 		/* ignore */
 	}
-	if (open.value || props.inline) seenAgent = messages.value.filter((m) => !m.from_customer).length;
+	if (open.value || props.inline) seenReplies = messages.value.filter((m) => !m.from_customer).length;
 	schedule();
 	scrollDown();
 }
@@ -391,18 +529,26 @@ async function init() {
 watch(() => props.organization, (v, old) => {
 	if (v && old && v !== old && mode.value === "customer") {
 		messages.value = [];
+		conversation = null;
 		phase.value = "chat";
-		refresh();
+		refresh(true);
 	}
 });
+watch(() => phase.value, () => schedule());
+
+function openFromPage() {
+	if (!props.inline && visible.value) setOpen(true);
+}
 
 onMounted(() => {
 	init();
 	document.addEventListener("visibilitychange", onVisible);
+	window.addEventListener("thinknxg-support:open-chat", openFromPage);
 });
 onBeforeUnmount(() => {
 	clearTimeout(timer);
 	document.removeEventListener("visibilitychange", onVisible);
+	window.removeEventListener("thinknxg-support:open-chat", openFromPage);
 });
 function onVisible() {
 	if (!document.hidden) refresh();

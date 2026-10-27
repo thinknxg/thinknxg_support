@@ -3,7 +3,8 @@
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta name="robots" content="noindex, nofollow">
+	<meta name="robots" content="{{ robots }}">
+	{% if meta_description %}<meta name="description" content="{{ meta_description | e }}">{% endif %}
 	<title>{{ portal_title | e }}</title>
 	<link rel="icon" href="/assets/thinknxg_support/images/logo.svg">
 	{{ include_style("support_portal.bundle.css") }}

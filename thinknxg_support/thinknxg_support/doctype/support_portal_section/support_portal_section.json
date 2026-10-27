@@ -1,0 +1,175 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_type",
+  "enabled",
+  "audience",
+  "title",
+  "style",
+  "subtitle",
+  "column_break_s1",
+  "image",
+  "show_search",
+  "item_limit",
+  "button_section",
+  "button_label",
+  "column_break_s2",
+  "button_link",
+  "content_section",
+  "content",
+  "items"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_type",
+   "fieldtype": "Select",
+   "label": "Section Type",
+   "options": "Hero\nQuick Actions\nPopular Articles\nKnowledge Categories\nServices\nFAQ\nContact and Hours\nAnnouncement\nCards\nCustom Content\nCall to Action\nAccount Summary",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 2,
+   "idx": 1
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "1",
+   "in_list_view": 1,
+   "columns": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "audience",
+   "fieldtype": "Select",
+   "label": "Audience",
+   "options": "Everyone\nVisitors\nCustomers",
+   "default": "Everyone",
+   "in_list_view": 1,
+   "columns": 1,
+   "description": "Visitors: not logged in (or not linked to a customer). Customers: logged-in portal customers",
+   "idx": 3
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "in_list_view": 1,
+   "columns": 3,
+   "description": "Leave empty to use the standard heading",
+   "idx": 4
+  },
+  {
+   "fieldname": "style",
+   "fieldtype": "Select",
+   "label": "Style",
+   "options": "Plain\nTinted\nBrand",
+   "default": "Plain",
+   "in_list_view": 1,
+   "columns": 1,
+   "description": "Background of the section band",
+   "idx": 5
+  },
+  {
+   "fieldname": "subtitle",
+   "fieldtype": "Small Text",
+   "label": "Subtitle",
+   "idx": 6
+  },
+  {
+   "fieldname": "column_break_s1",
+   "fieldtype": "Column Break",
+   "idx": 7
+  },
+  {
+   "fieldname": "image",
+   "fieldtype": "Attach Image",
+   "label": "Image",
+   "depends_on": "eval:[\"Hero\",\"Call to Action\"].includes(doc.section_type)",
+   "idx": 8
+  },
+  {
+   "fieldname": "show_search",
+   "fieldtype": "Check",
+   "label": "Show Search Box",
+   "default": "1",
+   "depends_on": "eval:doc.section_type==\"Hero\"",
+   "idx": 9
+  },
+  {
+   "fieldname": "item_limit",
+   "fieldtype": "Int",
+   "label": "Items to Show",
+   "default": "6",
+   "depends_on": "eval:[\"Popular Articles\",\"Services\",\"FAQ\",\"Knowledge Categories\"].includes(doc.section_type)",
+   "idx": 10
+  },
+  {
+   "fieldname": "button_section",
+   "fieldtype": "Section Break",
+   "label": "Button",
+   "depends_on": "eval:[\"Hero\",\"Call to Action\",\"Announcement\"].includes(doc.section_type)",
+   "idx": 11
+  },
+  {
+   "fieldname": "button_label",
+   "fieldtype": "Data",
+   "label": "Button Label",
+   "idx": 12
+  },
+  {
+   "fieldname": "column_break_s2",
+   "fieldtype": "Column Break",
+   "idx": 13
+  },
+  {
+   "fieldname": "button_link",
+   "fieldtype": "Data",
+   "label": "Button Link",
+   "description": "https://..., /path, mailto: or tel:. Use /login for the login page",
+   "idx": 14
+  },
+  {
+   "fieldname": "content_section",
+   "fieldtype": "Section Break",
+   "label": "Content",
+   "depends_on": "eval:[\"Announcement\",\"Custom Content\",\"Quick Actions\",\"Cards\",\"FAQ\"].includes(doc.section_type)",
+   "idx": 15
+  },
+  {
+   "fieldname": "content",
+   "fieldtype": "Text Editor",
+   "label": "Content",
+   "depends_on": "eval:[\"Announcement\",\"Custom Content\"].includes(doc.section_type)",
+   "idx": 16
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Small Text",
+   "label": "Items",
+   "depends_on": "eval:[\"Quick Actions\",\"Cards\",\"FAQ\"].includes(doc.section_type)",
+   "description": "Quick Actions: one per line from ticket, chat, knowledge, my_tickets, orders, services, whatsapp, contact (empty = sensible defaults). Cards: Title | Description | Link. FAQ: Question | Answer (empty = Knowledge Snippets)",
+   "idx": 17
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 1,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Portal Section",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}
