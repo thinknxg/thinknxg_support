@@ -18,6 +18,7 @@
   "auth_method",
   "api_key",
   "api_secret",
+  "session_cookie",
   "column_break_k2",
   "username",
   "password",
@@ -96,7 +97,7 @@
    "fieldname": "article_url_pattern",
    "fieldtype": "Data",
    "label": "Article Url Pattern",
-   "description": "Optional link to each original article, e.g. {base_url}/help/articles/{id}. Empty: link the help centre",
+   "description": "Optional link to each original article, e.g. {base_url}/help/articles/{id}-{slug}. Empty: link the help centre",
    "idx": 7
   },
   {
@@ -111,8 +112,9 @@
    "fieldname": "auth_method",
    "fieldtype": "Select",
    "label": "Auth Method",
-   "options": "None\nAPI Key\nLogin",
+   "options": "None\nLogin\nBrowser Session\nAPI Key",
    "default": "None",
+   "description": "None works only if the site's knowledge base is public. Browser Session: sign in to the site in your browser and paste its sid cookie (useful when the site signs in through single sign-on)",
    "idx": 9
   },
   {
@@ -130,64 +132,72 @@
    "idx": 11
   },
   {
+   "fieldname": "session_cookie",
+   "fieldtype": "Password",
+   "label": "Session Cookie (sid)",
+   "depends_on": "eval:doc.auth_method==\"Browser Session\"",
+   "description": "Browser developer tools → Application → Cookies → sid. It expires when you log out there",
+   "idx": 12
+  },
+  {
    "fieldname": "column_break_k2",
    "fieldtype": "Column Break",
-   "idx": 12
+   "idx": 13
   },
   {
    "fieldname": "username",
    "fieldtype": "Data",
    "label": "Username",
    "depends_on": "eval:doc.auth_method==\"Login\"",
-   "idx": 13
+   "idx": 14
   },
   {
    "fieldname": "password",
    "fieldtype": "Password",
    "label": "Password",
    "depends_on": "eval:doc.auth_method==\"Login\"",
-   "idx": 14
+   "idx": 15
   },
   {
    "fieldname": "only_categories",
    "fieldtype": "Small Text",
    "label": "Only Categories",
    "description": "Optional: import only these source categories (one per line)",
-   "idx": 15
+   "idx": 16
   },
   {
    "fieldname": "urls_section",
    "fieldtype": "Section Break",
    "label": "Pages",
    "depends_on": "eval:doc.source_type==\"Page URLs\"",
-   "idx": 16
+   "idx": 17
   },
   {
    "fieldname": "page_urls",
    "fieldtype": "Long Text",
    "label": "Page Urls",
    "description": "One per line: URL, or Category | URL. Markdown (.md) and HTML pages are supported",
-   "idx": 17
+   "idx": 18
   },
   {
    "fieldname": "rebrand_section",
    "fieldtype": "Section Break",
    "label": "Rebranding",
    "description": "Applied to titles, text, image descriptions and category names, longest phrase first. Code, commands, URLs, file paths and API names are never changed",
-   "idx": 18
+   "idx": 19
   },
   {
    "fieldname": "rules",
    "fieldtype": "Table",
    "label": "Rules",
    "options": "Support Rebrand Rule",
-   "idx": 19
+   "idx": 20
   },
   {
    "fieldname": "links_section",
    "fieldtype": "Section Break",
    "label": "Links and Images",
-   "idx": 20
+   "idx": 21
   },
   {
    "fieldname": "link_policy",
@@ -195,7 +205,7 @@
    "label": "Links to the Source Site",
    "options": "Point to imported article when possible\nKeep\nRemove link, keep text",
    "default": "Point to imported article when possible",
-   "idx": 21
+   "idx": 22
   },
   {
    "fieldname": "download_images",
@@ -203,12 +213,12 @@
    "label": "Download Images",
    "default": "1",
    "description": "Copy images into this site instead of linking to the source",
-   "idx": 22
+   "idx": 23
   },
   {
    "fieldname": "column_break_k3",
    "fieldtype": "Column Break",
-   "idx": 23
+   "idx": 24
   },
   {
    "fieldname": "target",
@@ -217,7 +227,7 @@
    "options": "Automatic\nHelpdesk\nthinkDesk Knowledge Base",
    "default": "Automatic",
    "description": "Automatic: Helpdesk when installed, otherwise the built-in knowledge base",
-   "idx": 24
+   "idx": 25
   },
   {
    "fieldname": "audience",
@@ -225,47 +235,47 @@
    "label": "Audience",
    "options": "Everyone\nCustomers",
    "default": "Everyone",
-   "idx": 25
+   "idx": 26
   },
   {
    "fieldname": "max_articles",
    "fieldtype": "Int",
    "label": "Max Articles",
    "default": "500",
-   "idx": 26
+   "idx": 27
   },
   {
    "fieldname": "licence_section",
    "fieldtype": "Section Break",
    "label": "Licence and Attribution",
    "description": "Every imported article carries this attribution. Keep it accurate for the source's licence",
-   "idx": 27
+   "idx": 28
   },
   {
    "fieldname": "owner_name",
    "fieldtype": "Data",
    "label": "Copyright Owner",
    "default": "Frappe Technologies Pvt. Ltd.",
-   "idx": 28
+   "idx": 29
   },
   {
    "fieldname": "licence",
    "fieldtype": "Data",
    "label": "Licence",
    "default": "CC BY-SA 4.0",
-   "idx": 29
+   "idx": 30
   },
   {
    "fieldname": "licence_url",
    "fieldtype": "Data",
    "label": "Licence Url",
    "default": "https://creativecommons.org/licenses/by-sa/4.0/",
-   "idx": 30
+   "idx": 31
   },
   {
    "fieldname": "column_break_k4",
    "fieldtype": "Column Break",
-   "idx": 31
+   "idx": 32
   },
   {
    "fieldname": "attribution_template",
@@ -273,34 +283,34 @@
    "label": "Attribution Template",
    "default": "Adapted from \"{source_title}\" ({source_url}) by {owner}, licensed under {licence} ({licence_url}). Changes: product names updated for thinkNXG. This article is shared under the same licence.",
    "description": "Placeholders: {source_title} {source_url} {owner} {licence} {licence_url}. {source_url}, {owner} and {licence} are required",
-   "idx": 32
+   "idx": 33
   },
   {
    "fieldname": "licence_confirmed",
    "fieldtype": "Check",
    "label": "I Have Checked the Source's Licence",
    "description": "Required before articles from this source can be published",
-   "idx": 33
+   "idx": 34
   },
   {
    "fieldname": "status_section",
    "fieldtype": "Section Break",
    "label": "Last Run",
-   "idx": 34
+   "idx": 35
   },
   {
    "fieldname": "last_run_on",
    "fieldtype": "Datetime",
    "label": "Last Run On",
    "read_only": 1,
-   "idx": 35
+   "idx": 36
   },
   {
    "fieldname": "last_run_status",
    "fieldtype": "Small Text",
    "label": "Last Run Status",
    "read_only": 1,
-   "idx": 36
+   "idx": 37
   }
  ],
  "index_web_pages_for_search": 0,

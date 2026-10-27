@@ -127,8 +127,12 @@ see *Everyone* articles when **Public Knowledge Base** is on in Support Portal S
 ### Importing and rebranding articles
 
 1. Open **Support Knowledge Source → Frappe Help Centre** (created disabled on install).
-2. **Access**: the Frappe help centre may only show articles to signed-in users. Choose *Login*
-   (username and password of an account on that site) or *API Key*. **Test Connection** shows the
+2. **Access**: a Helpdesk site answers visitors with *HTTP 403 "Please sign in to read the knowledge
+   base"* unless its own *Public Knowledge Base* setting is on, and support.frappe.io has it off. Choose:
+   * *Login*: username and password of an account on that site (not for single sign-on accounts);
+   * *Browser Session*: sign in to the site in your browser, open developer tools → Application →
+     Cookies, copy the `sid` value and paste it (it stops working when that browser session ends);
+   * *API Key*: if the site's administrator gives you one. **Test Connection** shows the
    first three titles, rebranded, with the original in brackets.
 3. **Rebranding** rules come filled in, longest phrase first:
 

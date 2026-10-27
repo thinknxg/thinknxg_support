@@ -32,6 +32,30 @@ class SourceError(Exception):
     pass
 
 
+class AccessDenied(SourceError):
+    pass
+
+
+def _server_message(r) -> str:
+    """The reason a Frappe site gives with an error (``_server_messages`` or ``exception``), as plain text."""
+    try:
+        data = r.json()
+    except ValueError:
+        return ""
+    msg = ""
+    if data.get("_server_messages"):
+        try:
+            import json
+
+            first = json.loads(json.loads(data["_server_messages"])[0])
+            msg = first.get("message", "") if isinstance(first, dict) else str(first)
+        except Exception:
+            msg = ""
+    if not msg and data.get("exception"):
+        msg = str(data["exception"]).split(":", 1)[-1]
+    return re.sub(r"<[^>]+>", "", msg).strip()[:200]
+
+
 # ------------------------------------------------------------------ fetching
 class Client:
     def __init__(self, src):
@@ -42,6 +66,12 @@ class Client:
         self.s.headers["Accept"] = "application/json"
         if src.auth_method == "API Key" and src.api_key:
             self.s.headers["Authorization"] = f"token {src.api_key}:{src.get_password('api_secret', raise_exception=False)}"
+        if src.auth_method == "Browser Session":
+            sid = (src.get_password("session_cookie", raise_exception=False) or "").strip()
+            if sid.lower().startswith("sid="):
+                sid = sid[4:]
+            if sid:
+                self.s.cookies.set("sid", sid.split(";")[0], domain=urlparse(self.base).hostname)
         self._logged_in = False
 
     def login(self):
@@ -62,7 +92,15 @@ class Client:
         except requests.RequestException as e:
             raise SourceError(f"{e.__class__.__name__} for {url}")
         if r.status_code in (401, 403):
-            raise SourceError(_("The source refused access (HTTP {0}). Set up access with an account on that site.").format(r.status_code))
+            why = _server_message(r)
+            if self.src.auth_method in (None, "", "None"):
+                hint = _("The site's knowledge base is not public. Under Access choose Login, Browser Session or API Key.")
+            elif self.src.auth_method == "Browser Session":
+                hint = _("The session cookie was not accepted; it may have expired. Sign in again and paste a fresh sid.")
+            else:
+                hint = _("The account was not accepted or cannot read the knowledge base.")
+            raise AccessDenied(_("The source refused access (HTTP {0}){1}. {2}").format(
+                r.status_code, f': "{why}"' if why else "", hint))
         if r.status_code >= 400:
             raise SourceError(f"HTTP {r.status_code} for {url}")
         if raw:
@@ -81,44 +119,87 @@ def _cat_fields(c):
             c.get("category_name") or c.get("title") or c.get("name"))
 
 
+KB = "/api/method/helpdesk.api.knowledge_base."
+
+
+def _listing_sidebar(client):
+    """Current Helpdesk: one call returns every category with its article titles."""
+    out = []
+    for c in client.get(KB + "get_kb_sidebar") or []:
+        cid, label = _cat_fields(c)
+        for a in c.get("articles") or []:
+            out.append((a.get("name"), label, cid))
+    return out
+
+
+def _listing_per_category(client, method, param="category"):
+    out = []
+    for c in client.get(KB + "get_categories") or []:
+        cid, label = _cat_fields(c)
+        if not cid:
+            continue
+        for a in client.get(KB + method, {param: cid}) or []:
+            out.append((a.get("name") if isinstance(a, dict) else a, label, cid))
+    return out
+
+
+def _listing_rest(client, limit):
+    labels = {}
+    try:
+        for c in client.get("/api/resource/HD Article Category", {"fields": '["name","category_name"]',
+                                                                  "limit_page_length": 1000}) or []:
+            labels[c["name"]] = c.get("category_name") or c["name"]
+    except SourceError:
+        pass
+    arts = client.get("/api/resource/HD Article", {
+        "fields": '["name","title","category","modified"]', "filters": '[["status","=","Published"]]',
+        "limit_page_length": limit})
+    return [(a["name"], labels.get(a.get("category"), a.get("category")), a.get("category")) for a in arts]
+
+
 def helpdesk_articles(src, client=None):
-    """Yield dicts: id, title, html, category, modified. Tries the Helpdesk knowledge-base API, then REST."""
+    """Yield dicts: id, title, html, category, modified.
+
+    Helpdesk has changed its knowledge-base API between versions, so the listing tries, in order:
+    get_kb_sidebar, get_categories + get_articles, get_categories + get_category_articles, then the REST API.
+    """
     client = client or Client(src)
     wanted = {x.strip().lower() for x in (src.only_categories or "").splitlines() if x.strip()}
-    count, limit = 0, cint(src.max_articles) or 500
-    try:
-        cats = client.get("/api/method/helpdesk.api.knowledge_base.get_categories") or []
-        listing = []
-        for c in cats:
-            cid, label = _cat_fields(c)
-            if not cid or (wanted and (label or "").lower() not in wanted and str(cid).lower() not in wanted):
-                continue
-            arts = client.get("/api/method/helpdesk.api.knowledge_base.get_category_articles", {"category": cid}) or []
-            for a in arts:
-                aid = a.get("name") if isinstance(a, dict) else a
-                if aid:
-                    listing.append((aid, label))
-        fetch = lambda aid: client.get("/api/method/helpdesk.api.knowledge_base.get_article", {"name": aid})  # noqa: E731
-    except SourceError as first:
-        if "refused access" in str(first):
-            raise
-        arts = client.get("/api/resource/HD Article", {
-            "fields": '["name","title","category","modified"]', "filters": '[["status","=","Published"]]',
-            "limit_page_length": limit})
-        labels = {}
+    limit = cint(src.max_articles) or 500
+    attempts = [
+        ("kb", lambda: _listing_sidebar(client)),
+        ("kb", lambda: _listing_per_category(client, "get_articles")),
+        ("kb", lambda: _listing_per_category(client, "get_category_articles")),
+        ("rest", lambda: _listing_rest(client, limit)),
+    ]
+    listing, mode, errors = None, None, []
+    for kind, attempt in attempts:
         try:
-            for c in client.get("/api/resource/HD Article Category", {"fields": '["name","category_name"]',
-                                                                      "limit_page_length": 1000}) or []:
-                labels[c["name"]] = c.get("category_name") or c["name"]
-        except SourceError:
-            pass
-        listing = [(a["name"], labels.get(a.get("category"), a.get("category"))) for a in arts
-                   if not wanted or (labels.get(a.get("category"), "") or "").lower() in wanted]
-        fetch = lambda aid: client.get(f"/api/resource/HD Article/{quote(str(aid))}")  # noqa: E731
-    for aid, label in listing:
+            listing, mode = attempt(), kind
+            break
+        except AccessDenied as e:
+            errors.append(e)
+            if src.auth_method in (None, "", "None"):
+                break  # every route will refuse a visitor; say so instead of trying them all
+        except SourceError as e:
+            errors.append(e)
+    if listing is None:
+        denied = [e for e in errors if isinstance(e, AccessDenied)]
+        raise (denied or errors)[0]
+
+    seen, count = set(), 0
+    for aid, label, cid in listing:
+        if not aid or aid in seen:
+            continue
+        seen.add(aid)
+        if wanted and (label or "").lower() not in wanted and str(cid or "").lower() not in wanted:
+            continue
         if count >= limit:
             break
-        a = fetch(aid) or {}
+        if mode == "kb":
+            a = client.get(KB + "get_article", {"name": aid}) or {}
+        else:
+            a = client.get(f"/api/resource/HD Article/{quote(str(aid))}") or {}
         if isinstance(a, dict) and isinstance(a.get("article"), dict):
             a = a["article"]
         title = a.get("title") or a.get("subject")
@@ -126,8 +207,10 @@ def helpdesk_articles(src, client=None):
         if not title or not body:
             continue
         count += 1
-        yield {"id": str(aid), "title": title, "html": body, "category": label or _("General"),
-               "modified": str(a.get("modified") or "")}
+        yield {"id": str(aid), "title": title, "html": body,
+               "category": a.get("category_name") or label or _("General"),
+               "modified": str(a.get("modified") or a.get("published_on") or ""),
+               "slug": a.get("title_slug")}
 
 
 def page_articles(src, client=None):
@@ -193,7 +276,8 @@ def source_url(src, art) -> str:
     if art.get("url"):
         return art["url"]
     if src.article_url_pattern:
-        return src.article_url_pattern.format(base_url=src.base_url, id=quote(str(art["id"])))
+        return src.article_url_pattern.format(base_url=src.base_url, id=quote(str(art["id"])),
+                                              slug=art.get("slug") or "")
     return src.help_center_url or src.base_url
 
 
