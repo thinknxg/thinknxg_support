@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.1 — 2026-10-27
+* Importer follows the current Helpdesk knowledge-base API (`get_kb_sidebar`, `get_articles`) and falls back
+  to older endpoints and REST
+* New *Browser Session* access (paste the `sid` cookie) for sites that sign in through single sign-on
+* Access errors now quote the source site's own reason and say what to change
+* Article link pattern accepts `{slug}`
+
 ## 1.4.0 — 2026-10-27
 * Built-in knowledge base (*Support Knowledge Article* / *Category*) that works with or without Helpdesk
 * One knowledge service for portal, landing page, dashboard and AI assistant (Helpdesk + built-in articles,
