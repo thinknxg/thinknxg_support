@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.0 — 2026-10-27
+* Built-in knowledge base (*Support Knowledge Article* / *Category*) that works with or without Helpdesk
+* One knowledge service for portal, landing page, dashboard and AI assistant (Helpdesk + built-in articles,
+  audience-aware: Everyone / Customers)
+* Help-article importer: Frappe Helpdesk knowledge-base API (with REST fallback) or page URLs; login or API key
+* Rebrand engine with editable rules; code, commands, URLs, e-mails and paths are never changed
+* Review workflow: proposals with side-by-side preview and review notes, bulk approve/reject, source-change
+  detection that never overwrites published articles
+* Licence gate and mandatory attribution on every imported article; optional image copy and link rewriting
+* AI assistant indexes built-in articles automatically
+
 ## 1.3.0 — 2026-10-27
 * Public landing page at `/thinkdesk` with 12 configurable section types (add, remove, reorder, audience, style)
 * Configurable header and footer menu links (external or internal, Arabic labels, audience, new tab)

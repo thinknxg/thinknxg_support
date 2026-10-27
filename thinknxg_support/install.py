@@ -19,6 +19,7 @@ def after_install():
     from thinknxg_support.landing import ensure_defaults as ensure_landing
 
     ensure_landing()
+    ensure_kb_source()
     from thinknxg_support.integrations import capabilities
 
     capabilities.refresh(save=True)
@@ -87,6 +88,20 @@ def ensure_ai_defaults():
         frappe.get_doc({"doctype": "Support Chat Queue", "queue_name": "General Support", "enabled": 1,
                         "assignment_rule": "Least Busy", "only_online_agents": 1, "channel_live_chat": 1,
                         "channel_whatsapp": 1, "channel_portal": 1}).insert(ignore_permissions=True)
+
+
+def ensure_kb_source():
+    """A disabled starter source for the Frappe help centre, with the thinkNXG rebrand rules filled in.
+    It stays disabled and unconfirmed until an administrator checks the licence and turns it on."""
+    if not frappe.db.exists("DocType", "Support Knowledge Source") or frappe.db.exists("Support Knowledge Source", "Frappe Help Centre"):
+        return
+    from thinknxg_support.integrations.kb_import.rebrand import DEFAULT_RULES
+
+    doc = frappe.get_doc({"doctype": "Support Knowledge Source", "source_name": "Frappe Help Centre", "enabled": 0,
+                          "source_type": "Frappe Helpdesk", "base_url": "https://support.frappe.io",
+                          "help_center_url": "https://support.frappe.io/help",
+                          "rules": [{"find": f, "replace_with": r, "match_case": 1, "enabled": 1} for f, r in DEFAULT_RULES]})
+    doc.insert(ignore_permissions=True)
 
 
 def ensure_defaults():

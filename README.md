@@ -117,6 +117,70 @@ To use a different path, change `PORTAL_ROUTE` in the generator's `common.py` (i
 the new portal, add a route redirect (`/support` → `/thinkdesk`) under Website Settings → Route Redirects on that site; this
 app does not add one, so ERPNext's page keeps working unless you choose to redirect it.
 
+## Knowledge base and help-article importer (1.4)
+
+The portal, landing page and AI assistant read **one knowledge base**: published Helpdesk articles
+(when Helpdesk is installed) plus thinkDesk's own *Support Knowledge Article* records (which work
+without Helpdesk). Articles marked *Customers* are shown only to signed-in portal customers; visitors
+see *Everyone* articles when **Public Knowledge Base** is on in Support Portal Settings.
+
+### Importing and rebranding articles
+
+1. Open **Support Knowledge Source → Frappe Help Centre** (created disabled on install).
+2. **Access**: the Frappe help centre may only show articles to signed-in users. Choose *Login*
+   (username and password of an account on that site) or *API Key*. **Test Connection** shows the
+   first three titles, rebranded, with the original in brackets.
+3. **Rebranding** rules come filled in, longest phrase first:
+
+   | Find | Replace with |
+   |---|---|
+   | Frappe Framework | thinkNXG Framework |
+   | Frappe Cloud | thinkNXG Cloud |
+   | Frappe HR | thinkNXG HR |
+   | ERPNext | thinkNXG ERP |
+   | Frappe | thinkNXG |
+
+   Only readable text changes (titles, paragraphs, headings, image descriptions, category names).
+   Code blocks, commands, URLs, e-mail addresses, file paths and API names such as `frappe.get_doc`
+   stay exactly as they are, so instructions still work.
+4. **Publish To**: *Automatic* uses Helpdesk when it is installed, otherwise the built-in knowledge base.
+   Pick the audience, whether to copy images into this site, and how to treat links to the source site
+   (point them to the imported copy, keep them, or remove the link and keep the text).
+5. **Import Now**. It runs in the background and creates one *Support Article Import* proposal per
+   article. **Nothing is published yet.**
+6. Review in **Support Article Import**. Each proposal shows the original and the rebranded version
+   side by side, the number of names replaced, and *Check before publishing* notes. Proposals with
+   notes are set to *Needs Review*: for example Frappe's own websites or e-mail addresses, prices
+   or plans, or Frappe Cloud hosting steps that may differ on thinkNXG Cloud. Edit the proposed text
+   if needed, then **Approve and Publish**. You can also select many in the list and use
+   **Actions → Approve and Publish**.
+7. Published articles appear in `/thinkdesk/knowledge`, in the landing page's *Popular Articles* and
+   *Knowledge Categories* sections, and in the AI assistant's answers (indexed automatically).
+
+Re-running the import is safe. Unchanged articles are skipped. If a published article changed at the
+source, its proposal becomes *Source Changed* and the published copy is **not** overwritten until you
+approve the update. **Re-apply Rebrand Rules** refreshes unpublished proposals after you edit the rules.
+The source can also be a list of page URLs (Markdown `.md` or HTML), one per line, optionally
+`Category | URL`.
+
+### Licence and attribution — read before publishing
+
+* Frappe's legal page says its **documentation** is licensed CC BY-SA, while its **website content and
+  marketing material** are reserved and may not be copied or used commercially without permission.
+  It also reserves Frappe's trademarks. The help articles at support.frappe.io are not clearly placed
+  in either group. **Get written confirmation from Frappe** before you publish them, or import from
+  the documentation instead (docs.frappe.io, for example `https://docs.frappe.io/erpnext/<page>.md`, using a
+  *Page URLs* source).
+* Publishing is blocked until **I Have Checked the Source's Licence** is ticked on the source. Ticking it
+  is recorded in the audit log.
+* Every published article ends with an attribution: the original title and link, the copyright owner,
+  the licence and its link, and a note that names were changed. The attribution must contain the
+  source link, owner and licence. CC BY-SA also requires that you share the adapted articles under
+  the same licence.
+* Rebranding changes product names in the text, not the facts. The *Check before publishing* notes
+  exist because hosting steps, prices, support contacts and partner programmes described for Frappe
+  may not be true for thinkNXG.
+
 ## Live chat and WhatsApp
 
 **Chat with support** opens from a button in the corner of the portal, every public website page
@@ -170,7 +234,7 @@ hand off -> first enabled queue for the channel -> least busy / round robin agen
 | Piece | Where | Notes |
 |---|---|---|
 | Assistant settings | *Support AI Settings* | Provider, model, key, channels, audiences, thresholds, limits, privacy. Buttons: Test Connection, Rebuild Knowledge Index, Try a Question |
-| Knowledge | Published Helpdesk articles + *Support Knowledge Snippet* | Split into passages (*Support Knowledge Chunk*). Snippets can be limited to verified customers |
+| Knowledge | Published Helpdesk articles + built-in *Support Knowledge Article* + *Support Knowledge Snippet* | Split into passages (*Support Knowledge Chunk*). Snippets can be limited to verified customers |
 | Chatbot | *Support Chatbot* with rules | Welcome message and buttons, handoff words, rules with actions: Reply, Reply and Hand Off, Reply and Ask AI, Create Ticket, End Chat |
 | Queues | *Support Chat Queue* | Channels, members, max open chats each, Least Busy / Round Robin / Manual |
 | Assignments | *Support Chat Assignment* | Who handled each conversation, when they first replied, outcome |
@@ -303,8 +367,10 @@ bench --site test.site run-tests --app thinknxg_support
 
 Covers cross-organisation ID tampering (tickets, conversations, grants), grant validity windows,
 contact-link enforcement, approval rules, capability matrix, internal-note isolation, message
-de-duplication, HTML sanitisation, audit of denials and Raven loop prevention. Ticket tests run only
-when Helpdesk is installed.
+de-duplication, HTML sanitisation, audit of denials and Raven loop prevention, the rebrand engine (code,
+URLs and paths untouched), the importer against a faked source (proposals only, licence gate,
+attribution, source changes not overwriting) and knowledge visibility for visitors and customers.
+Ticket tests run only when Helpdesk is installed.
 
 ## Upgrade / uninstall
 

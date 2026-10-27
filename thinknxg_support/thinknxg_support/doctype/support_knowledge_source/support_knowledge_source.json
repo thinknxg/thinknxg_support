@@ -1,0 +1,353 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "source_name",
+  "enabled",
+  "source_type",
+  "column_break_k1",
+  "base_url",
+  "help_center_url",
+  "article_url_pattern",
+  "auth_section",
+  "auth_method",
+  "api_key",
+  "api_secret",
+  "column_break_k2",
+  "username",
+  "password",
+  "only_categories",
+  "urls_section",
+  "page_urls",
+  "rebrand_section",
+  "rules",
+  "links_section",
+  "link_policy",
+  "download_images",
+  "column_break_k3",
+  "target",
+  "audience",
+  "max_articles",
+  "licence_section",
+  "owner_name",
+  "licence",
+  "licence_url",
+  "column_break_k4",
+  "attribution_template",
+  "licence_confirmed",
+  "status_section",
+  "last_run_on",
+  "last_run_status"
+ ],
+ "fields": [
+  {
+   "fieldname": "source_name",
+   "fieldtype": "Data",
+   "label": "Source Name",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "1",
+   "in_list_view": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "source_type",
+   "fieldtype": "Select",
+   "label": "Source Type",
+   "options": "Frappe Helpdesk\nPage URLs",
+   "default": "Frappe Helpdesk",
+   "reqd": 1,
+   "in_list_view": 1,
+   "idx": 3
+  },
+  {
+   "fieldname": "column_break_k1",
+   "fieldtype": "Column Break",
+   "idx": 4
+  },
+  {
+   "fieldname": "base_url",
+   "fieldtype": "Data",
+   "label": "Site URL",
+   "description": "Helpdesk site, e.g. https://support.frappe.io",
+   "idx": 5
+  },
+  {
+   "fieldname": "help_center_url",
+   "fieldtype": "Data",
+   "label": "Help Centre URL",
+   "default": "https://support.frappe.io/help",
+   "description": "Linked in each article's attribution",
+   "idx": 6
+  },
+  {
+   "fieldname": "article_url_pattern",
+   "fieldtype": "Data",
+   "label": "Article Url Pattern",
+   "description": "Optional link to each original article, e.g. {base_url}/help/articles/{id}. Empty: link the help centre",
+   "idx": 7
+  },
+  {
+   "fieldname": "auth_section",
+   "fieldtype": "Section Break",
+   "label": "Access",
+   "depends_on": "eval:doc.source_type==\"Frappe Helpdesk\"",
+   "description": "Use an account on the source site if its articles need a login",
+   "idx": 8
+  },
+  {
+   "fieldname": "auth_method",
+   "fieldtype": "Select",
+   "label": "Auth Method",
+   "options": "None\nAPI Key\nLogin",
+   "default": "None",
+   "idx": 9
+  },
+  {
+   "fieldname": "api_key",
+   "fieldtype": "Data",
+   "label": "Api Key",
+   "depends_on": "eval:doc.auth_method==\"API Key\"",
+   "idx": 10
+  },
+  {
+   "fieldname": "api_secret",
+   "fieldtype": "Password",
+   "label": "Api Secret",
+   "depends_on": "eval:doc.auth_method==\"API Key\"",
+   "idx": 11
+  },
+  {
+   "fieldname": "column_break_k2",
+   "fieldtype": "Column Break",
+   "idx": 12
+  },
+  {
+   "fieldname": "username",
+   "fieldtype": "Data",
+   "label": "Username",
+   "depends_on": "eval:doc.auth_method==\"Login\"",
+   "idx": 13
+  },
+  {
+   "fieldname": "password",
+   "fieldtype": "Password",
+   "label": "Password",
+   "depends_on": "eval:doc.auth_method==\"Login\"",
+   "idx": 14
+  },
+  {
+   "fieldname": "only_categories",
+   "fieldtype": "Small Text",
+   "label": "Only Categories",
+   "description": "Optional: import only these source categories (one per line)",
+   "idx": 15
+  },
+  {
+   "fieldname": "urls_section",
+   "fieldtype": "Section Break",
+   "label": "Pages",
+   "depends_on": "eval:doc.source_type==\"Page URLs\"",
+   "idx": 16
+  },
+  {
+   "fieldname": "page_urls",
+   "fieldtype": "Long Text",
+   "label": "Page Urls",
+   "description": "One per line: URL, or Category | URL. Markdown (.md) and HTML pages are supported",
+   "idx": 17
+  },
+  {
+   "fieldname": "rebrand_section",
+   "fieldtype": "Section Break",
+   "label": "Rebranding",
+   "description": "Applied to titles, text, image descriptions and category names, longest phrase first. Code, commands, URLs, file paths and API names are never changed",
+   "idx": 18
+  },
+  {
+   "fieldname": "rules",
+   "fieldtype": "Table",
+   "label": "Rules",
+   "options": "Support Rebrand Rule",
+   "idx": 19
+  },
+  {
+   "fieldname": "links_section",
+   "fieldtype": "Section Break",
+   "label": "Links and Images",
+   "idx": 20
+  },
+  {
+   "fieldname": "link_policy",
+   "fieldtype": "Select",
+   "label": "Links to the Source Site",
+   "options": "Point to imported article when possible\nKeep\nRemove link, keep text",
+   "default": "Point to imported article when possible",
+   "idx": 21
+  },
+  {
+   "fieldname": "download_images",
+   "fieldtype": "Check",
+   "label": "Download Images",
+   "default": "1",
+   "description": "Copy images into this site instead of linking to the source",
+   "idx": 22
+  },
+  {
+   "fieldname": "column_break_k3",
+   "fieldtype": "Column Break",
+   "idx": 23
+  },
+  {
+   "fieldname": "target",
+   "fieldtype": "Select",
+   "label": "Publish To",
+   "options": "Automatic\nHelpdesk\nthinkDesk Knowledge Base",
+   "default": "Automatic",
+   "description": "Automatic: Helpdesk when installed, otherwise the built-in knowledge base",
+   "idx": 24
+  },
+  {
+   "fieldname": "audience",
+   "fieldtype": "Select",
+   "label": "Audience",
+   "options": "Everyone\nCustomers",
+   "default": "Everyone",
+   "idx": 25
+  },
+  {
+   "fieldname": "max_articles",
+   "fieldtype": "Int",
+   "label": "Max Articles",
+   "default": "500",
+   "idx": 26
+  },
+  {
+   "fieldname": "licence_section",
+   "fieldtype": "Section Break",
+   "label": "Licence and Attribution",
+   "description": "Every imported article carries this attribution. Keep it accurate for the source's licence",
+   "idx": 27
+  },
+  {
+   "fieldname": "owner_name",
+   "fieldtype": "Data",
+   "label": "Copyright Owner",
+   "default": "Frappe Technologies Pvt. Ltd.",
+   "idx": 28
+  },
+  {
+   "fieldname": "licence",
+   "fieldtype": "Data",
+   "label": "Licence",
+   "default": "CC BY-SA 4.0",
+   "idx": 29
+  },
+  {
+   "fieldname": "licence_url",
+   "fieldtype": "Data",
+   "label": "Licence Url",
+   "default": "https://creativecommons.org/licenses/by-sa/4.0/",
+   "idx": 30
+  },
+  {
+   "fieldname": "column_break_k4",
+   "fieldtype": "Column Break",
+   "idx": 31
+  },
+  {
+   "fieldname": "attribution_template",
+   "fieldtype": "Small Text",
+   "label": "Attribution Template",
+   "default": "Adapted from \"{source_title}\" ({source_url}) by {owner}, licensed under {licence} ({licence_url}). Changes: product names updated for thinkNXG. This article is shared under the same licence.",
+   "description": "Placeholders: {source_title} {source_url} {owner} {licence} {licence_url}. {source_url}, {owner} and {licence} are required",
+   "idx": 32
+  },
+  {
+   "fieldname": "licence_confirmed",
+   "fieldtype": "Check",
+   "label": "I Have Checked the Source's Licence",
+   "description": "Required before articles from this source can be published",
+   "idx": 33
+  },
+  {
+   "fieldname": "status_section",
+   "fieldtype": "Section Break",
+   "label": "Last Run",
+   "idx": 34
+  },
+  {
+   "fieldname": "last_run_on",
+   "fieldtype": "Datetime",
+   "label": "Last Run On",
+   "read_only": 1,
+   "idx": 35
+  },
+  {
+   "fieldname": "last_run_status",
+   "fieldtype": "Small Text",
+   "label": "Last Run Status",
+   "read_only": 1,
+   "idx": 36
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Knowledge Source",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "field:source_name",
+ "naming_rule": "By fieldname"
+}

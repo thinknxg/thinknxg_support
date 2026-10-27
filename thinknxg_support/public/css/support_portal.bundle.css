@@ -473,3 +473,7 @@ a.tx-stat:hover { text-decoration: none; border-color: var(--brand); }
 	.tx-pubfoot__inner { padding-inline-end: 16px; padding-block-end: 88px; }
 	.tx-main--landing > .tx-admin { margin: 16px; }
 }
+
+/* 1.4 imported-article attribution */
+.tx-prose .tx-attribution { color: var(--muted, #6b7280); font-size: 12px; line-height: 1.5; }
+.tx-prose .tx-attribution a { color: inherit; text-decoration: underline; }

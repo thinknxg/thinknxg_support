@@ -4,3 +4,4 @@
 thinknxg_support.patches.v1_0.ensure_roles_and_defaults
 thinknxg_support.patches.v1_2.assistant_defaults
 thinknxg_support.patches.v1_3.landing_defaults
+thinknxg_support.patches.v1_4.knowledge_source_defaults

@@ -1,0 +1,269 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "proposed_title",
+  "status",
+  "source",
+  "category_name",
+  "column_break_i1",
+  "replacements",
+  "target_doctype",
+  "target_name",
+  "published_on",
+  "review_section",
+  "review_notes",
+  "reviewer_comment",
+  "preview_html",
+  "proposed_section",
+  "proposed_html",
+  "original_section",
+  "source_id",
+  "source_url",
+  "source_category",
+  "original_title",
+  "column_break_i2",
+  "original_hash",
+  "source_modified",
+  "original_html"
+ ],
+ "fields": [
+  {
+   "fieldname": "proposed_title",
+   "fieldtype": "Data",
+   "label": "Proposed Title",
+   "reqd": 1,
+   "in_list_view": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Proposed\nNeeds Review\nApproved\nPublished\nRejected\nSource Changed",
+   "default": "Proposed",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "source",
+   "fieldtype": "Link",
+   "label": "Source",
+   "options": "Support Knowledge Source",
+   "in_standard_filter": 1,
+   "reqd": 1,
+   "idx": 3
+  },
+  {
+   "fieldname": "category_name",
+   "fieldtype": "Data",
+   "label": "Category",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 4
+  },
+  {
+   "fieldname": "column_break_i1",
+   "fieldtype": "Column Break",
+   "idx": 5
+  },
+  {
+   "fieldname": "replacements",
+   "fieldtype": "Int",
+   "label": "Names Replaced",
+   "read_only": 1,
+   "in_list_view": 1,
+   "idx": 6
+  },
+  {
+   "fieldname": "target_doctype",
+   "fieldtype": "Link",
+   "label": "Target Doctype",
+   "options": "DocType",
+   "read_only": 1,
+   "idx": 7
+  },
+  {
+   "fieldname": "target_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Target Name",
+   "options": "target_doctype",
+   "read_only": 1,
+   "idx": 8
+  },
+  {
+   "fieldname": "published_on",
+   "fieldtype": "Datetime",
+   "label": "Published On",
+   "read_only": 1,
+   "idx": 9
+  },
+  {
+   "fieldname": "review_section",
+   "fieldtype": "Section Break",
+   "label": "Review",
+   "idx": 10
+  },
+  {
+   "fieldname": "review_notes",
+   "fieldtype": "Small Text",
+   "label": "Review Notes",
+   "read_only": 1,
+   "description": "Points the importer wants a person to check",
+   "idx": 11
+  },
+  {
+   "fieldname": "reviewer_comment",
+   "fieldtype": "Small Text",
+   "label": "Reviewer Comment",
+   "idx": 12
+  },
+  {
+   "fieldname": "preview_html",
+   "fieldtype": "HTML",
+   "label": "Preview",
+   "idx": 13
+  },
+  {
+   "fieldname": "proposed_section",
+   "fieldtype": "Section Break",
+   "label": "Proposed Article",
+   "idx": 14
+  },
+  {
+   "fieldname": "proposed_html",
+   "fieldtype": "Text Editor",
+   "label": "Proposed Html",
+   "idx": 15
+  },
+  {
+   "fieldname": "original_section",
+   "fieldtype": "Section Break",
+   "label": "Original",
+   "collapsible": 1,
+   "idx": 16
+  },
+  {
+   "fieldname": "source_id",
+   "fieldtype": "Data",
+   "label": "Source Id",
+   "read_only": 1,
+   "search_index": 1,
+   "idx": 17
+  },
+  {
+   "fieldname": "source_url",
+   "fieldtype": "Data",
+   "label": "Source Url",
+   "read_only": 1,
+   "idx": 18
+  },
+  {
+   "fieldname": "source_category",
+   "fieldtype": "Data",
+   "label": "Source Category",
+   "read_only": 1,
+   "idx": 19
+  },
+  {
+   "fieldname": "original_title",
+   "fieldtype": "Data",
+   "label": "Original Title",
+   "read_only": 1,
+   "idx": 20
+  },
+  {
+   "fieldname": "column_break_i2",
+   "fieldtype": "Column Break",
+   "idx": 21
+  },
+  {
+   "fieldname": "original_hash",
+   "fieldtype": "Data",
+   "label": "Original Hash",
+   "read_only": 1,
+   "hidden": 1,
+   "idx": 22
+  },
+  {
+   "fieldname": "source_modified",
+   "fieldtype": "Data",
+   "label": "Source Modified",
+   "read_only": 1,
+   "idx": 23
+  },
+  {
+   "fieldname": "original_html",
+   "fieldtype": "Long Text",
+   "label": "Original Html",
+   "read_only": 1,
+   "idx": 24
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Article Import",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Agent",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "hash",
+ "title_field": "proposed_title",
+ "search_fields": "proposed_title,original_title,category_name"
+}

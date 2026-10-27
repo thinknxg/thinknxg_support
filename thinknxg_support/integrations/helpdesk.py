@@ -10,7 +10,7 @@ from frappe.utils import add_days, cint, flt, getdate, now_datetime, nowdate, st
 
 from thinknxg_support.integrations import IntegrationUnavailable, capabilities
 from thinknxg_support.security import PortalAccessError, PortalUser, log_denied
-from thinknxg_support.utils import _store, clean_html, settings
+from thinknxg_support.utils import _request_cache, clean_html, settings
 
 TICKET = "HD Ticket"
 DEFAULT_STATUS_CATEGORY = {
@@ -54,8 +54,8 @@ def hd_customer_for(customer: str, create: bool = False) -> str | None:
 
 def status_categories() -> dict:
     key = "thinknxg_support_status_cat"
-    if key in _store():
-        return _store()[key]
+    if key in _request_cache():
+        return _request_cache()[key]
     mapping = dict(DEFAULT_STATUS_CATEGORY)
     if capabilities.get().get("helpdesk", {}).get("status_doctype"):
         meta = frappe.get_meta("HD Ticket Status")
@@ -63,7 +63,7 @@ def status_categories() -> dict:
             for row in frappe.get_all("HD Ticket Status", fields=["name", "category"]):
                 if row.category:
                     mapping[row.name] = row.category
-    _store()[key] = mapping
+    _request_cache()[key] = mapping
     return mapping
 
 

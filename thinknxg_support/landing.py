@@ -6,7 +6,7 @@ from __future__ import annotations
 import frappe
 from frappe.utils import cint, get_time
 
-from thinknxg_support.integrations import helpdesk
+from thinknxg_support.integrations import helpdesk, knowledge
 from thinknxg_support.utils import clean_html, safe_link, settings
 
 QUICK_ACTIONS = ("ticket", "chat", "knowledge", "my_tickets", "orders", "services", "whatsapp", "contact")
@@ -42,7 +42,7 @@ def menu_links(audience: str | None = None) -> list[dict]:
 
 def kb_open(audience: str) -> bool:
     s = settings()
-    if not (s.enable_knowledge and helpdesk.kb_available()):
+    if not (s.enable_knowledge and knowledge.available()):
         return False
     return audience == "Customers" or bool(s.public_knowledge)
 
@@ -121,6 +121,7 @@ def _actions(row, audience):
 def build() -> dict:
     s = settings()
     audience, pu = viewer_audience()
+    audience_kb = "Customers" if audience == "Customers" else "Everyone"
     sections = []
     for row in s.get("landing_sections") or []:
         if not row.enabled or row.audience not in ("Everyone", audience):
@@ -141,13 +142,13 @@ def build() -> dict:
             elif t == "Popular Articles":
                 if not kb_open(audience):
                     continue
-                sec["articles"] = helpdesk.search_articles(None, limit=limit)
+                sec["articles"] = knowledge.search_articles(None, limit=limit, audience=audience_kb)
                 if not sec["articles"]:
                     continue
             elif t == "Knowledge Categories":
                 if not kb_open(audience):
                     continue
-                sec["categories"] = helpdesk.article_categories()[:limit]
+                sec["categories"] = knowledge.article_categories(audience=audience_kb)[:limit]
                 if not sec["categories"]:
                     continue
             elif t == "Services":

@@ -3,7 +3,7 @@ from __future__ import annotations
 import frappe
 
 from thinknxg_support.api.v1._base import context
-from thinknxg_support.integrations import conversations, erpnext, helpdesk
+from thinknxg_support.integrations import conversations, erpnext, helpdesk, knowledge
 from thinknxg_support.utils import module_enabled, settings
 
 
@@ -27,9 +27,9 @@ def get_dashboard(organization: str | None = None):
         out["recent_requests"] = frappe.get_all(
             "Support Request", filters={"customer": customer, "raised_by": pu.user},
             fields=["name", "subject", "status", "modified"], order_by="modified desc", limit=5)
-    if module_enabled("knowledge") and helpdesk.kb_available():
+    if module_enabled("knowledge") and knowledge.available():
         try:
-            out["articles"] = helpdesk.search_articles(None, limit=5)
+            out["articles"] = knowledge.search_articles(None, limit=5, audience="Customers")
         except Exception:
             out["articles"] = []
     if s.show_announcement and s.announcement:

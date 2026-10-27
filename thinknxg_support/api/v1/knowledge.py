@@ -4,7 +4,7 @@ import frappe
 from frappe import _
 
 from thinknxg_support import ratelimit
-from thinknxg_support.integrations import helpdesk
+from thinknxg_support.integrations import knowledge
 from thinknxg_support.security import PortalAccessError, get_portal_user
 from thinknxg_support.utils import require_module, settings
 
@@ -26,16 +26,16 @@ def _viewer():
 @frappe.whitelist(allow_guest=True, methods=["GET"])
 def search(q=None, category=None, limit=10):
     _viewer()
-    return helpdesk.search_articles(q, category, limit)
+    return knowledge.search_articles(q, category, limit)
 
 
 @frappe.whitelist(allow_guest=True, methods=["GET"])
 def article(name):
     _viewer()
-    return helpdesk.get_article(name)
+    return knowledge.get_article(name)
 
 
 @frappe.whitelist(allow_guest=True, methods=["GET"])
 def categories():
     _viewer()
-    return helpdesk.article_categories()
+    return knowledge.article_categories()

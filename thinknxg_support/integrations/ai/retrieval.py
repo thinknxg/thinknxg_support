@@ -1,4 +1,4 @@
-"""Knowledge index: published Helpdesk articles and Knowledge Snippets, split into passages.
+"""Knowledge index: published Helpdesk and thinkDesk knowledge articles and Knowledge Snippets, split into passages.
 
 Search uses cosine similarity over stored embeddings when configured, otherwise keyword overlap.
 Audience is enforced on every search: guests only ever get "Everyone" passages.
@@ -77,6 +77,11 @@ def sources():
         filters = {"status": "Published"} if af.get("status") else ({"published": 1} if af.get("published") else {})
         for a in frappe.get_all("HD Article", filters=filters, fields=["name", "title", "content"], limit=5000):
             yield "HD Article", a.name, a.title, _html_text(a.content), "Everyone", f"knowledge/{a.name}"
+    if conf.index_helpdesk_articles and frappe.db.exists("DocType", "Support Knowledge Article"):
+        for a in frappe.get_all("Support Knowledge Article", filters={"status": "Published"},
+                                fields=["name", "title", "content", "audience"], limit=10000):
+            yield ("Support Knowledge Article", a.name, a.title, _html_text(a.content), a.audience or "Everyone",
+                   f"knowledge/{a.name}")
     if conf.index_snippets:
         for n in frappe.get_all("Support Knowledge Snippet", filters={"enabled": 1},
                                 fields=["name", "question", "answer", "audience", "link"], limit=5000):

@@ -4,7 +4,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, now_datetime
 
-from thinknxg_support.integrations import capabilities, helpdesk, raven
+from thinknxg_support.integrations import capabilities, helpdesk, knowledge, raven
 from thinknxg_support.security import PortalAccessError, get_portal_user
 from thinknxg_support.utils import module_enabled, settings
 
@@ -53,7 +53,7 @@ def boot():
     lang = s.default_language or "en"
     if frappe.session.user == "Guest":
         return {"guest": True, "linked": False, "branding": branding, "user": None, "language": lang,
-                "modules": {"knowledge": module_enabled("knowledge") and helpdesk.kb_available() and bool(s.public_knowledge)},
+                "modules": {"knowledge": module_enabled("knowledge") and knowledge.available() and bool(s.public_knowledge)},
                 **_public(s, "Visitors")}
     try:
         pu = get_portal_user(allow_staff_without_grant=True)
@@ -62,12 +62,12 @@ def boot():
         lang = frappe.db.get_value("Support Portal Profile", frappe.session.user, "language") or lang
         return {"guest": False, "linked": False, "message": str(e), "branding": branding, "language": lang,
                 "user": {"name": frappe.session.user, "full_name": u.get("full_name"), "email": u.get("email")},
-                "modules": {"knowledge": module_enabled("knowledge") and helpdesk.kb_available() and bool(s.public_knowledge)},
+                "modules": {"knowledge": module_enabled("knowledge") and knowledge.available() and bool(s.public_knowledge)},
                 **_public(s, "Visitors")}
 
     available = {
         "tickets": module_enabled("tickets") and helpdesk.available(),
-        "knowledge": module_enabled("knowledge") and helpdesk.kb_available(),
+        "knowledge": module_enabled("knowledge") and knowledge.available(),
         "conversations": module_enabled("conversations"),
         "services": module_enabled("services"),
         "account": module_enabled("account"),
@@ -108,7 +108,7 @@ def boot():
         warnings = list(caps.get("warnings") or [])
         if module_enabled("tickets") and not helpdesk.available():
             warnings.append(_("Tickets module is enabled but the Helpdesk adapter is unavailable."))
-        if module_enabled("knowledge") and not helpdesk.kb_available():
+        if module_enabled("knowledge") and not knowledge.available():
             warnings.append(_("Knowledge module is enabled but no Helpdesk knowledge base was found."))
         out["admin_warnings"] = list(dict.fromkeys(warnings))
     return out

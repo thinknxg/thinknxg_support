@@ -10,7 +10,7 @@ import json
 from importlib import metadata
 
 import frappe
-from thinknxg_support.utils import _store
+from thinknxg_support.utils import _request_cache
 from frappe.utils import now_datetime
 
 HELPDESK_TICKET_FIELDS = [
@@ -127,8 +127,8 @@ def _status_line(app: dict, ok: bool) -> str:
 def get() -> dict:
     """Cached schema map for the current request."""
     key = "thinknxg_support_schema"
-    if key in _store():
-        return _store()[key]
+    if key in _request_cache():
+        return _request_cache()[key]
     raw = frappe.db.get_single_value("Support Portal Settings", "schema_map")
     try:
         data = json.loads(raw) if raw else None
@@ -136,7 +136,7 @@ def get() -> dict:
         data = None
     if not data:
         data = refresh(save=False)
-    _store()[key] = data
+    _request_cache()[key] = data
     return data
 
 
