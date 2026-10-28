@@ -1,0 +1,81 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "kind",
+  "find",
+  "replace_with",
+  "keep_path",
+  "enabled"
+ ],
+ "fields": [
+  {
+   "fieldname": "kind",
+   "fieldtype": "Select",
+   "label": "Kind",
+   "options": "Website\nE-mail",
+   "default": "Website",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "find",
+   "fieldtype": "Data",
+   "label": "Frappe Address",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 3,
+   "description": "Website: a host, optionally with a path (docs.frappe.io/erpnext). E-mail: a domain (frappe.io)",
+   "idx": 2
+  },
+  {
+   "fieldname": "replace_with",
+   "fieldtype": "Data",
+   "label": "thinkNXG Address",
+   "in_list_view": 1,
+   "columns": 3,
+   "description": "Website: full address (https://docs.thinknxg.com/thinknxgerp). E-mail: a domain (thinknxg.com)",
+   "idx": 3
+  },
+  {
+   "fieldname": "keep_path",
+   "fieldtype": "Check",
+   "label": "Keep Rest of Path",
+   "default": "1",
+   "in_list_view": 1,
+   "columns": 1,
+   "description": "On: docs.frappe.io/erpnext/x becomes …/thinknxgerp/x. Off: every link goes to the new address itself",
+   "idx": 4
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "1",
+   "in_list_view": 1,
+   "columns": 1,
+   "idx": 5
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 1,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Link Rule",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

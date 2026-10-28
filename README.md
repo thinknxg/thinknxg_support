@@ -147,18 +147,25 @@ see *Everyone* articles when **Public Knowledge Base** is on in Support Portal S
    Only readable text changes (titles, paragraphs, headings, image descriptions, category names).
    Code blocks, commands, URLs, e-mail addresses, file paths and API names such as `frappe.get_doc`
    stay exactly as they are, so instructions still work.
-4. **Publish To**: *Automatic* uses Helpdesk when it is installed, otherwise the built-in knowledge base.
+4. **Website and E-mail Rebranding** moves links, web addresses and e-mail addresses in the articles to
+   thinkNXG's own sites. One rule is on by default: `docs.frappe.io/erpnext` → `https://docs.thinknxg.com/thinknxgerp`,
+   keeping the rest of the path. Rows for frappe.io, frappe.cloud, erpnext.com, frappehr.com, the other docs.frappe.io
+   sections, discuss.frappe.io, school.frappe.io and Frappe e-mail domains are listed but off: fill in the
+   thinkNXG address and tick **Enabled**. Code, image sources, links to the import source and the attribution
+   footer are never changed. After changing rules, **Re-apply Rebrand Rules** updates proposals and
+   **Apply Link Rules to Published Articles** updates what is already live.
+5. **Publish To**: *Automatic* uses Helpdesk when it is installed, otherwise the built-in knowledge base.
    Pick the audience, whether to copy images into this site, and how to treat links to the source site
    (point them to the imported copy, keep them, or remove the link and keep the text).
-5. **Import Now**. It runs in the background and creates one *Support Article Import* proposal per
+6. **Import Now**. It runs in the background and creates one *Support Article Import* proposal per
    article. **Nothing is published yet.**
-6. Review in **Support Article Import**. Each proposal shows the original and the rebranded version
+7. Review in **Support Article Import**. Each proposal shows the original and the rebranded version
    side by side, the number of names replaced, and *Check before publishing* notes. Proposals with
    notes are set to *Needs Review*: for example Frappe's own websites or e-mail addresses, prices
    or plans, or Frappe Cloud hosting steps that may differ on thinkNXG Cloud. Edit the proposed text
    if needed, then **Approve and Publish**. You can also select many in the list and use
    **Actions → Approve and Publish**.
-7. Published articles appear in `/thinkdesk/knowledge`, in the landing page's *Popular Articles* and
+8. Published articles appear in `/thinkdesk/knowledge`, in the landing page's *Popular Articles* and
    *Knowledge Categories* sections, and in the AI assistant's answers (indexed automatically).
 
 Re-running the import is safe. Unchanged articles are skipped. If a published article changed at the
