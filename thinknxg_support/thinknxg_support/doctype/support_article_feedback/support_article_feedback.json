@@ -1,0 +1,154 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "Thumbs up / down from readers of the portal knowledge base",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "article",
+  "article_title",
+  "article_doctype",
+  "vote",
+  "column_break_f1",
+  "user",
+  "customer",
+  "visitor",
+  "comment"
+ ],
+ "fields": [
+  {
+   "fieldname": "article",
+   "fieldtype": "Data",
+   "label": "Article",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "search_index": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "article_title",
+   "fieldtype": "Data",
+   "label": "Article Title",
+   "in_list_view": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "article_doctype",
+   "fieldtype": "Data",
+   "label": "Article Doctype",
+   "read_only": 1,
+   "idx": 3
+  },
+  {
+   "fieldname": "vote",
+   "fieldtype": "Select",
+   "label": "Vote",
+   "options": "Helpful\nNot Helpful",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 4
+  },
+  {
+   "fieldname": "column_break_f1",
+   "fieldtype": "Column Break",
+   "idx": 5
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User",
+   "read_only": 1,
+   "idx": 6
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer",
+   "read_only": 1,
+   "in_standard_filter": 1,
+   "idx": 7
+  },
+  {
+   "fieldname": "visitor",
+   "fieldtype": "Data",
+   "label": "Visitor",
+   "read_only": 1,
+   "hidden": 1,
+   "search_index": 1,
+   "description": "Anonymous key for visitors (hash of address and browser), so one visitor counts once",
+   "idx": 8
+  },
+  {
+   "fieldname": "comment",
+   "fieldtype": "Small Text",
+   "label": "Comment",
+   "description": "What was missing, in the reader's words",
+   "idx": 9
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Article Feedback",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Agent",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "hash",
+ "title_field": "article_title"
+}

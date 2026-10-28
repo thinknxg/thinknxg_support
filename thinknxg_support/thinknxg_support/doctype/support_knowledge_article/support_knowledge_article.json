@@ -13,6 +13,9 @@
   "column_break_a1",
   "audience",
   "published_on",
+  "sort_order",
+  "helpful_votes",
+  "not_helpful_votes",
   "content_section",
   "content",
   "source_section",
@@ -72,48 +75,70 @@
    "idx": 6
   },
   {
+   "fieldname": "sort_order",
+   "fieldtype": "Int",
+   "label": "Sort Order",
+   "description": "Position in the knowledge-base sidebar within its category (lower first)",
+   "idx": 7
+  },
+  {
+   "fieldname": "helpful_votes",
+   "fieldtype": "Int",
+   "label": "Helpful Votes",
+   "read_only": 1,
+   "in_list_view": 1,
+   "idx": 8
+  },
+  {
+   "fieldname": "not_helpful_votes",
+   "fieldtype": "Int",
+   "label": "Not Helpful Votes",
+   "read_only": 1,
+   "idx": 9
+  },
+  {
    "fieldname": "content_section",
    "fieldtype": "Section Break",
-   "idx": 7
+   "idx": 10
   },
   {
    "fieldname": "content",
    "fieldtype": "Text Editor",
    "label": "Content",
-   "idx": 8
+   "idx": 11
   },
   {
    "fieldname": "source_section",
    "fieldtype": "Section Break",
    "label": "Source and Licence",
    "collapsible": 1,
-   "idx": 9
+   "idx": 12
   },
   {
    "fieldname": "source_url",
    "fieldtype": "Data",
    "label": "Source Url",
    "read_only": 1,
-   "idx": 10
+   "idx": 13
   },
   {
    "fieldname": "source_title",
    "fieldtype": "Data",
    "label": "Source Title",
    "read_only": 1,
-   "idx": 11
+   "idx": 14
   },
   {
    "fieldname": "column_break_a2",
    "fieldtype": "Column Break",
-   "idx": 12
+   "idx": 15
   },
   {
    "fieldname": "licence",
    "fieldtype": "Data",
    "label": "Licence",
    "read_only": 1,
-   "idx": 13
+   "idx": 16
   },
   {
    "fieldname": "imported_from",
@@ -121,7 +146,7 @@
    "label": "Imported From",
    "options": "Support Article Import",
    "read_only": 1,
-   "idx": 14
+   "idx": 17
   }
  ],
  "index_web_pages_for_search": 0,

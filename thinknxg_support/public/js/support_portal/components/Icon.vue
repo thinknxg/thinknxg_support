@@ -11,6 +11,9 @@ import { computed } from "vue";
 const props = defineProps({ name: { type: String, required: true }, size: { type: [Number, String], default: 18 } });
 
 const ICONS = {
+	link: ["M10 14a5 5 0 0 0 7.1 0l3-3a5 5 0 0 0-7.1-7.1l-1.1 1.1", "M14 10a5 5 0 0 0-7.1 0l-3 3a5 5 0 0 0 7.1 7.1l1.1-1.1"],
+	thumbs_up: ["M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z", "M7 10l4-8a3 3 0 0 1 3 3v4h5.5a2 2 0 0 1 2 2.3l-1.4 8A2 2 0 0 1 18.1 21H7"],
+	thumbs_down: ["M17 14V3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1z", "M17 14l-4 8a3 3 0 0 1-3-3v-4H4.5a2 2 0 0 1-2-2.3l1.4-8A2 2 0 0 1 5.9 3H17"],
 	home: ["M3 10.5 12 3l9 7.5", "M5 9.5V21h14V9.5"],
 	ticket: ["M3 7a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-3a2 2 0 0 0 0-4z", "M13 5v14"],
 	chat: ["M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.4A8 8 0 1 1 21 12z"],
