@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.5.0 — 2026-10-28
+* Knowledge base: category sidebar with article titles (wiki style, filter, mobile fold-out)
+* Copy link button on every article
+* "Was this article helpful?" thumbs up / down with optional comment; *Support Article Feedback* records,
+  vote totals on built-in articles; one vote per reader, rate limited
+* "If your issue isn't resolved, raise a support ticket here": pre-filled ticket (title + article link);
+  visitors log in first; chat option when live chat is on
+* Related articles (same category, then similar titles), audience-aware
+* *Sort Order* on built-in articles for the sidebar
+* API: `knowledge.sidebar`, `knowledge.related`, `knowledge.feedback`; `knowledge.article` returns `my_vote`
+
 ## 1.4.2 — 2026-10-28
 * Website and e-mail rebranding rules on each knowledge source (*Support Link Rule*): links, plain-text web
   addresses and e-mail addresses move to thinkNXG sites, longest match first, optionally keeping the path

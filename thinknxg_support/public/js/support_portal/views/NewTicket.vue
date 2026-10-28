@@ -52,14 +52,15 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import { call } from "../api";
-import { link, navigate } from "../router";
+import { link, navigate, route } from "../router";
 import { state, toast } from "../store";
 import { textToHtml } from "../text";
 import Icon from "../components/Icon.vue";
 import { FilePicker } from "../components/ui";
 
-const subject = ref("");
-const description = ref("");
+// Opened from a help article ("Raise a ticket"): start with its title and link.
+const subject = ref((route.query.subject || "").slice(0, 140));
+const description = ref(route.query.article ? state.t("kb.ticket_about") + " " + route.query.article + "\n\n" : "");
 const ticketType = ref("");
 const priority = ref("");
 const files = ref([]);

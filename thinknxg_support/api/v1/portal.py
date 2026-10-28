@@ -53,7 +53,10 @@ def boot():
     lang = s.default_language or "en"
     if frappe.session.user == "Guest":
         return {"guest": True, "linked": False, "branding": branding, "user": None, "language": lang,
-                "modules": {"knowledge": module_enabled("knowledge") and knowledge.available() and bool(s.public_knowledge)},
+                "modules": {"knowledge": module_enabled("knowledge") and knowledge.available() and bool(s.public_knowledge),
+                            # flags only, so help articles can offer the right next step (log in to raise a ticket, chat)
+                            "tickets": module_enabled("tickets") and helpdesk.available(),
+                            "chat": bool(s.enable_live_chat and s.allow_guest_chat)},
                 **_public(s, "Visitors")}
     try:
         pu = get_portal_user(allow_staff_without_grant=True)
@@ -62,7 +65,10 @@ def boot():
         lang = frappe.db.get_value("Support Portal Profile", frappe.session.user, "language") or lang
         return {"guest": False, "linked": False, "message": str(e), "branding": branding, "language": lang,
                 "user": {"name": frappe.session.user, "full_name": u.get("full_name"), "email": u.get("email")},
-                "modules": {"knowledge": module_enabled("knowledge") and knowledge.available() and bool(s.public_knowledge)},
+                "modules": {"knowledge": module_enabled("knowledge") and knowledge.available() and bool(s.public_knowledge),
+                            # flags only, so help articles can offer the right next step (log in to raise a ticket, chat)
+                            "tickets": module_enabled("tickets") and helpdesk.available(),
+                            "chat": bool(s.enable_live_chat and s.allow_guest_chat)},
                 **_public(s, "Visitors")}
 
     available = {
@@ -72,6 +78,7 @@ def boot():
         "services": module_enabled("services"),
         "account": module_enabled("account"),
         "documents": module_enabled("documents"),
+        "chat": bool(s.enable_live_chat),
     }
     orgs = [
         {

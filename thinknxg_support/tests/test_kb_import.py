@@ -171,6 +171,7 @@ class TestKnowledgeVisibility(IntegrationTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
         frappe.db.delete("Support Knowledge Article")
+        frappe.db.delete("Support Article Feedback")
         if not frappe.db.exists("Support Knowledge Category", "General"):
             frappe.get_doc({"doctype": "Support Knowledge Category", "category_name": "General"}).insert()
         for title, status, aud in (("Public one", "Published", "Everyone"), ("Customers only", "Published", "Customers"),
@@ -196,6 +197,40 @@ class TestKnowledgeVisibility(IntegrationTestCase):
         self.assertRaises(frappe.DoesNotExistError, knowledge.get_article, hidden)
         draft = frappe.db.get_value("Support Knowledge Article", {"title": "Draft one"})
         self.assertRaises(frappe.DoesNotExistError, knowledge.get_article, draft)
+
+    def test_sidebar_groups_by_category_and_audience(self):
+        frappe.set_user("Guest")
+        groups = knowledge.sidebar(audience="Everyone")
+        titles = {a["title"] for g in groups for a in g["articles"]}
+        self.assertEqual(titles, {"Public one"})
+        self.assertEqual(groups[0]["label"], "General")
+        frappe.set_user("Administrator")
+        titles = {a["title"] for g in knowledge.sidebar(audience="Customers") for a in g["articles"]}
+        self.assertEqual(titles, {"Public one", "Customers only"})
+
+    def test_related_excludes_self_and_hidden(self):
+        public = frappe.db.get_value("Support Knowledge Article", {"title": "Public one"})
+        frappe.set_user("Guest")
+        self.assertEqual(knowledge.related(public, audience="Everyone"), [])
+        frappe.set_user("Administrator")
+        rel = knowledge.related(public, audience="Customers")
+        self.assertEqual([r["title"] for r in rel], ["Customers only"])
+
+    def test_feedback_one_vote_per_reader(self):
+        public = frappe.db.get_value("Support Knowledge Article", {"title": "Public one"})
+        knowledge.record_feedback(public, "Helpful")
+        knowledge.record_feedback(public, "Not Helpful", "Missing a screenshot")
+        rows = frappe.get_all("Support Article Feedback", filters={"article": public}, fields=["vote", "comment"])
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].vote, "Not Helpful")
+        self.assertEqual(knowledge.my_vote(public), "Not Helpful")
+        self.assertEqual(frappe.db.get_value("Support Knowledge Article", public, "not_helpful_votes"), 1)
+
+    def test_feedback_needs_a_readable_article(self):
+        draft = frappe.db.get_value("Support Knowledge Article", {"title": "Draft one"})
+        frappe.set_user("Guest")
+        self.assertRaises(frappe.DoesNotExistError, knowledge.record_feedback, draft, "Helpful")
+        self.assertRaises(frappe.ValidationError, knowledge.record_feedback, "x", "Maybe")
 
     def test_assistant_indexes_native_articles(self):
         from thinknxg_support.integrations.ai import retrieval

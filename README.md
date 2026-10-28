@@ -124,6 +124,23 @@ The portal, landing page and AI assistant read **one knowledge base**: published
 without Helpdesk). Articles marked *Customers* are shown only to signed-in portal customers; visitors
 see *Everyone* articles when **Public Knowledge Base** is on in Support Portal Settings.
 
+### Reading articles (1.5)
+
+* **Sidebar**: every category with its article titles, like a wiki. The open article is highlighted and its
+  category expanded; a filter box narrows titles. On phones it folds into a *Browse articles* button.
+  Built-in articles follow **Sort Order** within each category, then title; categories follow their Sort Order.
+* **Copy link**: copies the article's address (`/thinkdesk/knowledge/<id>`) for sharing. Visitors can open
+  it when the knowledge base is public; otherwise the reader is asked to log in.
+* **Was this article helpful?** Thumbs up or down, changeable, one vote per signed-in user or per visitor
+  (an anonymous key from address and browser). *No* asks what was missing (optional). Votes are kept in
+  *Support Article Feedback* and totalled on built-in articles (*Helpful Votes*, *Not Helpful Votes*).
+  Limited to 20 votes per reader per 10 minutes.
+* **If your issue isn't resolved, raise a support ticket here**: opens a new ticket with the article title as
+  subject and its link in the description. Visitors are sent to log in first. *Chat with us* appears when live
+  chat is on.
+* **Related articles**: up to five, from the same category first, then articles whose titles share words.
+  Only articles the reader may see are listed.
+
 ### Importing and rebranding articles
 
 1. Open **Support Knowledge Source → Frappe Help Centre** (created disabled on install).
@@ -333,7 +350,7 @@ always validated against the caller's grants.
 | `/api/v1/portal/services` | GET | `services.catalogue`; POST `services.create_request`; GET `services.my_requests`, `services.get_request`, `services.subscriptions` |
 | `/api/v1/portal/documents` | GET | `documents.list_documents`; GET `documents.download` |
 | `/api/v1/portal/notifications` | GET / PATCH | `notifications.list_notifications`, `notifications.mark_read`; `get_preferences` / `update_preferences` |
-| `/api/v1/portal/knowledge/search` | GET | `knowledge.search`, `knowledge.article`, `knowledge.categories` |
+| `/api/v1/portal/knowledge/search` | GET (+ POST feedback) | `knowledge.search`, `knowledge.article`, `knowledge.categories`, `knowledge.sidebar`, `knowledge.related`, `knowledge.feedback` |
 | Live chat (guests) | GET / POST | `livechat.config`, `livechat.start`, `livechat.messages`, `livechat.send`, `livechat.end` (token header `X-Support-Chat-Token`) |
 | Live chat (customers) | GET / POST | `livechat.my_chat`, `livechat.customer_send`, `livechat.customer_end` |
 | WhatsApp webhook | GET / POST | `whatsapp.webhook` (Meta only) |
