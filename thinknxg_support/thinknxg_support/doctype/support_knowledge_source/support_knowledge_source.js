@@ -9,6 +9,10 @@ frappe.ui.form.on("Support Knowledge Source", {
             frappe.call({ method: `${KS}.run_import`, args: { name: frm.doc.name } }).then((r) => frappe.show_alert(r.message)));
         frm.add_custom_button(__("Re-apply Rebrand Rules"), () =>
             frappe.call({ method: `${KS}.reapply_rules`, args: { name: frm.doc.name } }).then((r) => frappe.show_alert(r.message)));
+        frm.add_custom_button(__("Apply Link Rules to Published Articles"), () =>
+            frappe.confirm(__("Update links and e-mail addresses in articles already published from this source? Attribution footers keep the original links."), () =>
+                frappe.call({ method: `${KS}.relink_published`, args: { name: frm.doc.name }, freeze: true, freeze_message: __("Updating articles…") })
+                    .then((r) => frappe.msgprint({ title: __("Link rules"), message: r.message }))));
         frm.add_custom_button(__("Review Proposals"), () =>
             frappe.set_route("List", "Support Article Import", { source: frm.doc.name }));
         if (!frm.doc.licence_confirmed) {

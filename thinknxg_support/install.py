@@ -95,12 +95,14 @@ def ensure_kb_source():
     It stays disabled and unconfirmed until an administrator checks the licence and turns it on."""
     if not frappe.db.exists("DocType", "Support Knowledge Source") or frappe.db.exists("Support Knowledge Source", "Frappe Help Centre"):
         return
-    from thinknxg_support.integrations.kb_import.rebrand import DEFAULT_RULES
+    from thinknxg_support.integrations.kb_import.rebrand import DEFAULT_LINK_RULES, DEFAULT_RULES
 
     doc = frappe.get_doc({"doctype": "Support Knowledge Source", "source_name": "Frappe Help Centre", "enabled": 0,
                           "source_type": "Frappe Helpdesk", "base_url": "https://support.frappe.io",
                           "help_center_url": "https://support.frappe.io/help",
-                          "rules": [{"find": f, "replace_with": r, "match_case": 1, "enabled": 1} for f, r in DEFAULT_RULES]})
+                          "rules": [{"find": f, "replace_with": r, "match_case": 1, "enabled": 1} for f, r in DEFAULT_RULES],
+                          "link_rules": [{"kind": k, "find": f, "replace_with": r, "keep_path": kp, "enabled": e}
+                                         for k, f, r, kp, e in DEFAULT_LINK_RULES]})
     doc.insert(ignore_permissions=True)
 
 

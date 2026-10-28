@@ -29,6 +29,12 @@ class SupportKnowledgeSource(Document):
             if k in seen:
                 frappe.throw(_("Rebrand rule for {0} is listed twice.").format(r.find))
             seen.add(k)
+        from thinknxg_support.integrations.kb_import.rebrand import validate_link_rule
+
+        for r in self.link_rules:
+            problem = validate_link_rule(r.kind, r.find, r.replace_with, r.enabled)
+            if problem:
+                frappe.throw(_("Website and e-mail rule row {0}: {1}").format(r.idx, _(problem)))
         if self.has_value_changed("licence_confirmed") and self.licence_confirmed:
             from thinknxg_support.audit import log_event
 
@@ -55,6 +61,14 @@ def test_source(name: str):
     from thinknxg_support.integrations.kb_import import importer
 
     return importer.test(name)
+
+
+@frappe.whitelist(methods=["POST"])
+def relink_published(name: str):
+    _admin()
+    from thinknxg_support.integrations.kb_import import importer
+
+    return importer.relink_published(name)
 
 
 @frappe.whitelist(methods=["POST"])

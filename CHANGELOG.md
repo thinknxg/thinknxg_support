@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.2 — 2026-10-28
+* Website and e-mail rebranding rules on each knowledge source (*Support Link Rule*): links, plain-text web
+  addresses and e-mail addresses move to thinkNXG sites, longest match first, optionally keeping the path
+* Default rule `docs.frappe.io/erpnext` → `https://docs.thinknxg.com/thinknxgerp`; other Frappe sites listed, off
+  until a thinkNXG address is entered
+* **Apply Link Rules to Published Articles** updates live articles; attribution footers keep the original links
+* The "Frappe websites" and "Frappe e-mail" review notes now check the rebranded text, so they clear once rules cover them
+
 ## 1.4.1 — 2026-10-27
 * Importer follows the current Helpdesk knowledge-base API (`get_kb_sidebar`, `get_articles`) and falls back
   to older endpoints and REST

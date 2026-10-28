@@ -267,6 +267,15 @@ def fetch(src):
 
 
 # ------------------------------------------------------------------ transform
+def link_rules_of(src):
+    return rebrand.compile_link_rules(
+        (r.kind, r.find, r.replace_with, r.keep_path) for r in (src.get("link_rules") or []) if r.enabled)
+
+
+def source_hosts(src) -> set:
+    return {urlparse(u).netloc for u in (src.base_url, src.help_center_url) if u} - {""}
+
+
 def rules_of(src):
     rows = [(r.find, r.replace_with, r.match_case) for r in src.rules if r.enabled]
     return rebrand.compile_rules(rows or [(f, t, 1) for f, t in rebrand.DEFAULT_RULES])
@@ -298,12 +307,13 @@ def transform(src, art, compiled=None):
     title, n1 = rebrand.rebrand_text(art["title"], compiled)
     body = clean_html(art["html"], max_len=2000000)
     body, n2 = rebrand.rebrand_html(body, compiled)
+    body, n3 = rebrand.apply_link_rules(body, link_rules_of(src), source_hosts(src))
     category, _n = rebrand.rebrand_text(art.get("category") or "", compiled)
-    flags = rebrand.review_flags(art["html"])
+    flags = rebrand.review_flags(art["html"], body)
     if re.search(r"<img\b", body) and not src.download_images:
         flags.append("Images load from the source site")
-    return {"title": title[:140], "html": body, "category": category[:140] or _("General"), "replacements": n1 + n2,
-            "flags": flags}
+    return {"title": title[:140], "html": body, "category": category[:140] or _("General"),
+            "replacements": n1 + n2 + n3, "flags": flags}
 
 
 def _hash(art) -> str:
@@ -501,6 +511,7 @@ def publish_one(name: str):
     if src.download_images:
         body = _download_images(body, src)
     body = _rewrite_links(body, src, mapping)
+    body, _n = rebrand.apply_link_rules(body, link_rules_of(src))  # source-site links not imported, if a rule covers them
     body += attribution(src, imp.original_title, imp.source_url)
     category = _category(target, imp.category_name)
     if target == "HD Article":
@@ -526,6 +537,35 @@ def publish_one(name: str):
     log_event("Administrative Change", reference_doctype=IMP, reference_name=imp.name,
               details={"published": f"{target} {doc.name}"})
     return doc.name
+
+
+def relink_published(source: str) -> str:
+    """Apply the source's website and e-mail rules to articles already published from it (and to their
+    proposals). The attribution footer keeps the original links."""
+    src = frappe.get_doc(SRC, source)
+    rules = link_rules_of(src)
+    if not rules:
+        return _("No website or e-mail rules are enabled on this source.")
+    articles, links = 0, 0
+    for imp in frappe.get_all(IMP, filters={"source": source, "status": ["in", ["Published", "Source Changed"]],
+                                            "target_name": ["is", "set"]},
+                              fields=["name", "target_doctype", "target_name", "proposed_html"]):
+        if not frappe.db.exists(imp.target_doctype, imp.target_name):
+            continue
+        doc = frappe.get_doc(imp.target_doctype, imp.target_name)
+        new, n = rebrand.apply_link_rules(doc.content or "", rules)
+        if n:
+            doc.content = new
+            doc.save(ignore_permissions=True)
+            articles += 1
+            links += n
+        proposed, m = rebrand.apply_link_rules(imp.proposed_html or "", rules, source_hosts(src))
+        if m:
+            frappe.db.set_value(IMP, imp.name, "proposed_html", proposed)
+        frappe.db.commit()
+    log_event("Administrative Change", reference_doctype=SRC, reference_name=source,
+              details={"relinked_articles": articles, "addresses": links})
+    return _("{0} addresses updated in {1} published articles.").format(links, articles)
 
 
 def preview(name: str) -> str:

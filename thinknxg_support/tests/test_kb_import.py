@@ -52,6 +52,40 @@ class TestRebrand(IntegrationTestCase):
         self.assertTrue(rebrand.review_flags(ARTICLES["a2"]["content"]))
 
 
+class TestLinkRules(IntegrationTestCase):
+    def setUp(self):
+        self.rules = rebrand.compile_link_rules([
+            ("Website", "docs.frappe.io/erpnext", "https://docs.thinknxg.com/thinknxgerp", 1),
+            ("Website", "frappe.io", "https://thinknxg.com", 0),
+            ("E-mail", "frappe.io", "thinknxg.com", 0)])
+
+    def test_links_text_and_email(self):
+        html = ('<p><a href="https://docs.frappe.io/erpnext/stock#a">x</a> see docs.frappe.io/erpnext/buying. '
+                'Mail <a href="mailto:hi@frappe.io">hi@frappe.io</a>, visit https://frappe.io/pricing.</p>')
+        out, n = rebrand.apply_link_rules(html, self.rules)
+        self.assertIn('href="https://docs.thinknxg.com/thinknxgerp/stock#a"', out)
+        self.assertIn("see docs.thinknxg.com/thinknxgerp/buying.", out)
+        self.assertIn('href="mailto:hi@thinknxg.com"', out)
+        self.assertIn("visit https://thinknxg.com.", out)
+        self.assertEqual(n, 5)
+
+    def test_code_images_attribution_and_source_untouched(self):
+        html = ('<pre>curl https://frappe.io/api</pre><img src="https://frappe.io/a.png">'
+                '<a href="https://support.frappe.io/help/articles/1">s</a>'
+                '<p class="tx-attribution"><small>https://docs.frappe.io/erpnext/x</small></p>')
+        out, n = rebrand.apply_link_rules(html, self.rules, {"support.frappe.io"})
+        self.assertEqual(n, 0)
+        self.assertEqual(out.count("frappe.io"), 4)
+
+    def test_prefix_on_path_boundary(self):
+        self.assertIsNone(rebrand.rewrite_address("https://docs.frappe.io/erpnextish", self.rules[:1]))
+
+    def test_validation(self):
+        self.assertTrue(rebrand.validate_link_rule("Website", "frappe.io", "", 1))
+        self.assertTrue(rebrand.validate_link_rule("Website", "frappe.io", "http://x.com", 1))
+        self.assertIsNone(rebrand.validate_link_rule("Website", "frappe.io", "", 0))
+
+
 class TestImporter(IntegrationTestCase):
     def setUp(self):
         frappe.set_user("Administrator")
@@ -95,6 +129,23 @@ class TestImporter(IntegrationTestCase):
         self.assertIn("tx-attribution", doc.content)
         self.assertIn("CC BY-SA 4.0", doc.content)
         self.assertIn("bench get-app erpnext", doc.content)
+
+    def test_relink_published(self):
+        self._run()
+        self.src.reload()
+        self.src.licence_confirmed = 1
+        self.src.save()
+        name = frappe.db.get_value("Support Article Import", {"source_id": "a2"})
+        art = importer.publish_one(name)
+        self.assertIn("https://frappe.cloud/docs", frappe.db.get_value("Support Knowledge Article", art, "content"))
+        self.src.reload()
+        self.src.append("link_rules", {"kind": "Website", "find": "frappe.cloud", "replace_with": "https://cloud.thinknxg.com",
+                                       "keep_path": 1, "enabled": 1})
+        self.src.save()
+        importer.relink_published("Test Source")
+        content = frappe.db.get_value("Support Knowledge Article", art, "content")
+        self.assertIn("https://cloud.thinknxg.com/docs", content)
+        self.assertIn("tx-attribution", content)
 
     def test_source_change_does_not_overwrite(self):
         self._run()

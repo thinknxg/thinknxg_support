@@ -104,11 +104,166 @@ def rebrand_html(html: str, compiled) -> tuple[str, int]:
     return str(soup), total
 
 
-def review_flags(original_html: str) -> list[str]:
-    text = BeautifulSoup(original_html or "", "html.parser").get_text(" ")
-    raw = original_html or ""
+# ------------------------------------------------------------------ websites and e-mail addresses
+DEFAULT_LINK_RULES = [
+    # kind, Frappe address, thinkNXG address (blank = fill in, row stays off), keep path, enabled
+    ("Website", "docs.frappe.io/erpnext", "https://docs.thinknxg.com/thinknxgerp", 1, 1),
+    ("Website", "docs.frappe.io/framework", "", 1, 0),
+    ("Website", "docs.frappe.io/hr", "", 1, 0),
+    ("Website", "docs.frappe.io/cloud", "", 1, 0),
+    ("Website", "docs.frappe.io", "", 1, 0),
+    ("Website", "frappe.io", "", 0, 0),
+    ("Website", "frappe.cloud", "", 0, 0),
+    ("Website", "erpnext.com", "", 0, 0),
+    ("Website", "frappehr.com", "", 0, 0),
+    ("Website", "discuss.frappe.io", "", 0, 0),
+    ("Website", "school.frappe.io", "", 0, 0),
+    ("E-mail", "frappe.io", "", 0, 0),
+    ("E-mail", "erpnext.com", "", 0, 0),
+]
+
+ATTRIBUTION_CLASS = "tx-attribution"
+URL_TOKEN = re.compile(r"(?<![\w@./-])(?:(?:https?://|mailto:)?[\w.+-]+@(?:[\w-]+\.)+[a-z]{2,}"
+                       r"|(?:https?://)?(?:www\.)?(?:[\w-]+\.)+[a-z]{2,}(?::\d+)?(?:/[^\s<>\"')\]]*)?)", re.I)
+TRAILING = ".,;:!?"
+
+
+def _split(addr: str) -> tuple[str, str]:
+    addr = re.sub(r"^https?://", "", (addr or "").strip(), flags=re.I).lower()
+    host, _s, path = addr.partition("/")
+    return (host[4:] if host.startswith("www.") else host), ("/" + path.strip("/") if path.strip("/") else "")
+
+
+def validate_link_rule(kind, find, replace_with, enabled) -> str | None:
+    if not (find or "").strip():
+        return "enter the Frappe address"
+    if not enabled:
+        return None
+    if not (replace_with or "").strip():
+        return "enter the thinkNXG address, or untick Enabled"
+    if kind == "E-mail":
+        if "/" in replace_with or "@" in replace_with or "." not in replace_with:
+            return "for e-mail, enter only the new domain, e.g. thinknxg.com"
+    elif not replace_with.strip().lower().startswith("https://"):
+        return "the thinkNXG address must start with https://"
+    return None
+
+
+def compile_link_rules(rows):
+    """rows: iterable of (kind, find, replace_with, keep_path). Longest Frappe address first."""
+    out = []
+    for kind, find, repl, keep in rows:
+        if not (find and repl):
+            continue
+        host, path = _split(find)
+        out.append({"kind": kind or "Website", "host": host, "path": path, "repl": repl.strip().rstrip("/"),
+                    "keep": bool(keep), "len": len(host) + len(path)})
+    return sorted(out, key=lambda r: r["len"], reverse=True)
+
+
+def rewrite_address(addr: str, rules) -> str | None:
+    """Return the thinkNXG version of one URL, bare domain or e-mail address, or None when no rule matches."""
+    if not rules or not addr:
+        return None
+    m = re.match(r"^(mailto:)?([\w.+-]+)@([\w.-]+)(.*)$", addr, re.I)
+    if m:
+        domain = m.group(3).lower()
+        for r in rules:
+            if r["kind"] == "E-mail" and r["host"] == domain:
+                return f"{m.group(1) or ''}{m.group(2)}@{r['repl']}{m.group(4)}"
+        return None
+    has_scheme = bool(re.match(r"^https?://", addr, re.I))
+    rest = re.sub(r"^https?://", "", addr, flags=re.I)
+    hostport, sep, tail = rest.partition("/")
+    tail = sep + tail
+    path_part = re.split(r"[?#]", tail, 1)[0]
+    extra = tail[len(path_part):]
+    host = hostport.lower().split(":")[0]
+    host = host[4:] if host.startswith("www.") else host
+    for r in rules:
+        if r["kind"] != "Website" or r["host"] != host:
+            continue
+        p = path_part.rstrip("/")
+        if r["path"] and not (p.lower() == r["path"] or p.lower().startswith(r["path"] + "/")):
+            continue
+        new = r["repl"] + (p[len(r["path"]):] + extra if r["keep"] else "")
+        if not has_scheme:  # written as plain text, e.g. "docs.frappe.io/erpnext": keep it plain
+            new = re.sub(r"^https?://", "", new, flags=re.I)
+        return new
+    return None
+
+
+def _in_attribution(node) -> bool:
+    for parent in [node, *node.parents]:
+        cls = getattr(parent, "get", lambda *_a: None)("class") if hasattr(parent, "get") else None
+        if cls and ATTRIBUTION_CLASS in cls:
+            return True
+    return False
+
+
+def _rewrite_tokens(text: str, rules) -> tuple[str, int]:
+    count = 0
+
+    def repl(m):
+        nonlocal count
+        token = m.group(0)
+        trail = ""
+        while token and token[-1] in TRAILING:
+            trail = token[-1] + trail
+            token = token[:-1]
+        new = rewrite_address(token, rules)
+        if new is None:
+            return m.group(0)
+        count += 1
+        return new + trail
+
+    return URL_TOKEN.sub(repl, text or ""), count
+
+
+def apply_link_rules(html: str, rules, skip_hosts=()) -> tuple[str, int]:
+    """Move links, web addresses and e-mail addresses to thinkNXG. Code, image sources, the attribution
+    footer and links to `skip_hosts` (the import source, handled when publishing) are left alone."""
+    if not rules:
+        return html, 0
+    skip = {h.lower().removeprefix("www.") for h in skip_hosts if h}
+    soup = BeautifulSoup(html or "", "html.parser")
+    total = 0
+    for a in soup.find_all("a", href=True):
+        if _in_attribution(a):
+            continue
+        href = a["href"].strip()
+        if _split(href)[0] in skip and not href.lower().startswith("mailto:"):
+            continue
+        new = rewrite_address(href, rules)
+        if new:
+            if not re.match(r"^(https?://|mailto:)", new, re.I) and not href.lower().startswith("mailto:"):
+                new = "https://" + new
+            a["href"] = new
+            total += 1
+    for node in list(soup.find_all(string=True)):
+        if isinstance(node, Comment) or _protected(node) or _in_attribution(node.parent):
+            continue
+        new, n = _rewrite_tokens(str(node), rules)
+        if n:
+            node.replace_with(NavigableString(new))
+            total += n
+    return str(soup), total
+
+
+WEBSITE_FLAG = "Links or mentions of Frappe's own websites"
+EMAIL_FLAG = "Frappe e-mail addresses"
+
+
+def review_flags(original_html: str, proposed_html: str | None = None) -> list[str]:
+    """Website and e-mail notes look at the proposed text, so they clear once link rules cover them."""
+    def views(h):
+        return BeautifulSoup(h or "", "html.parser").get_text(" "), h or ""
+
+    orig = views(original_html)
+    prop = views(proposed_html) if proposed_html is not None else orig
     found = []
     for rx, why in FLAGS:
+        text, raw = prop if why in (WEBSITE_FLAG, EMAIL_FLAG) else orig
         if rx.search(text) or rx.search(raw):
             found.append(why)
     return list(dict.fromkeys(found))
