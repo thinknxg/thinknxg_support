@@ -57,6 +57,34 @@ class TestAssistant(BaseTestCase):
             r = live_chat.start_guest(f"<p>{text}</p>", name="Test Visitor", email="visitor@example.com")
         return r, frappe.get_doc(CONV, r["conversation"])
 
+    def test_stream_is_decoded_as_utf8(self):
+        """Providers send text/event-stream without a charset; ’ and Arabic must survive."""
+        import json as _json
+        import time as _time
+
+        from thinknxg_support.integrations.ai import providers
+
+        class FakeResp:
+            encoding = "ISO-8859-1"  # what requests assumes for text/* without a charset
+
+            def iter_lines(self, decode_unicode=False):
+                for s in ("I’m here — مرحبا", "done"):
+                    yield ("data: " + _json.dumps({"t": s}, ensure_ascii=False)).encode("utf-8")
+                yield b"data: [DONE]"
+
+            def close(self):
+                pass
+
+        got = [ev["t"] for ev in providers._sse(FakeResp(), _time.monotonic() + 5)]
+        self.assertEqual(got, ["I’m here — مرحبا", "done"])
+
+    def test_repair_patch_fixes_only_mojibake(self):
+        from thinknxg_support.patches.v1_5.repair_ai_reply_encoding import repair
+
+        self.assertEqual(repair("I’m sorry".encode("utf-8").decode("latin-1")), "I’m sorry")
+        self.assertIsNone(repair("Plain text"))
+        self.assertIsNone(repair("Café is fine"))
+
     def test_retrieval_respects_audience(self):
         guest = retrieval.search("contract discount", "Everyone")
         self.assertFalse(any("contract" in p["title"].lower() for p in guest))
