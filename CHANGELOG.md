@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.1 — 2026-11-01
+* Fix: AI assistant replies showed "Iâ€™m" / "donâ€™t" instead of "I’m" / "don’t" (and broke Arabic). Providers stream
+  `text/event-stream` without a charset, so the reply was decoded as ISO-8859-1; each line is now decoded as UTF-8
+* Patch repairs assistant and bot messages already saved with the garbled text
+
 ## 1.5.0 — 2026-10-28
 * Knowledge base: category sidebar with article titles (wiki style, filter, mobile fold-out)
 * Copy link button on every article

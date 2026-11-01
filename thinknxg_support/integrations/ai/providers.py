@@ -39,6 +39,7 @@ def _post_stream(url, headers, payload, timeout):
         raise AIError(_("The AI provider did not respond in time."), "Timeout")
     except requests.RequestException as e:
         raise AIError(f"network: {e.__class__.__name__}")
+    r.encoding = "utf-8"  # error bodies and anything read as text: UTF-8, never requests' ISO-8859-1 default
     if r.status_code >= 400:
         try:
             body = r.json()
@@ -50,10 +51,14 @@ def _post_stream(url, headers, payload, timeout):
 
 
 def _sse(resp, deadline):
-    for raw in resp.iter_lines(decode_unicode=True):
+    # Read bytes and decode each line as UTF-8 ourselves. Providers send "text/event-stream" without a charset,
+    # and requests then assumes ISO-8859-1, which turns ’ into "â€™" and breaks Arabic text.
+    for raw in resp.iter_lines():
         if time.monotonic() > deadline:
             resp.close()
             raise AIError(_("The AI provider did not finish in time."), "Timeout")
+        if isinstance(raw, bytes):
+            raw = raw.decode("utf-8", errors="replace")
         if not raw or not raw.startswith("data:"):
             continue
         data = raw[5:].strip()
