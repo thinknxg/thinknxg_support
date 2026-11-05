@@ -119,6 +119,51 @@ def sidebar(audience: str | None = None) -> list[dict]:
     return groups
 
 
+def _score(views, helpful=0, not_helpful=0) -> int:
+    return cint(views) + 3 * cint(helpful) - 2 * cint(not_helpful)
+
+
+def popular_by_category(audience: str | None = None, per_category: int = 4, max_categories: int = 8) -> list[dict]:
+    """The most-read articles of each category, categories in their usual order. Popularity is reads plus helpful
+    votes (built-in articles) or Helpdesk's own view count; ties keep the sidebar order."""
+    if not available():
+        raise IntegrationUnavailable("Knowledge base")
+    per_category = min(max(cint(per_category) or 4, 1), 12)
+    max_categories = min(max(cint(max_categories) or 8, 1), 24)
+    scores, excerpts = {}, {}
+    if helpdesk.kb_available():
+        hd_fields = ["name", "content"] + (["views"] if frappe.get_meta("HD Article").has_field("views") else [])
+        for r in _hd_rows(hd_fields, limit=5000):
+            scores[r.name] = _score(r.get("views"))
+            excerpts[r.name] = strip_html(r.content or "")[:160]
+    if frappe.db.exists("DocType", ART):
+        for r in frappe.get_all(ART, filters={"status": "Published", "audience": ["in", _aud(audience)]},
+                                fields=["name", "content", "views", "helpful_votes", "not_helpful_votes"], limit=5000):
+            scores[r.name] = _score(r.views, r.helpful_votes, r.not_helpful_votes)
+            excerpts[r.name] = strip_html(r.content or "")[:160]
+    out = []
+    for g in sidebar(audience):
+        ranked = sorted(enumerate(g["articles"]), key=lambda ia: (-scores.get(ia[1]["name"], 0), ia[0]))
+        arts = [{**a, "excerpt": excerpts.get(a["name"], "")} for _i, a in ranked[:per_category]]
+        if arts:
+            out.append({"name": g["name"], "label": g["label"], "count": len(g["articles"]), "articles": arts})
+        if len(out) >= max_categories:
+            break
+    return out
+
+
+def count_view(name: str):
+    """Count a read of a built-in article, once per reader per 6 hours."""
+    if not (name and str(name).startswith("KB-") and frappe.db.exists(ART, name)):
+        return
+    who = _who()
+    key = f"thinknxg_support:kbview:{name}:{who.get('user') or who.get('visitor')}"
+    if frappe.cache.get_value(key):
+        return
+    frappe.cache.set_value(key, 1, expires_in_sec=6 * 3600)
+    frappe.db.sql(f"update `tab{ART}` set views = coalesce(views, 0) + 1 where name=%s", name)
+
+
 def capabilities_get() -> dict:
     from thinknxg_support.integrations import capabilities
 

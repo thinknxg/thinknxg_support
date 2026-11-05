@@ -528,3 +528,13 @@ a.tx-stat:hover { text-decoration: none; border-color: var(--brand); }
 	.tx-kb__side.open .tx-kb__nav { display: grid; }
 	.tx-article__head { flex-direction: column; }
 }
+
+/* 1.6 landing: popular articles grouped by category */
+.tx-land-kbgroups { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.tx-land-kbgroup { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 10px; display: grid; align-content: start; }
+.tx-land-kbgroup h3 { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 0 4px; font-size: 1rem; }
+.tx-land-kbgroup h3 a { color: var(--ink); }
+.tx-land-kbgroup h3 a:hover { color: var(--brand); }
+.tx-land-kbgroup h3 small { color: var(--ink-2); font-weight: 500; font-size: 0.8rem; background: var(--surface-2); border-radius: 999px; padding: 1px 8px; }
+.tx-land-kbgroup .tx-land-article:last-of-type { border-block-end: 0; }
+.tx-land-kbmore { font-size: 0.88rem; padding: 6px 4px 2px; }

@@ -34,4 +34,7 @@ def escalate(name: str):
         via="escalation",
     )
     doc.db_set({"helpdesk_ticket": ticket, "status": "Escalated"})
+    from thinknxg_support.integrations import escalations
+
+    escalations.on_request_escalated(doc, ticket)
     return ticket

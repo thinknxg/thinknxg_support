@@ -1,0 +1,249 @@
+{
+ "charts": [
+  {
+   "chart_name": "Escalations per Day",
+   "label": "Escalations per Day"
+  },
+  {
+   "chart_name": "Open Escalations by Section",
+   "label": "Open Escalations by Section"
+  },
+  {
+   "chart_name": "Open Escalations by Priority",
+   "label": "Open Escalations by Priority"
+  }
+ ],
+ "content": "[{\"id\": \"sq-h0\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Support Query Management</b></span>\", \"col\": 12}}, {\"id\": \"sq-n0\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"New Escalations\", \"col\": 4}}, {\"id\": \"sq-n1\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Unassigned Escalations\", \"col\": 4}}, {\"id\": \"sq-n2\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Pending Response\", \"col\": 4}}, {\"id\": \"sq-n3\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Escalations In Progress\", \"col\": 4}}, {\"id\": \"sq-n4\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Overdue Escalations\", \"col\": 4}}, {\"id\": \"sq-n5\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Resolved Escalations\", \"col\": 4}}, {\"id\": \"sq-c1\", \"type\": \"chart\", \"data\": {\"chart_name\": \"Escalations per Day\", \"col\": 12}}, {\"id\": \"sq-c2\", \"type\": \"chart\", \"data\": {\"chart_name\": \"Open Escalations by Section\", \"col\": 6}}, {\"id\": \"sq-c3\", \"type\": \"chart\", \"data\": {\"chart_name\": \"Open Escalations by Priority\", \"col\": 6}}, {\"id\": \"sq-sp1\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"sq-h1\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>1. Support Chat</b></span><br><span class=\\\"text-muted\\\">Escalated live chats and WhatsApp chats handed to people</span>\", \"col\": 12}}, {\"id\": \"sq-s10\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Open Chat Escalations\", \"col\": 3}}, {\"id\": \"sq-s11\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Unassigned Chats\", \"col\": 3}}, {\"id\": \"sq-s12\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Pending Response (Chat)\", \"col\": 3}}, {\"id\": \"sq-s13\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Overdue Chats\", \"col\": 3}}, {\"id\": \"sq-x10\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Agent Console\", \"col\": 3}}, {\"id\": \"sq-q1\", \"type\": \"quick_list\", \"data\": {\"quick_list_name\": \"Support Chat Escalations\", \"col\": 12}}, {\"id\": \"sq-sp2\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"sq-h2\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>2. Conversation</b></span><br><span class=\\\"text-muted\\\">Portal conversations escalated for follow-up</span>\", \"col\": 12}}, {\"id\": \"sq-s20\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Open Conversation Escalations\", \"col\": 3}}, {\"id\": \"sq-s21\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Unassigned Conversations\", \"col\": 3}}, {\"id\": \"sq-s22\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Pending Response (Conversation)\", \"col\": 3}}, {\"id\": \"sq-s23\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Overdue Conversations\", \"col\": 3}}, {\"id\": \"sq-x20\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"All Conversations\", \"col\": 3}}, {\"id\": \"sq-q2\", \"type\": \"quick_list\", \"data\": {\"quick_list_name\": \"Conversation Escalations\", \"col\": 12}}, {\"id\": \"sq-sp3\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"sq-h3\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>3. Support Ticket</b></span><br><span class=\\\"text-muted\\\">Escalated Helpdesk tickets and service requests</span>\", \"col\": 12}}, {\"id\": \"sq-s30\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Open Ticket Escalations\", \"col\": 3}}, {\"id\": \"sq-s31\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Unassigned Tickets\", \"col\": 3}}, {\"id\": \"sq-s32\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Pending Response (Ticket)\", \"col\": 3}}, {\"id\": \"sq-s33\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Overdue Tickets\", \"col\": 3}}, {\"id\": \"sq-x30\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Helpdesk Tickets\", \"col\": 3}}, {\"id\": \"sq-x31\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Service Requests\", \"col\": 3}}, {\"id\": \"sq-q3\", \"type\": \"quick_list\", \"data\": {\"quick_list_name\": \"Support Ticket Escalations\", \"col\": 12}}, {\"id\": \"sq-sp9\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"sq-a1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"All Escalations\", \"col\": 3}}, {\"id\": \"sq-a2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Escalation Settings\", \"col\": 3}}]",
+ "creation": "2026-10-24 10:00:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "notification",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Support Query Management",
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Query Management",
+ "number_cards": [
+  {
+   "number_card_name": "New Escalations",
+   "label": "New Escalations"
+  },
+  {
+   "number_card_name": "Unassigned Escalations",
+   "label": "Unassigned Escalations"
+  },
+  {
+   "number_card_name": "Pending Response",
+   "label": "Pending Response"
+  },
+  {
+   "number_card_name": "Escalations In Progress",
+   "label": "Escalations In Progress"
+  },
+  {
+   "number_card_name": "Overdue Escalations",
+   "label": "Overdue Escalations"
+  },
+  {
+   "number_card_name": "Resolved Escalations",
+   "label": "Resolved Escalations"
+  }
+ ],
+ "owner": "Administrator",
+ "public": 1,
+ "quick_lists": [
+  {
+   "document_type": "Support Escalation",
+   "label": "Support Chat Escalations",
+   "quick_list_filter": "[[\"Support Escalation\", \"query_type\", \"=\", \"Support Chat\", false], [\"Support Escalation\", \"status\", \"not in\", [\"Resolved\", \"Closed\"], false]]"
+  },
+  {
+   "document_type": "Support Escalation",
+   "label": "Conversation Escalations",
+   "quick_list_filter": "[[\"Support Escalation\", \"query_type\", \"=\", \"Conversation\", false], [\"Support Escalation\", \"status\", \"not in\", [\"Resolved\", \"Closed\"], false]]"
+  },
+  {
+   "document_type": "Support Escalation",
+   "label": "Support Ticket Escalations",
+   "quick_list_filter": "[[\"Support Escalation\", \"query_type\", \"=\", \"Support Ticket\", false], [\"Support Escalation\", \"status\", \"not in\", [\"Resolved\", \"Closed\"], false]]"
+  }
+ ],
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Support Portal Administrator"
+  },
+  {
+   "role": "Support Manager"
+  },
+  {
+   "role": "Support Agent"
+  }
+ ],
+ "sequence_id": 31,
+ "shortcuts": [
+  {
+   "label": "Open Chat Escalations",
+   "type": "DocType",
+   "link_to": "Support Escalation",
+   "doc_view": "List",
+   "stats_filter": "{\"query_type\": \"Support Chat\", \"status\": [\"not in\", [\"Resolved\", \"Closed\"]]}",
+   "format": "{} open",
+   "color": "Blue"
+  },
+  {
+   "label": "Unassigned Chats",
+   "type": "DocType",
+   "link_to": "Support Escalation",
+   "doc_view": "List",
+   "stats_filter": "{\"query_type\": \"Support Chat\", \"assigned_to\": [\"is\", \"not set\"], \"status\": [\"not in\", [\"Resolved\", \"Closed\"]]}",
+   "format": "{}",
+   "color": "Orange"
+  },
+  {
+   "label": "Pending Response (Chat)",
+   "type": "DocType",
+   "link_to": "Support Escalation",
+   "doc_view": "List",
+   "stats_filter": "{\"query_type\": \"Support Chat\", \"needs_response\": 1, \"status\": [\"not in\", [\"Resolved\", \"Closed\"]]}",
+   "format": "{}",
+   "color": "Yellow"
+  },
+  {
+   "label": "Overdue Chats",
+   "type": "DocType",
+   "link_to": "Support Escalation",
+   "doc_view": "List",
+   "stats_filter": "{\"query_type\": \"Support Chat\", \"overdue\": 1, \"status\": [\"not in\", [\"Resolved\", \"Closed\"]]}",
+   "format": "{}",
+   "color": "Red"
+  },
+  {
+   "label": "Agent Console",
+   "type": "Page",
+   "link_to": "support-chat",
+   "url": null,
+   "doc_view": "",
+   "color": "Grey"
+  },
+  {
+   "label": "Open Conversation Escalations",
+   "type": "DocType",
+   "link_to": "Support Escalation",
+   "doc_view": "List",
+   "stats_filter": "{\"query_type\": \"Conversation\", \"status\": [\"not in\", [\"Resolved\", \"Closed\"]]}",
+   "format": "{} open",
+   "color": "Blue"
+  },
+  {
+   "label": "Unassigned Conversations",
+   "type": "DocType",
+   "link_to": "Support Escalation",
+   "doc_view": "List",
+   "stats_filter": "{\"query_type\": \"Conversation\", \"assigned_to\": [\"is\", \"not set\"], \"status\": [\"not in\", [\"Resolved\", \"Closed\"]]}",
+   "format": "{}",
+   "color": "Orange"
+  },
+  {
+   "label": "Pending Response (Conversation)",
+   "type": "DocType",
+   "link_to": "Support Escalation",
+   "doc_view": "List",
+   "stats_filter": "{\"query_type\": \"Conversation\", \"needs_response\": 1, \"status\": [\"not in\", [\"Resolved\", \"Closed\"]]}",
+   "format": "{}",
+   "color": "Yellow"
+  },
+  {
+   "label": "Overdue Conversations",
+   "type": "DocType",
+   "link_to": "Support Escalation",
+   "doc_view": "List",
+   "stats_filter": "{\"query_type\": \"Conversation\", \"overdue\": 1, \"status\": [\"not in\", [\"Resolved\", \"Closed\"]]}",
+   "format": "{}",
+   "color": "Red"
+  },
+  {
+   "label": "All Conversations",
+   "type": "DocType",
+   "link_to": "Support Conversation Link",
+   "url": null,
+   "doc_view": "List",
+   "color": "Grey"
+  },
+  {
+   "label": "Open Ticket Escalations",
+   "type": "DocType",
+   "link_to": "Support Escalation",
+   "doc_view": "List",
+   "stats_filter": "{\"query_type\": \"Support Ticket\", \"status\": [\"not in\", [\"Resolved\", \"Closed\"]]}",
+   "format": "{} open",
+   "color": "Blue"
+  },
+  {
+   "label": "Unassigned Tickets",
+   "type": "DocType",
+   "link_to": "Support Escalation",
+   "doc_view": "List",
+   "stats_filter": "{\"query_type\": \"Support Ticket\", \"assigned_to\": [\"is\", \"not set\"], \"status\": [\"not in\", [\"Resolved\", \"Closed\"]]}",
+   "format": "{}",
+   "color": "Orange"
+  },
+  {
+   "label": "Pending Response (Ticket)",
+   "type": "DocType",
+   "link_to": "Support Escalation",
+   "doc_view": "List",
+   "stats_filter": "{\"query_type\": \"Support Ticket\", \"needs_response\": 1, \"status\": [\"not in\", [\"Resolved\", \"Closed\"]]}",
+   "format": "{}",
+   "color": "Yellow"
+  },
+  {
+   "label": "Overdue Tickets",
+   "type": "DocType",
+   "link_to": "Support Escalation",
+   "doc_view": "List",
+   "stats_filter": "{\"query_type\": \"Support Ticket\", \"overdue\": 1, \"status\": [\"not in\", [\"Resolved\", \"Closed\"]]}",
+   "format": "{}",
+   "color": "Red"
+  },
+  {
+   "label": "Helpdesk Tickets",
+   "type": "URL",
+   "link_to": null,
+   "url": "/helpdesk/tickets",
+   "doc_view": "",
+   "color": "Grey"
+  },
+  {
+   "label": "Service Requests",
+   "type": "DocType",
+   "link_to": "Support Request",
+   "url": null,
+   "doc_view": "List",
+   "color": "Grey"
+  },
+  {
+   "label": "All Escalations",
+   "type": "DocType",
+   "link_to": "Support Escalation",
+   "doc_view": "List",
+   "color": "Grey"
+  },
+  {
+   "label": "Escalation Settings",
+   "type": "DocType",
+   "link_to": "Support Escalation Settings",
+   "doc_view": "",
+   "color": "Grey"
+  }
+ ],
+ "title": "Support Query Management"
+}

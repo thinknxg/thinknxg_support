@@ -1,0 +1,415 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "general_tab",
+  "enabled",
+  "auto_assign",
+  "default_team",
+  "triggers_section",
+  "on_chat_handoff",
+  "on_direct_live_chat",
+  "on_conversation_escalation",
+  "column_break_t1",
+  "on_request_escalation",
+  "on_ticket_priority",
+  "ticket_priorities",
+  "on_ticket_sla_failed",
+  "priority_section",
+  "chat_priority",
+  "conversation_priority",
+  "column_break_p1",
+  "ticket_priority",
+  "sla_priority",
+  "targets_section",
+  "targets",
+  "notify_tab",
+  "channels_section",
+  "notify_in_app",
+  "alert_sound",
+  "notify_system",
+  "column_break_c1",
+  "notify_email",
+  "notify_whatsapp",
+  "recipients_section",
+  "notify_assignee",
+  "notify_team",
+  "notify_roles",
+  "column_break_r1",
+  "notify_users",
+  "email_recipients",
+  "whatsapp_section",
+  "whatsapp_numbers",
+  "whatsapp_template",
+  "column_break_w1",
+  "whatsapp_template_language",
+  "overdue_section",
+  "remind_overdue",
+  "overdue_roles"
+ ],
+ "fields": [
+  {
+   "fieldname": "general_tab",
+   "fieldtype": "Tab Break",
+   "label": "General",
+   "idx": 1
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Track Escalations",
+   "default": "1",
+   "description": "Create a Support Escalation and notify the team whenever a chat, conversation or ticket is escalated",
+   "idx": 2
+  },
+  {
+   "fieldname": "auto_assign",
+   "fieldtype": "Check",
+   "label": "Assign Automatically",
+   "default": "1",
+   "description": "Chats follow their chat queue's rule. Conversations and tickets go to the least busy member of the default team",
+   "idx": 3
+  },
+  {
+   "fieldname": "default_team",
+   "fieldtype": "Link",
+   "label": "Default Team",
+   "options": "Support Chat Queue",
+   "description": "Team for escalated conversations and tickets (a Support Chat Queue and its members)",
+   "idx": 4
+  },
+  {
+   "fieldname": "triggers_section",
+   "fieldtype": "Section Break",
+   "label": "When to Escalate",
+   "idx": 5
+  },
+  {
+   "fieldname": "on_chat_handoff",
+   "fieldtype": "Check",
+   "label": "Assistant Hands a Chat to a Person",
+   "default": "1",
+   "idx": 6
+  },
+  {
+   "fieldname": "on_direct_live_chat",
+   "fieldtype": "Check",
+   "label": "Live Chat Starts with a Person",
+   "default": "1",
+   "description": "When the assistant is off for that chat, every new live chat or WhatsApp chat is an escalation",
+   "idx": 7
+  },
+  {
+   "fieldname": "on_conversation_escalation",
+   "fieldtype": "Check",
+   "label": "Conversation Escalated",
+   "default": "1",
+   "idx": 8
+  },
+  {
+   "fieldname": "column_break_t1",
+   "fieldtype": "Column Break",
+   "idx": 9
+  },
+  {
+   "fieldname": "on_request_escalation",
+   "fieldtype": "Check",
+   "label": "Service Request Escalated",
+   "default": "1",
+   "idx": 10
+  },
+  {
+   "fieldname": "on_ticket_priority",
+   "fieldtype": "Check",
+   "label": "Helpdesk Ticket Reaches an Escalation Priority",
+   "default": "1",
+   "idx": 11
+  },
+  {
+   "fieldname": "ticket_priorities",
+   "fieldtype": "Small Text",
+   "label": "Escalation Priorities",
+   "default": "Urgent",
+   "description": "Helpdesk ticket priorities that count as escalated, one per line",
+   "idx": 12
+  },
+  {
+   "fieldname": "on_ticket_sla_failed",
+   "fieldtype": "Check",
+   "label": "Helpdesk Ticket Misses Its SLA",
+   "default": "1",
+   "idx": 13
+  },
+  {
+   "fieldname": "priority_section",
+   "fieldtype": "Section Break",
+   "label": "Default Priority",
+   "idx": 14
+  },
+  {
+   "fieldname": "chat_priority",
+   "fieldtype": "Select",
+   "label": "Support Chat",
+   "options": "Critical\nHigh\nMedium\nLow",
+   "default": "High",
+   "idx": 15
+  },
+  {
+   "fieldname": "conversation_priority",
+   "fieldtype": "Select",
+   "label": "Conversation",
+   "options": "Critical\nHigh\nMedium\nLow",
+   "default": "Medium",
+   "idx": 16
+  },
+  {
+   "fieldname": "column_break_p1",
+   "fieldtype": "Column Break",
+   "idx": 17
+  },
+  {
+   "fieldname": "ticket_priority",
+   "fieldtype": "Select",
+   "label": "Support Ticket",
+   "options": "Critical\nHigh\nMedium\nLow",
+   "default": "High",
+   "idx": 18
+  },
+  {
+   "fieldname": "sla_priority",
+   "fieldtype": "Select",
+   "label": "SLA Breach",
+   "options": "Critical\nHigh\nMedium\nLow",
+   "default": "Critical",
+   "idx": 19
+  },
+  {
+   "fieldname": "targets_section",
+   "fieldtype": "Section Break",
+   "label": "Response and Resolution Targets",
+   "description": "Used for due times and the Overdue indicator. Counted in calendar minutes from the escalation",
+   "idx": 20
+  },
+  {
+   "fieldname": "targets",
+   "fieldtype": "Table",
+   "label": "Targets",
+   "options": "Support Escalation Target",
+   "idx": 21
+  },
+  {
+   "fieldname": "notify_tab",
+   "fieldtype": "Tab Break",
+   "label": "Notifications",
+   "idx": 22
+  },
+  {
+   "fieldname": "channels_section",
+   "fieldtype": "Section Break",
+   "label": "Channels",
+   "idx": 23
+  },
+  {
+   "fieldname": "notify_in_app",
+   "fieldtype": "Check",
+   "label": "In-App Alert",
+   "default": "1",
+   "description": "A pop-up alert in the desk for recipients who are signed in, with a sound",
+   "idx": 24
+  },
+  {
+   "fieldname": "alert_sound",
+   "fieldtype": "Check",
+   "label": "Play a Sound",
+   "default": "1",
+   "depends_on": "notify_in_app",
+   "idx": 25
+  },
+  {
+   "fieldname": "notify_system",
+   "fieldtype": "Check",
+   "label": "Notification Center",
+   "default": "1",
+   "description": "An entry under the bell icon",
+   "idx": 26
+  },
+  {
+   "fieldname": "column_break_c1",
+   "fieldtype": "Column Break",
+   "idx": 27
+  },
+  {
+   "fieldname": "notify_email",
+   "fieldtype": "Check",
+   "label": "Email",
+   "default": "1",
+   "idx": 28
+  },
+  {
+   "fieldname": "notify_whatsapp",
+   "fieldtype": "Check",
+   "label": "WhatsApp",
+   "default": "0",
+   "description": "Needs the WhatsApp channel set up in Support Portal Settings",
+   "idx": 29
+  },
+  {
+   "fieldname": "recipients_section",
+   "fieldtype": "Section Break",
+   "label": "Who Is Notified",
+   "idx": 30
+  },
+  {
+   "fieldname": "notify_assignee",
+   "fieldtype": "Check",
+   "label": "Assigned Person",
+   "default": "1",
+   "idx": 31
+  },
+  {
+   "fieldname": "notify_team",
+   "fieldtype": "Check",
+   "label": "Team Members",
+   "default": "1",
+   "idx": 32
+  },
+  {
+   "fieldname": "notify_roles",
+   "fieldtype": "Small Text",
+   "label": "Roles",
+   "default": "Support Manager",
+   "description": "One role per line",
+   "idx": 33
+  },
+  {
+   "fieldname": "column_break_r1",
+   "fieldtype": "Column Break",
+   "idx": 34
+  },
+  {
+   "fieldname": "notify_users",
+   "fieldtype": "Small Text",
+   "label": "Users",
+   "description": "User IDs (emails), one per line",
+   "idx": 35
+  },
+  {
+   "fieldname": "email_recipients",
+   "fieldtype": "Small Text",
+   "label": "Extra Email Addresses",
+   "description": "Team mailboxes such as support-team@example.com, one per line",
+   "idx": 36
+  },
+  {
+   "fieldname": "whatsapp_section",
+   "fieldtype": "Section Break",
+   "label": "WhatsApp Alerts",
+   "depends_on": "notify_whatsapp",
+   "idx": 37
+  },
+  {
+   "fieldname": "whatsapp_numbers",
+   "fieldtype": "Small Text",
+   "label": "Phone Numbers",
+   "description": "International format (+968…), one per line. These people receive escalation alerts",
+   "idx": 38
+  },
+  {
+   "fieldname": "whatsapp_template",
+   "fieldtype": "Data",
+   "label": "Template Name",
+   "description": "Approved WhatsApp template with six body variables: {{1}} reference, {{2}} customer, {{3}} type, {{4}} subject, {{5}} priority, {{6}} link. Without a template, a plain message is sent, which WhatsApp only delivers within 24 hours of that person's last message to your number",
+   "idx": 39
+  },
+  {
+   "fieldname": "column_break_w1",
+   "fieldtype": "Column Break",
+   "idx": 40
+  },
+  {
+   "fieldname": "whatsapp_template_language",
+   "fieldtype": "Data",
+   "label": "Template Language",
+   "default": "en",
+   "idx": 41
+  },
+  {
+   "fieldname": "overdue_section",
+   "fieldtype": "Section Break",
+   "label": "Overdue",
+   "idx": 42
+  },
+  {
+   "fieldname": "remind_overdue",
+   "fieldtype": "Check",
+   "label": "Alert When Overdue",
+   "default": "1",
+   "description": "Checked every 5 minutes. The assigned person and the roles below are alerted once per target",
+   "idx": 43
+  },
+  {
+   "fieldname": "overdue_roles",
+   "fieldtype": "Small Text",
+   "label": "Also Alert Roles",
+   "default": "Support Manager",
+   "description": "One role per line",
+   "idx": 44
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Escalation Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

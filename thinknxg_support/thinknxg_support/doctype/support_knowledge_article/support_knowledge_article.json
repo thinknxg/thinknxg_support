@@ -14,6 +14,7 @@
   "audience",
   "published_on",
   "sort_order",
+  "views",
   "helpful_votes",
   "not_helpful_votes",
   "content_section",
@@ -82,63 +83,71 @@
    "idx": 7
   },
   {
+   "fieldname": "views",
+   "fieldtype": "Int",
+   "label": "Views",
+   "read_only": 1,
+   "description": "Times readers opened it (one per reader per 6 hours)",
+   "idx": 8
+  },
+  {
    "fieldname": "helpful_votes",
    "fieldtype": "Int",
    "label": "Helpful Votes",
    "read_only": 1,
    "in_list_view": 1,
-   "idx": 8
+   "idx": 9
   },
   {
    "fieldname": "not_helpful_votes",
    "fieldtype": "Int",
    "label": "Not Helpful Votes",
    "read_only": 1,
-   "idx": 9
+   "idx": 10
   },
   {
    "fieldname": "content_section",
    "fieldtype": "Section Break",
-   "idx": 10
+   "idx": 11
   },
   {
    "fieldname": "content",
    "fieldtype": "Text Editor",
    "label": "Content",
-   "idx": 11
+   "idx": 12
   },
   {
    "fieldname": "source_section",
    "fieldtype": "Section Break",
    "label": "Source and Licence",
    "collapsible": 1,
-   "idx": 12
+   "idx": 13
   },
   {
    "fieldname": "source_url",
    "fieldtype": "Data",
    "label": "Source Url",
    "read_only": 1,
-   "idx": 13
+   "idx": 14
   },
   {
    "fieldname": "source_title",
    "fieldtype": "Data",
    "label": "Source Title",
    "read_only": 1,
-   "idx": 14
+   "idx": 15
   },
   {
    "fieldname": "column_break_a2",
    "fieldtype": "Column Break",
-   "idx": 15
+   "idx": 16
   },
   {
    "fieldname": "licence",
    "fieldtype": "Data",
    "label": "Licence",
    "read_only": 1,
-   "idx": 16
+   "idx": 17
   },
   {
    "fieldname": "imported_from",
@@ -146,7 +155,7 @@
    "label": "Imported From",
    "options": "Support Article Import",
    "read_only": 1,
-   "idx": 17
+   "idx": 18
   }
  ],
  "index_web_pages_for_search": 0,

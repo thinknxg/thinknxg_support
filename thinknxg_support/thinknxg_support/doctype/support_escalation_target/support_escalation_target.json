@@ -1,0 +1,58 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "priority",
+  "response_minutes",
+  "resolution_minutes"
+ ],
+ "fields": [
+  {
+   "fieldname": "priority",
+   "fieldtype": "Select",
+   "label": "Priority",
+   "options": "Critical\nHigh\nMedium\nLow",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 2,
+   "idx": 1
+  },
+  {
+   "fieldname": "response_minutes",
+   "fieldtype": "Int",
+   "label": "First Response (minutes)",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 3,
+   "idx": 2
+  },
+  {
+   "fieldname": "resolution_minutes",
+   "fieldtype": "Int",
+   "label": "Resolution (minutes)",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 3,
+   "idx": 3
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 1,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Escalation Target",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

@@ -49,6 +49,10 @@ def assign(conv, agent: str | None, queue: str | None, reason: str = "Automatic"
         frappe.get_doc({"doctype": "Support Chat Assignment", "conversation": conv.name, "agent": agent, "queue": queue,
                         "reason": reason, "assigned_at": now_datetime()}).insert(ignore_permissions=True)
     conv.db_set({"assigned_agent": agent, "queue": queue}, update_modified=False)
+    if agent:
+        from thinknxg_support.integrations import escalations
+
+        escalations.on_activity("Support Conversation Link", conv.name, "assigned", agent)
 
 
 def handoff(conv, reason: str, message: str | None = None, announce: bool = True):
@@ -64,6 +68,9 @@ def handoff(conv, reason: str, message: str | None = None, announce: bool = True
     conv.db_set({"handling": "Queued", "handoff_at": now_datetime(), "handoff_reason": (reason or "")[:140]},
                 update_modified=False)
     assign(conv, agent, queue.name if queue else None, "Automatic")
+    from thinknxg_support.integrations import escalations
+
+    escalations.on_chat_handoff(conv, reason, agent, queue.name if queue else None)
     if announce:
         if message:
             text = message
@@ -119,3 +126,6 @@ def on_closed(conv):
     for name in frappe.get_all("Support Chat Assignment", filters={"conversation": conv.name, "ended_at": ["is", "not set"]},
                                pluck="name"):
         frappe.db.set_value("Support Chat Assignment", name, {"ended_at": now_datetime(), "outcome": "Resolved"})
+    from thinknxg_support.integrations import escalations
+
+    escalations.on_activity(CONV, conv.name, "closed")

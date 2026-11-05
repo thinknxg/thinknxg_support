@@ -5,6 +5,7 @@ frappe.ui.form.on("Support Conversation Link", {
         if (frm.is_new()) return;
         render_thread(frm);
         frm.add_custom_button(__("Reply to Customer"), () => reply(frm, 0), __("Actions"));
+        if (window.thinknxgEscalate) frm.add_custom_button(__("Escalate to Team"), () => window.thinknxgEscalate(frm), __("Actions"));
         frm.add_custom_button(__("Internal Note"), () => reply(frm, 1), __("Actions"));
         if (!frm.doc.helpdesk_ticket) {
             frm.add_custom_button(__("Escalate to Ticket"), () => {

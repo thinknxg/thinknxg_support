@@ -209,6 +209,68 @@ The source can also be a list of page URLs (Markdown `.md` or HTML), one per lin
   exist because hosting steps, prices, support contacts and partner programmes described for Frappe
   may not be true for thinkNXG.
 
+## Escalations and Support Query Management (1.6)
+
+Every escalated customer query gets one **Support Escalation** record, an alert for the team, and a place in the
+**Support Query Management** workspace (`/app/support-query-management`).
+
+### What counts as an escalation
+
+| Section | Raised when | Escalation type |
+|---|---|---|
+| Support Chat | The assistant hands a live chat or WhatsApp chat to a person (low confidence, no answer, limits, a chatbot rule) | AI Handoff · Chatbot Rule |
+| Support Chat | The customer asks for a person | Customer Asked for Agent |
+| Support Chat | A chat starts with people because the assistant is off for it | Direct Live Chat |
+| Conversation | A portal conversation is escalated (by the customer or an agent) | Conversation Escalated |
+| Support Ticket | A service request is escalated to a ticket | Request Escalated |
+| Support Ticket | A Helpdesk ticket gets an escalation priority (default *Urgent*) | Urgent Ticket |
+| Support Ticket | A Helpdesk ticket misses its SLA | SLA Breach |
+| Any | An agent clicks **Escalate to Team** on a chat, conversation, ticket or service request | Manual |
+
+Each switch is in **Support Escalation Settings**. A query is escalated once; a later trigger of a different kind
+(for example an SLA breach on an urgent ticket) raises the **escalation level** instead of creating a second record.
+
+### Notifications
+
+Each alert carries the escalation and source reference, customer name and contact details, the escalation type,
+subject and description, date and time, the assigned person and team, the priority, and a direct link.
+
+| Channel | What happens | Setting |
+|---|---|---|
+| In-app | A pop-up card with a sound in any desk page, until opened or acknowledged; missed alerts appear at the next sign-in | In-App Alert, Play a Sound |
+| Notification center | An entry under the bell icon | Notification Center |
+| Email | A formatted email to recipients and extra team mailboxes | Email, Extra Email Addresses |
+| WhatsApp | A message to listed numbers through the WhatsApp channel | WhatsApp, Phone Numbers, Template |
+
+Recipients: the assigned person, the team's members, the listed roles (default *Support Manager*) and users. Overdue
+alerts go to the assigned person and the *Also Alert Roles*. WhatsApp messages that start a conversation need an
+approved template with six body variables: {{1}} reference, {{2}} customer, {{3}} type, {{4}} subject, {{5}} priority,
+{{6}} link. Without one, a plain message is sent, which WhatsApp delivers only within 24 hours of that person's last
+message to your business number.
+
+### Working an escalation
+
+* **Statuses**: New (not yet assigned) → Pending (assigned, no reply yet) → In Progress (someone replied) →
+  Resolved → Closed. A customer writing again reopens a resolved escalation.
+* **Priority**: Critical, High, Medium, Low, with first-response and resolution targets per priority
+  (defaults 15 min / 4 h, 30 min / 8 h, 2 h / 24 h, 8 h / 72 h). Due times and **Overdue** are checked every 5 minutes.
+* **Assignment**: chats follow their chat queue's rule; conversations and tickets go to the least busy member of the
+  default team. **Assign to Me**, **Reassign** and **Escalate Further** (raise level, priority and owner, with a
+  reason) are on the form. Reassigning a chat escalation also hands the chat itself to that person.
+* **Automatic tracking**: the first customer-visible reply sets *First Response* and moves it to In Progress; a
+  customer message sets *Customer Waiting*; closing the chat or resolving the ticket or request resolves it. A chat
+  that ends before anyone replied stays open so the team follows up.
+* **History and notes**: every change is in *Escalation History*; **Add Internal Note** keeps team-only notes.
+  The *Activity* tab shows the messages on the query and the customer's other escalations, tickets and requests.
+* **Search, filters, sorting**: the list opens on open escalations, with overdue in red and priority colours;
+  filter by section, status, priority, assignee, team, customer or overdue.
+
+### The workspace
+
+Six indicators (New Escalations, Unassigned, Pending Response, In Progress, Overdue, Resolved in the last 7 days),
+escalations per day and open escalations by section and priority, then one block each for **Support Chat**,
+**Conversation** and **Support Tickets** with open / unassigned / pending-response / overdue counts and a live list.
+
 ## Live chat and WhatsApp
 
 **Chat with support** opens from a button in the corner of the portal, every public website page

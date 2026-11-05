@@ -142,8 +142,10 @@ def build() -> dict:
             elif t == "Popular Articles":
                 if not kb_open(audience):
                     continue
-                sec["articles"] = knowledge.search_articles(None, limit=limit, audience=audience_kb)
-                if not sec["articles"]:
+                # Grouped by knowledge-base category, most-read first within each; Item Limit = articles per category.
+                sec["groups"] = knowledge.popular_by_category(audience_kb, per_category=min(limit, 6), max_categories=8)
+                sec["articles"] = [a for g in sec["groups"] for a in g["articles"]]  # flat list for older clients
+                if not sec["groups"]:
                     continue
             elif t == "Knowledge Categories":
                 if not kb_open(audience):
@@ -190,7 +192,7 @@ DEFAULT_SECTIONS = [
      "show_search": 1},
     {"section_type": "Quick Actions", "audience": "Everyone", "style": "Plain"},
     {"section_type": "Account Summary", "audience": "Customers", "style": "Plain"},
-    {"section_type": "Popular Articles", "audience": "Everyone", "style": "Tinted", "item_limit": 6},
+    {"section_type": "Popular Articles", "audience": "Everyone", "style": "Tinted", "item_limit": 4},
     {"section_type": "Services", "audience": "Everyone", "style": "Plain", "item_limit": 6},
     {"section_type": "FAQ", "audience": "Everyone", "style": "Tinted", "item_limit": 6},
     {"section_type": "Contact and Hours", "audience": "Everyone", "style": "Plain"},

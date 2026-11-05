@@ -1,0 +1,22 @@
+{
+ "creation": "2026-10-24 10:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Number Card",
+ "document_type": "Support Escalation",
+ "dynamic_filters_json": "[]",
+ "filters_json": "[[\"Support Escalation\", \"status\", \"not in\", [\"Resolved\", \"Closed\"], false], [\"Support Escalation\", \"needs_response\", \"=\", 1, false]]",
+ "function": "Count",
+ "idx": 0,
+ "is_public": 1,
+ "is_standard": 1,
+ "label": "Pending Response",
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Pending Response",
+ "owner": "Administrator",
+ "show_percentage_stats": 1,
+ "stats_time_interval": "Daily",
+ "type": "Document Type",
+ "color": "#d97706"
+}

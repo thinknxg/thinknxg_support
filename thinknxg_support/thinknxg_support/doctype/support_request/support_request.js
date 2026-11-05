@@ -1,5 +1,8 @@
 frappe.ui.form.on("Support Request", {
     refresh(frm) {
+        if (!frm.is_new() && window.thinknxgEscalate) {
+            frm.add_custom_button(__("Escalate to Team"), () => window.thinknxgEscalate(frm), __("Support"));
+        }
         if (!frm.is_new() && !frm.doc.helpdesk_ticket) {
             frm.add_custom_button(__("Escalate to Helpdesk Ticket"), () => {
                 frappe.call({
