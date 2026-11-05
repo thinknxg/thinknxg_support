@@ -1,0 +1,68 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "logged_on",
+  "action",
+  "details",
+  "by_user"
+ ],
+ "fields": [
+  {
+   "fieldname": "logged_on",
+   "fieldtype": "Datetime",
+   "label": "Logged On",
+   "in_list_view": 1,
+   "columns": 2,
+   "read_only": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "action",
+   "fieldtype": "Data",
+   "label": "Action",
+   "in_list_view": 1,
+   "columns": 2,
+   "read_only": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "details",
+   "fieldtype": "Small Text",
+   "label": "Details",
+   "in_list_view": 1,
+   "columns": 4,
+   "read_only": 1,
+   "idx": 3
+  },
+  {
+   "fieldname": "by_user",
+   "fieldtype": "Link",
+   "label": "By",
+   "options": "User",
+   "in_list_view": 1,
+   "columns": 2,
+   "read_only": 1,
+   "idx": 4
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 1,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Escalation Log",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

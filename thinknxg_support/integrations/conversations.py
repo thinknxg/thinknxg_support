@@ -196,11 +196,17 @@ def add_inbound_message(conv, content: str, *, sender: str | None, sender_name: 
     )
     from thinknxg_support.integrations import realtime
 
+    from thinknxg_support.integrations import escalations
+
     if not conv.get("handling"):
         from thinknxg_support.integrations.ai.engine import initial_handling
 
         conv.handling = initial_handling(conv)
         frappe.db.set_value(CONV, conv.name, "handling", conv.handling, update_modified=False)
+        if conv.handling != "Bot":
+            escalations.on_direct_chat(conv)  # a chat that starts with people is escalated from the start
+    if conv.handling != "Bot":
+        escalations.on_activity(CONV, conv.name, "customer_message")
     realtime.bump(conv.name)
     publish_agent_event(conv, "message")
     if conv.handling == "Bot":
@@ -285,6 +291,10 @@ def post_agent_message(conv, content: str, internal: int = 0, source: str = "des
     from thinknxg_support.integrations import realtime
 
     realtime.bump(conv.name)
+    if human and not cint(internal):
+        from thinknxg_support.integrations import escalations
+
+        escalations.on_activity(CONV, conv.name, "agent_reply", sender)
     publish_agent_event(conv, "reply")
     return {"name": msg.name}
 
@@ -325,4 +335,7 @@ def escalate_to_ticket(conv, actor: str = "customer", pu: PortalUser | None = No
 
     log_event("Escalation", reference_doctype=CONV, reference_name=conv.name,
               details={"ticket": ticket, "actor": actor}, user=pu.user if pu else None)
+    from thinknxg_support.integrations import escalations
+
+    escalations.on_conversation_escalated(conv, ticket, actor=pu.user if pu else None)
     return ticket

@@ -71,6 +71,9 @@ def close(conversation, organization=None):
     if conv.started_by != pu.user:
         raise PortalAccessError(_("Only the person who started this conversation can close it."))
     conv.db_set("status", "Closed")
+    from thinknxg_support.integrations import escalations
+
+    escalations.on_activity("Support Conversation Link", conv.name, "closed", pu.user)
     return {"ok": True}
 
 

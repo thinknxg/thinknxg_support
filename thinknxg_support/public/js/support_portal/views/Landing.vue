@@ -68,7 +68,22 @@
 							<a :href="link('knowledge')" data-nav class="tx-link">{{ state.t("land.view_all") }}</a>
 						</div>
 						<p v-if="s.subtitle" class="tx-land-sub">{{ s.subtitle }}</p>
-						<div class="tx-land-list">
+						<!-- Grouped by knowledge-base category (most-read first in each) -->
+						<div v-if="s.groups && s.groups.length" class="tx-land-kbgroups">
+							<section v-for="g in s.groups" :key="g.name || '_general'" class="tx-land-kbgroup">
+								<h3>
+									<a :href="g.name ? link('knowledge?category=' + encodeURIComponent(g.name)) : link('knowledge')" data-nav>{{ g.label }}</a>
+									<small>{{ g.count }}</small>
+								</h3>
+								<a v-for="a in g.articles" :key="a.name" :href="link('knowledge/' + a.name)" data-nav class="tx-land-article">
+									<Icon name="book" size="18" />
+									<span><strong>{{ a.title }}</strong><small v-if="a.excerpt">{{ a.excerpt }}</small></span>
+								</a>
+								<a v-if="g.name && g.count > g.articles.length" :href="link('knowledge?category=' + encodeURIComponent(g.name))"
+									data-nav class="tx-link tx-land-kbmore">{{ state.t("land.more_in", [g.label, g.count]) }}</a>
+							</section>
+						</div>
+						<div v-else class="tx-land-list">
 							<a v-for="a in s.articles" :key="a.name" :href="link('knowledge/' + a.name)" data-nav class="tx-land-article">
 								<Icon name="book" size="18" />
 								<span><strong>{{ a.title }}</strong><small>{{ a.excerpt }}</small></span>

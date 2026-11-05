@@ -24,6 +24,9 @@ before_uninstall = "thinknxg_support.install.before_uninstall"
 
 # Live chat launcher on public website pages (checks settings at runtime and stays hidden when disabled)
 web_include_js = ["support_chat.bundle.js"]
+
+# Desk: pop-up alerts for escalated support queries, and the "Escalate" action on tickets, chats and requests
+app_include_js = ["/assets/thinknxg_support/js/escalation_alerts.js", "/assets/thinknxg_support/js/escalate_button.js"]
 web_include_css = ["support_chat.bundle.css"]
 
 # Portal lives at /thinkdesk. ERPNext ships its own /support page, which is left untouched.
@@ -38,10 +41,20 @@ website_route_rules = [
 doc_events = {
     # Helpdesk (optional) - events only fire when the DocType exists
     "HD Ticket": {
-        "on_update": "thinknxg_support.integrations.notifications.on_ticket_update",
+        "on_update": [
+            "thinknxg_support.integrations.notifications.on_ticket_update",
+            "thinknxg_support.integrations.escalations.on_hd_ticket",
+        ],
+        "after_insert": "thinknxg_support.integrations.escalations.on_hd_ticket",
     },
     "Communication": {
-        "after_insert": "thinknxg_support.integrations.notifications.on_communication",
+        "after_insert": [
+            "thinknxg_support.integrations.notifications.on_communication",
+            "thinknxg_support.integrations.escalations.on_communication",
+        ],
+    },
+    "Support Request": {
+        "on_update": "thinknxg_support.integrations.escalations.on_support_request_update",
     },
     # Raven (optional)
     "Raven Message": {
@@ -58,6 +71,10 @@ doc_events = {
 }
 
 scheduler_events = {
+    "cron": {
+        # overdue escalations: flag and alert
+        "*/5 * * * *": ["thinknxg_support.integrations.escalations.check_overdue"],
+    },
     "hourly": [
         "thinknxg_support.tasks.retry_failed_deliveries",
         "thinknxg_support.integrations.live_chat.close_idle_chats",

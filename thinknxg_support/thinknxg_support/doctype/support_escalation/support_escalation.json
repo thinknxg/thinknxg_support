@@ -1,0 +1,462 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "subject",
+  "query_type",
+  "status",
+  "priority",
+  "column_break_e1",
+  "escalation_type",
+  "escalation_level",
+  "assigned_to",
+  "team",
+  "overdue",
+  "needs_response",
+  "source_section",
+  "reference_doctype",
+  "reference_name",
+  "channel",
+  "related_ticket",
+  "column_break_e2",
+  "description",
+  "customer_section",
+  "customer",
+  "customer_name",
+  "contact",
+  "column_break_e3",
+  "contact_email",
+  "contact_phone",
+  "timing_section",
+  "escalated_on",
+  "response_due",
+  "first_response_on",
+  "response_minutes",
+  "column_break_e4",
+  "resolution_due",
+  "resolved_on",
+  "resolution_minutes",
+  "closed_on",
+  "awaiting_reply",
+  "last_customer_message_on",
+  "response_overdue",
+  "resolution_overdue",
+  "activity_tab",
+  "history_html",
+  "notes_section",
+  "notes",
+  "log_section",
+  "log",
+  "notified"
+ ],
+ "fields": [
+  {
+   "fieldname": "subject",
+   "fieldtype": "Data",
+   "label": "Subject",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_global_search": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "query_type",
+   "fieldtype": "Select",
+   "label": "Section",
+   "options": "Support Chat\nConversation\nSupport Ticket",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "New\nPending\nIn Progress\nResolved\nClosed",
+   "default": "New",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 3
+  },
+  {
+   "fieldname": "priority",
+   "fieldtype": "Select",
+   "label": "Priority",
+   "options": "Critical\nHigh\nMedium\nLow",
+   "default": "Medium",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 4
+  },
+  {
+   "fieldname": "column_break_e1",
+   "fieldtype": "Column Break",
+   "idx": 5
+  },
+  {
+   "fieldname": "escalation_type",
+   "fieldtype": "Select",
+   "label": "Escalation Type",
+   "options": "AI Handoff\nCustomer Asked for Agent\nChatbot Rule\nDirect Live Chat\nConversation Escalated\nRequest Escalated\nUrgent Ticket\nSLA Breach\nManual",
+   "in_standard_filter": 1,
+   "idx": 6
+  },
+  {
+   "fieldname": "escalation_level",
+   "fieldtype": "Int",
+   "label": "Escalation Level",
+   "default": "1",
+   "read_only": 1,
+   "description": "Raised by one each time the query is escalated further",
+   "idx": 7
+  },
+  {
+   "fieldname": "assigned_to",
+   "fieldtype": "Link",
+   "label": "Assigned To",
+   "options": "User",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 8
+  },
+  {
+   "fieldname": "team",
+   "fieldtype": "Link",
+   "label": "Team",
+   "options": "Support Chat Queue",
+   "in_standard_filter": 1,
+   "idx": 9
+  },
+  {
+   "fieldname": "overdue",
+   "fieldtype": "Check",
+   "label": "Overdue",
+   "read_only": 1,
+   "in_standard_filter": 1,
+   "idx": 10
+  },
+  {
+   "fieldname": "needs_response",
+   "fieldtype": "Check",
+   "label": "Pending Response",
+   "read_only": 1,
+   "description": "New or pending, or the customer wrote after the last reply",
+   "idx": 11
+  },
+  {
+   "fieldname": "source_section",
+   "fieldtype": "Section Break",
+   "label": "Query",
+   "idx": 12
+  },
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "label": "Reference Doctype",
+   "options": "DocType",
+   "read_only": 1,
+   "idx": 13
+  },
+  {
+   "fieldname": "reference_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Reference",
+   "options": "reference_doctype",
+   "read_only": 1,
+   "search_index": 1,
+   "idx": 14
+  },
+  {
+   "fieldname": "channel",
+   "fieldtype": "Data",
+   "label": "Channel",
+   "read_only": 1,
+   "idx": 15
+  },
+  {
+   "fieldname": "related_ticket",
+   "fieldtype": "Data",
+   "label": "Helpdesk Ticket",
+   "read_only": 1,
+   "idx": 16
+  },
+  {
+   "fieldname": "column_break_e2",
+   "fieldtype": "Column Break",
+   "idx": 17
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description",
+   "description": "What the customer needs",
+   "idx": 18
+  },
+  {
+   "fieldname": "customer_section",
+   "fieldtype": "Section Break",
+   "label": "Customer",
+   "idx": 19
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer",
+   "in_standard_filter": 1,
+   "idx": 20
+  },
+  {
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "label": "Customer Name",
+   "in_global_search": 1,
+   "idx": 21
+  },
+  {
+   "fieldname": "contact",
+   "fieldtype": "Link",
+   "label": "Contact",
+   "options": "Contact",
+   "idx": 22
+  },
+  {
+   "fieldname": "column_break_e3",
+   "fieldtype": "Column Break",
+   "idx": 23
+  },
+  {
+   "fieldname": "contact_email",
+   "fieldtype": "Data",
+   "label": "Contact Email",
+   "options": "Email",
+   "idx": 24
+  },
+  {
+   "fieldname": "contact_phone",
+   "fieldtype": "Data",
+   "label": "Contact Phone",
+   "options": "Phone",
+   "idx": 25
+  },
+  {
+   "fieldname": "timing_section",
+   "fieldtype": "Section Break",
+   "label": "Timing",
+   "idx": 26
+  },
+  {
+   "fieldname": "escalated_on",
+   "fieldtype": "Datetime",
+   "label": "Escalated On",
+   "read_only": 1,
+   "idx": 27
+  },
+  {
+   "fieldname": "response_due",
+   "fieldtype": "Datetime",
+   "label": "Response Due",
+   "read_only": 1,
+   "idx": 28
+  },
+  {
+   "fieldname": "first_response_on",
+   "fieldtype": "Datetime",
+   "label": "First Response On",
+   "read_only": 1,
+   "idx": 29
+  },
+  {
+   "fieldname": "response_minutes",
+   "fieldtype": "Float",
+   "label": "First Response (minutes)",
+   "read_only": 1,
+   "precision": "1",
+   "idx": 30
+  },
+  {
+   "fieldname": "column_break_e4",
+   "fieldtype": "Column Break",
+   "idx": 31
+  },
+  {
+   "fieldname": "resolution_due",
+   "fieldtype": "Datetime",
+   "label": "Resolution Due",
+   "read_only": 1,
+   "idx": 32
+  },
+  {
+   "fieldname": "resolved_on",
+   "fieldtype": "Datetime",
+   "label": "Resolved On",
+   "read_only": 1,
+   "idx": 33
+  },
+  {
+   "fieldname": "resolution_minutes",
+   "fieldtype": "Float",
+   "label": "Resolution (minutes)",
+   "read_only": 1,
+   "precision": "1",
+   "idx": 34
+  },
+  {
+   "fieldname": "closed_on",
+   "fieldtype": "Datetime",
+   "label": "Closed On",
+   "read_only": 1,
+   "idx": 35
+  },
+  {
+   "fieldname": "awaiting_reply",
+   "fieldtype": "Check",
+   "label": "Customer Waiting",
+   "read_only": 1,
+   "idx": 36
+  },
+  {
+   "fieldname": "last_customer_message_on",
+   "fieldtype": "Datetime",
+   "label": "Last Customer Message On",
+   "read_only": 1,
+   "idx": 37
+  },
+  {
+   "fieldname": "response_overdue",
+   "fieldtype": "Check",
+   "label": "Response Overdue",
+   "read_only": 1,
+   "hidden": 1,
+   "idx": 38
+  },
+  {
+   "fieldname": "resolution_overdue",
+   "fieldtype": "Check",
+   "label": "Resolution Overdue",
+   "read_only": 1,
+   "hidden": 1,
+   "idx": 39
+  },
+  {
+   "fieldname": "activity_tab",
+   "fieldtype": "Tab Break",
+   "label": "Activity",
+   "idx": 40
+  },
+  {
+   "fieldname": "history_html",
+   "fieldtype": "HTML",
+   "label": "Customer Interaction History",
+   "idx": 41
+  },
+  {
+   "fieldname": "notes_section",
+   "fieldtype": "Section Break",
+   "label": "Internal Notes",
+   "description": "For the team only. The customer never sees these",
+   "idx": 42
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Table",
+   "label": "Notes",
+   "options": "Support Escalation Note",
+   "idx": 43
+  },
+  {
+   "fieldname": "log_section",
+   "fieldtype": "Section Break",
+   "label": "Escalation History",
+   "idx": 44
+  },
+  {
+   "fieldname": "log",
+   "fieldtype": "Table",
+   "label": "History",
+   "options": "Support Escalation Log",
+   "read_only": 1,
+   "idx": 45
+  },
+  {
+   "fieldname": "notified",
+   "fieldtype": "Small Text",
+   "label": "Last Notification",
+   "read_only": 1,
+   "idx": 46
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Escalation",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Agent",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 0,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  }
+ ],
+ "sort_field": "escalated_on",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "ESC-.YYYY.-.#####",
+ "title_field": "subject",
+ "search_fields": "subject,customer_name,reference_name,status",
+ "show_title_field_in_link": 1
+}

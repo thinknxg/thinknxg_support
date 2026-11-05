@@ -34,6 +34,10 @@ def article(name):
     _viewer()
     out = knowledge.get_article(name)
     out["my_vote"] = knowledge.my_vote(name)
+    try:
+        knowledge.count_view(name)
+    except Exception:
+        frappe.log_error(title="thinkNXG Support: article view count failed")
     return out
 
 

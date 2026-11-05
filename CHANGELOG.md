@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.6.0 — 2026-11-05
+* Landing page: *Popular Articles* grouped by knowledge-base category for visitors and customers, most-read first
+  (reads + helpful votes, or Helpdesk views); *Items to Show* = articles per category (new installs: 4)
+* Built-in articles count reads (once per reader per 6 hours)
+* **Support Escalation**: one record per escalated chat, conversation or ticket, with status (New, Pending,
+  In Progress, Resolved, Closed), priority (Critical–Low), assignment, team, escalation level, response and
+  resolution targets, overdue flags, escalation history, internal notes and customer interaction history
+* Escalations raised automatically on AI handoff, customer asking for a person, chats that start with people,
+  conversation and service-request escalation, urgent Helpdesk tickets and SLA breaches; manual **Escalate to Team**
+* Notifications on new, further-escalated, reassigned and overdue escalations: in-app pop-up with sound, notification
+  center, email, WhatsApp (template or plain text)
+* **Support Query Management** workspace: six indicators, three charts, Support Chat / Conversation / Support Tickets
+  sections with counts and live lists
+* **Support Escalation Settings**: triggers, default priorities, targets, channels, recipients, overdue alerts
+
 ## 1.5.1 — 2026-11-01
 * Fix: AI assistant replies showed "Iâ€™m" / "donâ€™t" instead of "I’m" / "don’t" (and broke Arabic). Providers stream
   `text/event-stream` without a charset, so the reply was decoded as ISO-8859-1; each line is now decoded as UTF-8

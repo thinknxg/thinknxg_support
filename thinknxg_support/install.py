@@ -20,6 +20,7 @@ def after_install():
 
     ensure_landing()
     ensure_kb_source()
+    ensure_escalation_defaults()
     from thinknxg_support.integrations import capabilities
 
     capabilities.refresh(save=True)
@@ -88,6 +89,22 @@ def ensure_ai_defaults():
         frappe.get_doc({"doctype": "Support Chat Queue", "queue_name": "General Support", "enabled": 1,
                         "assignment_rule": "Least Busy", "only_online_agents": 1, "channel_live_chat": 1,
                         "channel_whatsapp": 1, "channel_portal": 1}).insert(ignore_permissions=True)
+
+
+def ensure_escalation_defaults():
+    """Escalation settings with response / resolution targets per priority. Never overwrites existing values."""
+    if not frappe.db.exists("DocType", "Support Escalation Settings"):
+        return
+    s = frappe.get_single("Support Escalation Settings")
+    if s.targets:
+        return
+    for priority, (resp, resol) in (("Critical", (15, 240)), ("High", (30, 480)), ("Medium", (120, 1440)),
+                                    ("Low", (480, 4320))):
+        s.append("targets", {"priority": priority, "response_minutes": resp, "resolution_minutes": resol})
+    if not s.default_team and frappe.db.exists("Support Chat Queue", "General Support"):
+        s.default_team = "General Support"
+    s.flags.ignore_permissions = True
+    s.save()
 
 
 def ensure_kb_source():

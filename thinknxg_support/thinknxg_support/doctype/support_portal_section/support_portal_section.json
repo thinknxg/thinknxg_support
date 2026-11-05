@@ -108,6 +108,7 @@
    "label": "Items to Show",
    "default": "6",
    "depends_on": "eval:[\"Popular Articles\",\"Services\",\"FAQ\",\"Knowledge Categories\"].includes(doc.section_type)",
+   "description": "Popular Articles: articles shown per category (up to 6)",
    "idx": 10
   },
   {
