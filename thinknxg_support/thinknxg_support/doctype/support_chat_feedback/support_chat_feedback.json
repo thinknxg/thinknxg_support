@@ -1,0 +1,282 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "conversation",
+  "agent",
+  "rating",
+  "rating_label",
+  "column_break_f1",
+  "resolved",
+  "sentiment",
+  "submitted_on",
+  "comment_section",
+  "comment",
+  "chat_section",
+  "channel",
+  "queue",
+  "customer",
+  "customer_name",
+  "column_break_f2",
+  "chat_closed_on",
+  "closure_reason",
+  "handled_by_assistant",
+  "source",
+  "review_section",
+  "reviewed",
+  "reviewed_by",
+  "column_break_f3",
+  "supervisor_note"
+ ],
+ "fields": [
+  {
+   "fieldname": "conversation",
+   "fieldtype": "Link",
+   "label": "Chat",
+   "options": "Support Conversation Link",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "agent",
+   "fieldtype": "Link",
+   "label": "Agent",
+   "options": "User",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "search_index": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "rating",
+   "fieldtype": "Int",
+   "label": "Rating (1-5)",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 3
+  },
+  {
+   "fieldname": "rating_label",
+   "fieldtype": "Data",
+   "label": "Rating Label",
+   "read_only": 1,
+   "idx": 4
+  },
+  {
+   "fieldname": "column_break_f1",
+   "fieldtype": "Column Break",
+   "idx": 5
+  },
+  {
+   "fieldname": "resolved",
+   "fieldtype": "Select",
+   "label": "Issue Resolved",
+   "options": "\nYes\nPartially\nNo",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 6
+  },
+  {
+   "fieldname": "sentiment",
+   "fieldtype": "Select",
+   "label": "Sentiment",
+   "options": "Positive\nNeutral\nNegative",
+   "read_only": 1,
+   "in_standard_filter": 1,
+   "idx": 7
+  },
+  {
+   "fieldname": "submitted_on",
+   "fieldtype": "Datetime",
+   "label": "Submitted On",
+   "read_only": 1,
+   "idx": 8
+  },
+  {
+   "fieldname": "comment_section",
+   "fieldtype": "Section Break",
+   "label": "Customer Comment",
+   "idx": 9
+  },
+  {
+   "fieldname": "comment",
+   "fieldtype": "Small Text",
+   "label": "Comment",
+   "read_only": 1,
+   "idx": 10
+  },
+  {
+   "fieldname": "chat_section",
+   "fieldtype": "Section Break",
+   "label": "Chat",
+   "idx": 11
+  },
+  {
+   "fieldname": "channel",
+   "fieldtype": "Data",
+   "label": "Channel",
+   "read_only": 1,
+   "idx": 12
+  },
+  {
+   "fieldname": "queue",
+   "fieldtype": "Link",
+   "label": "Queue",
+   "options": "Support Chat Queue",
+   "read_only": 1,
+   "in_standard_filter": 1,
+   "idx": 13
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer",
+   "read_only": 1,
+   "in_standard_filter": 1,
+   "idx": 14
+  },
+  {
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "label": "Customer Name",
+   "read_only": 1,
+   "idx": 15
+  },
+  {
+   "fieldname": "column_break_f2",
+   "fieldtype": "Column Break",
+   "idx": 16
+  },
+  {
+   "fieldname": "chat_closed_on",
+   "fieldtype": "Datetime",
+   "label": "Chat Closed On",
+   "read_only": 1,
+   "idx": 17
+  },
+  {
+   "fieldname": "closure_reason",
+   "fieldtype": "Data",
+   "label": "Closure Reason",
+   "read_only": 1,
+   "idx": 18
+  },
+  {
+   "fieldname": "handled_by_assistant",
+   "fieldtype": "Check",
+   "label": "Assistant Only",
+   "read_only": 1,
+   "description": "No person took part: the rating is for the assistant",
+   "idx": 19
+  },
+  {
+   "fieldname": "source",
+   "fieldtype": "Select",
+   "label": "Source",
+   "options": "Chat Widget\nFeedback Link\nAgent Console",
+   "read_only": 1,
+   "idx": 20
+  },
+  {
+   "fieldname": "review_section",
+   "fieldtype": "Section Break",
+   "label": "Supervisor Review",
+   "idx": 21
+  },
+  {
+   "fieldname": "reviewed",
+   "fieldtype": "Check",
+   "label": "Reviewed",
+   "in_standard_filter": 1,
+   "idx": 22
+  },
+  {
+   "fieldname": "reviewed_by",
+   "fieldtype": "Link",
+   "label": "Reviewed By",
+   "options": "User",
+   "read_only": 1,
+   "idx": 23
+  },
+  {
+   "fieldname": "column_break_f3",
+   "fieldtype": "Column Break",
+   "idx": 24
+  },
+  {
+   "fieldname": "supervisor_note",
+   "fieldtype": "Small Text",
+   "label": "Supervisor Note",
+   "idx": 25
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Chat Feedback",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Agent",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "submitted_on",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "CSAT-.YYYY.-.#####",
+ "title_field": "customer_name",
+ "search_fields": "conversation,agent,customer_name",
+ "in_create": 1
+}

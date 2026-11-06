@@ -209,6 +209,30 @@ The source can also be a list of page URLs (Markdown `.md` or HTML), one per lin
   exist because hosting steps, prices, support contacts and partner programmes described for Frappe
   may not be true for thinkNXG.
 
+## Customer feedback after chats (1.8)
+
+When a chat closes (the agent ends it, the customer ends it, or it closes for inactivity), the customer is asked:
+
+1. **How would you rate the agent?** 1 to 5 stars: Excellent, Good, Average, Poor, Very Poor
+2. **Was your issue resolved?** Yes / Partially / No
+3. **Additional comments**
+
+* **Where it is asked**: in the chat widget right after the chat closes (visitors and signed-in customers), and on
+  WhatsApp as a link to a feedback page (`/thinkdesk/feedback`, valid 3 days, one chat per link).
+* **Settings** (Support Portal Settings → Live Chat → *Customer Feedback Survey*): *Ask for Feedback* = Off,
+  Optional (customers can skip) or **Required** (no skip; the widget keeps asking for up to a day before a new chat
+  can start); title and intro; whether to ask about resolution and for comments; comments required at or below N
+  stars; the WhatsApp message; what counts as negative (default 2 stars or fewer) and who is alerted (default
+  *Support Manager*, plus e-mail).
+* **Support Chat Feedback** records each answer, linked to the chat ID, the agent who handled it (or *Assistant only*),
+  the queue and the customer, with sentiment (Positive 4–5 ★, Neutral, Negative). Supervisors see all feedback and
+  comments; agents see feedback about their own chats.
+* **Alerts**: negative feedback alerts supervisors (pop-up, sound, e-mail); positive feedback thanks the agent.
+  Both are alert-centre activities with their own sounds.
+* **Reports**: **Agent CSAT** by agent, or by agent and week or month: chats, surveys, average rating, CSAT % (share
+  of 4–5 ★), resolved / partially / not resolved, negative count. Number cards on the Support Query Management
+  workspace: average rating and feedback count (30 days), negative feedback (7 days) and negative feedback to review.
+
 ## Agent alerts, canned responses and chat wrap-up (1.7)
 
 ### Alert centre
@@ -232,7 +256,11 @@ Every desk page carries one alert centre. Each activity has its own pop-up colou
 * **Works on any screen**: alerts appear on every desk page. Only one browser tab plays sounds, so several open tabs
   don't ring together. Repeats are timed by the browser's audio clock, so they keep ringing in a background tab.
   With the tab in the background, a system notification appears too (allow it once in My Alert Preferences).
-  Browsers need one click on the page before they play sound; a button asks for it.
+  Browsers need one click on the page before they play sound; a button asks for it. Each tab unlocks itself on the
+  first click or key press, only a tab with sound allowed rings, and the tab you are working in takes over. If live
+  updates (socket.io) are down, alerts still arrive within 15 seconds.
+* **Check Alerts** (My Alert Preferences) shows what stands between this browser and a sound (agent role, team
+  rules, mute, live updates, sound allowed, ringing tab, system notifications) and sends a real test alert.
 * **Acknowledgement tracking**: every alert that needs acknowledging is kept in *Support Agent Alert* with how
   long it took. The **Agent Alert Response** report shows, per agent and activity, alerts, acknowledged, picked up
   (assigned or answered first), missed, and average / median / longest seconds to acknowledge.

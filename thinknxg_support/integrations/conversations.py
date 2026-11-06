@@ -213,6 +213,8 @@ def add_inbound_message(conv, content: str, *, sender: str | None, sender_name: 
             alerts.on_new_chat(conv)
         else:
             alerts.on_customer_message(conv)
+    elif started:
+        alerts.on_assistant_chat(conv)
     realtime.bump(conv.name)
     publish_agent_event(conv, "message")
     if conv.handling == "Bot":

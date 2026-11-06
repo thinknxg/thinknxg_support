@@ -172,10 +172,12 @@ def raise_escalation(query_type: str, escalation_type: str, reference_doctype: s
             existing.related_ticket = related_ticket
             _log(existing, "Ticket created", related_ticket, user)
             existing.save(ignore_permissions=True)
-        if existing.escalation_type == escalation_type:
+        if existing.escalation_type == escalation_type and escalation_type != "Manual":
             return existing
-        return escalate_further(existing, priority=priority, note=note or _(escalation_type), user=None,
-                                actor=user, kind=escalation_type)
+        # Escalated again (by hand, or by a different kind of trigger): raise the level. Always return the record.
+        escalate_further(existing, priority=priority, note=note or _(escalation_type), user=assigned_to if escalation_type == "Manual" else None,
+                         actor=user, kind=escalation_type)
+        return frappe.get_doc(ESC, existing.name)
     default_priority = {"Support Chat": s.chat_priority, "Conversation": s.conversation_priority,
                         "Support Ticket": s.ticket_priority}.get(query_type) or "Medium"
     if escalation_type == "SLA Breach":

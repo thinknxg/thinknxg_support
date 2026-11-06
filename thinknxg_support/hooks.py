@@ -32,9 +32,11 @@ app_include_js = ["/assets/thinknxg_support/js/alert_center.js", "/assets/thinkn
 # Agents see the team's canned responses and their own private ones
 permission_query_conditions = {
     "Support Canned Response": "thinknxg_support.integrations.agent_tools.permission_query_conditions",
+    "Support Chat Feedback": "thinknxg_support.integrations.feedback.permission_query_conditions",
 }
 has_permission = {
     "Support Canned Response": "thinknxg_support.integrations.agent_tools.has_permission",
+    "Support Chat Feedback": "thinknxg_support.integrations.feedback.has_permission",
 }
 web_include_css = ["support_chat.bundle.css"]
 

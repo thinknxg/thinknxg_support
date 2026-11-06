@@ -136,3 +136,6 @@ def on_closed(conv):
     from thinknxg_support.integrations import alerts
 
     alerts.on_conversation_closed(conv.name)
+    from thinknxg_support.integrations import feedback
+
+    feedback.on_chat_closed(conv)

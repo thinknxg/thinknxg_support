@@ -538,3 +538,18 @@ a.tx-stat:hover { text-decoration: none; border-color: var(--brand); }
 .tx-land-kbgroup h3 small { color: var(--ink-2); font-weight: 500; font-size: 0.8rem; background: var(--surface-2); border-radius: 999px; padding: 1px 8px; }
 .tx-land-kbgroup .tx-land-article:last-of-type { border-block-end: 0; }
 .tx-land-kbmore { font-size: 0.88rem; padding: 6px 4px 2px; }
+
+/* 1.8 feedback page */
+.tx-feedbackpage { padding-block: 32px; }
+.tx-survey { display: grid; gap: 14px; text-align: start; }
+.tx-survey form { display: grid; gap: 16px; }
+.tx-survey h1 { margin: 0; font-size: 1.4rem; }
+.tx-survey fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; }
+.tx-survey legend { font-weight: 600; margin-bottom: 6px; padding: 0; }
+.tx-survey__stars { display: flex; gap: 6px; direction: ltr; }
+.tx-survey__stars button { border: 0; background: none; font-size: 36px; line-height: 1; color: var(--line); cursor: pointer; padding: 2px; transition: transform .1s; }
+.tx-survey__stars button.on { color: #f59e0b; }
+.tx-survey__stars button:hover { transform: scale(1.1); }
+.tx-survey .tx-field { display: grid; gap: 6px; font-weight: 600; }
+.tx-survey textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font: inherit; font-weight: 400; background: var(--surface); color: var(--ink); resize: vertical; }
+.tx-survey .tx-error { color: var(--danger, #b91c1c); margin: 0; }

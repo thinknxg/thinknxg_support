@@ -22,6 +22,7 @@ def after_install():
     ensure_kb_source()
     ensure_escalation_defaults()
     ensure_agent_tool_defaults()
+    ensure_feedback_defaults()
     from thinknxg_support.integrations import capabilities
 
     capabilities.refresh(save=True)
@@ -90,6 +91,17 @@ def ensure_ai_defaults():
         frappe.get_doc({"doctype": "Support Chat Queue", "queue_name": "General Support", "enabled": 1,
                         "assignment_rule": "Least Busy", "only_online_agents": 1, "channel_live_chat": 1,
                         "channel_whatsapp": 1, "channel_portal": 1}).insert(ignore_permissions=True)
+
+
+def ensure_feedback_defaults():
+    """Post-chat survey on (optional) for new sites; existing values are kept."""
+    ps = frappe.get_single("Support Portal Settings")
+    if not ps.meta.has_field("survey_mode") or ps.survey_mode:
+        return
+    ps.survey_mode = "Optional"
+    ps.flags.ignore_permissions = True
+    ps.flags.ignore_validate = True
+    ps.save()
 
 
 def ensure_agent_tool_defaults():

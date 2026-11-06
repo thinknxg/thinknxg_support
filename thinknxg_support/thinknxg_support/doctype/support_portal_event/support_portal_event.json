@@ -112,6 +112,5 @@
  "states": [],
  "track_changes": 0,
  "autoname": "hash",
- "in_create": 1,
- "read_only": 1
+ "in_create": 1
 }

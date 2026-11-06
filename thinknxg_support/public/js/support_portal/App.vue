@@ -172,17 +172,18 @@ import Services from "./views/Services.vue";
 import Account from "./views/Account.vue";
 import Settings from "./views/Settings.vue";
 import NotFound from "./views/NotFound.vue";
+import Feedback from "./views/Feedback.vue";
 
 const VIEWS = {
 	dashboard: Dashboard, tickets: Tickets, ticket: TicketDetail, "ticket-new": NewTicket,
 	conversations: Conversations, conversation: Conversations, knowledge: Knowledge, article: Knowledge,
-	services: Services, account: Account, settings: Settings,
+	services: Services, account: Account, settings: Settings, feedback: Feedback,
 };
 const MODULE_OF = {
 	tickets: "tickets", ticket: "tickets", "ticket-new": "tickets", conversations: "conversations",
 	conversation: "conversations", knowledge: "knowledge", article: "knowledge", services: "services", account: "account",
 };
-const PUBLIC_ROUTES = ["home", "knowledge", "article"];
+const PUBLIC_ROUTES = ["home", "knowledge", "article", "feedback"];
 
 const bootError = ref("");
 const navOpen = ref(false);
@@ -199,6 +200,7 @@ const showLanding = computed(() => route.name === "home" && state.customerHome !
 const publicView = computed(() => {
 	if (route.name === "home") return Landing;
 	if ((route.name === "knowledge" || route.name === "article") && state.publicKnowledge) return Knowledge;
+	if (route.name === "feedback") return Feedback;
 	return NotFound;
 });
 

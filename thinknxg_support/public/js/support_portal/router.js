@@ -12,6 +12,7 @@ export const ROUTES = [
 	{ name: "conversations", pattern: "conversations" },
 	{ name: "article", pattern: "knowledge/:id" },
 	{ name: "knowledge", pattern: "knowledge" },
+	{ name: "feedback", pattern: "feedback" },
 	{ name: "services", pattern: "services" },
 	{ name: "account", pattern: "account" },
 	{ name: "settings", pattern: "settings" },

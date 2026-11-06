@@ -2,6 +2,7 @@ frappe.ui.form.on("Support Alert Preference", {
     refresh(frm) {
         const A = window.thinknxgAlerts;
         if (A) {
+            frm.add_custom_button(__("Check Alerts"), () => A.diagnose());
             frm.add_custom_button(__("Test All Sounds"), () => A.testAll(frm.doc));
             (frm.doc.items || []).forEach((row) =>
                 frm.add_custom_button(__(row.kind), () => A.test(row.kind, frm.doc), __("Test Sound")));
