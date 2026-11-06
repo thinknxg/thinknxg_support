@@ -3,7 +3,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
-KINDS = ['New Chat', 'Chat Message', 'New Ticket', 'Ticket Assigned', 'Conversation Message', 'Escalation']
+KINDS = ['New Chat', 'Chat Message', 'New Ticket', 'Ticket Assigned', 'Conversation Message', 'Escalation', 'Negative Feedback', 'Positive Feedback']
 
 
 class SupportAlertPreference(Document):

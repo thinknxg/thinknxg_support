@@ -61,6 +61,12 @@ def end(conversation, token=None, rating=None):
     return live_chat.guest_end(conversation, _token(token), rating)
 
 
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+def survey(conversation, rating, resolved=None, comment=None, token=None):
+    """Post-chat feedback from a visitor (their chat token is the key)."""
+    return live_chat.guest_survey(conversation, _token(token), rating, resolved, comment)
+
+
 def _customer(organization):
     if not frappe.db.get_single_value("Support Portal Settings", "enable_live_chat"):
         frappe.throw(_("Live chat is not enabled."), frappe.PermissionError)
@@ -103,3 +109,9 @@ def customer_feedback(message, value, organization=None):
 def customer_end(organization=None, rating=None):
     pu, customer = _customer(organization)
     return live_chat.customer_end(pu, customer, rating)
+
+
+@frappe.whitelist(methods=["POST"])
+def customer_survey(rating, resolved=None, comment=None, organization=None):
+    pu, customer = _customer(organization)
+    return live_chat.customer_survey(pu, customer, rating, resolved, comment)

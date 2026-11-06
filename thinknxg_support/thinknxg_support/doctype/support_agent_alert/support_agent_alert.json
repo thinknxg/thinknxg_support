@@ -40,7 +40,7 @@
    "fieldname": "kind",
    "fieldtype": "Select",
    "label": "Activity",
-   "options": "New Chat\nChat Message\nNew Ticket\nTicket Assigned\nConversation Message\nEscalation",
+   "options": "New Chat\nChat Message\nNew Ticket\nTicket Assigned\nConversation Message\nEscalation\nNegative Feedback\nPositive Feedback",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "idx": 2

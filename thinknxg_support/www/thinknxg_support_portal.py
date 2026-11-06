@@ -12,6 +12,7 @@ def get_context(context):
     s = frappe.get_cached_doc("Support Portal Settings")
     path = (frappe.local.request.path if getattr(frappe.local, "request", None) else PORTAL_ROUTE).rstrip("/") or PORTAL_ROUTE
     public_paths = {PORTAL_ROUTE} if s.landing_enabled else set()
+    public_paths.add(PORTAL_ROUTE + "/feedback")  # feedback links from WhatsApp: the link's token is the key
     if s.public_knowledge and s.landing_enabled:
         public_paths.add(PORTAL_ROUTE + "/knowledge")
     is_public = path in public_paths or (s.public_knowledge and s.landing_enabled

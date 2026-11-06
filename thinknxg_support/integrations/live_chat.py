@@ -111,6 +111,7 @@ def widget_config(context: str = "website") -> dict:
                   "logo": s.logo or "/assets/thinknxg_support/images/logo.svg",
                   "color": s.primary_color if str(s.primary_color or "").startswith("#") else "#0F766E"},
         "max_length": 4000,
+        "survey": _survey_config(),
         "assistant": _assistant_info(mode),
         "welcome": _welcome(),
     }
@@ -139,7 +140,10 @@ def chat_state(conv) -> dict:
     out = realtime.live_state(conv)
     if conv.get("assigned_agent") and conv.get("handling") == "Agent":
         out["agent"] = (frappe.db.get_value("User", conv.assigned_agent, "first_name") or "").strip() or None
-    out["rated"] = bool(conv.get("chat_rating"))
+    from thinknxg_support.integrations import feedback
+
+    out["rated"] = bool(conv.get("chat_rating")) or feedback.done(conv.name)
+    out["survey_pending"] = feedback.pending_for_guest(conv) if conv.status == "Closed" else False
     return out
 
 
@@ -293,6 +297,8 @@ def guest_end(conversation: str, token: str, rating=None) -> dict:
 
 def _close(conv, rating=None):
     values = {"status": "Closed"}
+    if conv.meta.has_field("closed_on") and not conv.get("closed_on"):
+        values["closed_on"] = now_datetime()
     if rating and not conv.chat_rating:
         values["chat_rating"] = max(1, min(5, cint(rating))) / 5.0
     was_open = conv.status != "Closed"
@@ -352,6 +358,34 @@ def customer_feedback(pu, customer, message: str, value: str) -> dict:
     if not conv or conv.customer != customer or conv.started_by != pu.user:
         raise frappe.PermissionError(_("Message not found."))
     return feedback(conv, message, value)
+
+
+def _survey_config():
+    from thinknxg_support.integrations import feedback
+
+    return feedback.survey_config()
+
+
+def guest_survey(conversation: str, token: str, rating, resolved=None, comment=None) -> dict:
+    from thinknxg_support.integrations import feedback
+
+    ratelimit.check("feedback_submit", 10, 600)
+    return feedback.submit(_guest_conv(conversation, token), rating, resolved, comment)
+
+
+def customer_survey(pu, customer, rating, resolved=None, comment=None) -> dict:
+    """The signed-in customer's open chat, or their chat that closed in the last day."""
+    from thinknxg_support.integrations import feedback
+
+    conv = _active_customer_chat(pu, customer)
+    if not conv:
+        name = frappe.db.get_value(
+            CONV, {"customer": customer, "started_by": pu.user, "channel": "Live Chat", "status": "Closed",
+                   "last_activity_at": [">", add_to_date(now_datetime(), days=-1)]}, "name", order_by="last_activity_at desc")
+        conv = frappe.get_doc(CONV, name) if name else None
+    if not conv:
+        frappe.throw(_("There is no recent chat to rate."))
+    return feedback.submit(conv, rating, resolved, comment)
 
 
 def customer_end(pu, customer, rating=None) -> dict:

@@ -188,3 +188,23 @@
 	.txc-root--inline .txc-panel { height: 100vh; border-radius: 0; border: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .txc-panel, .txc-spin { animation: none; } }
+
+/* 1.8 post-chat feedback survey */
+.txc-survey { display: grid; gap: 10px; width: 100%; max-width: 320px; text-align: start; background: var(--txc-bg-2, #f6f8f7); border: 1px solid var(--txc-line); border-radius: 14px; padding: 14px; }
+.txc-survey__title { font-size: 15px; }
+.txc-survey fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; }
+.txc-survey legend { font-size: 13px; font-weight: 600; padding: 0; margin-bottom: 4px; }
+.txc-stars--big button { font-size: 30px; color: var(--txc-line); transition: transform .1s; }
+.txc-stars--big button.on { color: #f59e0b; }
+.txc-stars--big button:hover { transform: scale(1.12); }
+.txc-stars--big button:hover ~ button { color: var(--txc-line); }
+.txc-survey__label { color: var(--txc-ink-2); font-size: 12px; min-height: 1.2em; }
+.txc-seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.txc-seg button { flex: 1; min-width: 72px; height: 34px; border-radius: 999px; border: 1px solid var(--txc-line); background: var(--txc-bg, #fff); color: var(--txc-ink); cursor: pointer; font: inherit; font-size: 13px; }
+.txc-seg button.on { background: var(--txc-brand); border-color: var(--txc-brand); color: #fff; }
+.txc-survey__comment { display: grid; gap: 4px; font-size: 13px; font-weight: 600; }
+.txc-survey__comment textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--txc-line); border-radius: 10px; padding: 8px 10px; font: inherit; font-weight: 400; background: var(--txc-bg, #fff); color: var(--txc-ink); resize: vertical; }
+.txc-survey .txc-btn--primary { background: var(--txc-brand); color: #fff; border-color: var(--txc-brand); }
+.txc-survey .txc-btn--primary:disabled { opacity: .5; cursor: default; }
+.txc-survey .txc-link { background: none; border: 0; color: var(--txc-ink-2); text-decoration: underline; cursor: pointer; font: inherit; font-size: 12px; justify-self: center; }
+.txc-survey .txc-error { color: var(--txc-danger, #b91c1c); font-size: 12px; margin: 0; }

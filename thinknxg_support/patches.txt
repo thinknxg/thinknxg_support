@@ -10,3 +10,4 @@ thinknxg_support.patches.v1_5.repair_ai_reply_encoding
 thinknxg_support.patches.v1_6.escalation_defaults
 thinknxg_support.patches.v1_7.agent_tool_defaults
 thinknxg_support.patches.v1_7.repair_guest_message_html
+thinknxg_support.patches.v1_8.feedback_defaults

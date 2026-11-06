@@ -170,6 +170,14 @@ class TestEscalations(BaseTestCase):
         as_user("Administrator")
         self.assertFalse(frappe.has_permission(ESC, "read", user="Guest"))
 
+    def test_manual_escalation_of_an_escalated_chat_raises_the_level(self):
+        r, conv = self._guest_chat()
+        first = escalations.escalate_document(CONV, conv.name, priority="High", note="Customer is upset")
+        again = escalations.escalate_document(CONV, conv.name, priority="Critical", note="Still waiting")
+        self.assertEqual(first, again)  # same record, returned as its name (no AttributeError)
+        e = frappe.get_doc(ESC, first)
+        self.assertEqual((e.escalation_level, e.priority), (3, "Critical"))
+
     def test_disabled_tracking_does_nothing(self):
         self._settings(enabled=0)
         r, conv = self._guest_chat()

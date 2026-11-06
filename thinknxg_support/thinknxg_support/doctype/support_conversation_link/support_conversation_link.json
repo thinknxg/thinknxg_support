@@ -53,6 +53,9 @@
   "column_break_wrap",
   "closure_notes",
   "wrap_up_answers",
+  "feedback",
+  "survey_token_hash",
+  "survey_sent_on",
   "integration_section",
   "external_provider",
   "external_conversation_id",
@@ -409,10 +412,34 @@
    "idx": 46
   },
   {
+   "fieldname": "feedback",
+   "fieldtype": "Link",
+   "label": "Customer Feedback",
+   "options": "Support Chat Feedback",
+   "read_only": 1,
+   "idx": 47
+  },
+  {
+   "fieldname": "survey_token_hash",
+   "fieldtype": "Data",
+   "label": "Survey Token Hash",
+   "read_only": 1,
+   "hidden": 1,
+   "idx": 48
+  },
+  {
+   "fieldname": "survey_sent_on",
+   "fieldtype": "Datetime",
+   "label": "Survey Sent On",
+   "read_only": 1,
+   "hidden": 1,
+   "idx": 49
+  },
+  {
    "fieldname": "integration_section",
    "fieldtype": "Section Break",
    "label": "Integration",
-   "idx": 47
+   "idx": 50
   },
   {
    "fieldname": "external_provider",
@@ -420,59 +447,59 @@
    "label": "External Provider",
    "options": "Portal Native\nRaven",
    "default": "Portal Native",
-   "idx": 48
+   "idx": 51
   },
   {
    "fieldname": "external_conversation_id",
    "fieldtype": "Data",
    "label": "External Conversation Id",
    "read_only": 1,
-   "idx": 49
+   "idx": 52
   },
   {
    "fieldname": "last_activity_at",
    "fieldtype": "Datetime",
    "label": "Last Activity At",
    "read_only": 1,
-   "idx": 50
+   "idx": 53
   },
   {
    "fieldname": "last_message_reference",
    "fieldtype": "Data",
    "label": "Last Message Reference",
    "read_only": 1,
-   "idx": 51
+   "idx": 54
   },
   {
    "fieldname": "column_break_2",
    "fieldtype": "Column Break",
-   "idx": 52
+   "idx": 55
   },
   {
    "fieldname": "unread_customer",
    "fieldtype": "Int",
    "label": "Unread Customer",
    "read_only": 1,
-   "idx": 53
+   "idx": 56
   },
   {
    "fieldname": "unread_agent",
    "fieldtype": "Int",
    "label": "Unread Agent",
    "read_only": 1,
-   "idx": 54
+   "idx": 57
   },
   {
    "fieldname": "messages_section",
    "fieldtype": "Section Break",
    "label": "Messages",
-   "idx": 55
+   "idx": 58
   },
   {
    "fieldname": "messages_html",
    "fieldtype": "HTML",
    "label": "Messages Html",
-   "idx": 56
+   "idx": 59
   }
  ],
  "index_web_pages_for_search": 0,

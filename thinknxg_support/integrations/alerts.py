@@ -20,11 +20,11 @@ ALERT = "Support Agent Alert"
 CONV = "Support Conversation Link"
 EVENT = "thinknxg_support_alert"
 CLEAR = "thinknxg_support_alert_clear"
-KINDS = ['New Chat', 'Chat Message', 'New Ticket', 'Ticket Assigned', 'Conversation Message', 'Escalation']
-EPHEMERAL = {"Chat Message", "Conversation Message"}  # not stored unless the team makes them repeat
+KINDS = ['New Chat', 'Chat Message', 'New Ticket', 'Ticket Assigned', 'Conversation Message', 'Escalation', 'Negative Feedback', 'Positive Feedback']
+EPHEMERAL = {"Chat Message", "Conversation Message", "Positive Feedback"}  # not stored unless the team makes them repeat
 DEFAULTS = {k: {"enabled": 1, "popup": 1, "sound": s, "repeat_until_ack": r, "repeat_seconds": sec, "max_repeats": mx,
                 "desktop_notification": d, "volume": v, "custom_sound": None}
-            for k, s, r, sec, mx, d, v in [('New Chat', 'Ring', 1, 10, 0, 1, 90), ('Chat Message', 'Ping', 0, 0, 0, 1, 70), ('New Ticket', 'Chime', 1, 60, 3, 1, 80), ('Ticket Assigned', 'Bell', 1, 30, 5, 1, 80), ('Conversation Message', 'Pop', 0, 0, 0, 1, 70), ('Escalation', 'Siren', 1, 15, 0, 1, 100)]}
+            for k, s, r, sec, mx, d, v in [('New Chat', 'Ring', 1, 10, 0, 1, 90), ('Chat Message', 'Ping', 0, 0, 0, 1, 70), ('New Ticket', 'Chime', 1, 60, 3, 1, 80), ('Ticket Assigned', 'Bell', 1, 30, 5, 1, 80), ('Conversation Message', 'Pop', 0, 0, 0, 1, 70), ('Escalation', 'Siren', 1, 15, 0, 1, 100), ('Negative Feedback', 'Knock', 0, 0, 0, 1, 80), ('Positive Feedback', 'Chime', 0, 0, 0, 0, 60)]}
 
 
 def _safe(fn):
@@ -64,8 +64,10 @@ def agent_roles() -> list[str]:
 
 
 def is_agent(user: str | None) -> bool:
-    if not user or user in ("Guest", "Administrator"):
+    if not user or user == "Guest":
         return False
+    if user == "Administrator":
+        return True  # has every role; often the account used to try things out
     row = frappe.db.get_value("User", user, ["enabled", "user_type"], as_dict=True)
     if not (row and row.enabled and row.user_type == "System User"):
         return False
@@ -75,7 +77,8 @@ def is_agent(user: str | None) -> bool:
 def all_agents() -> list[str]:
     users = frappe.get_all("Has Role", filters={"role": ["in", agent_roles()], "parenttype": "User"}, pluck="parent",
                            distinct=True)
-    return [u for u in users if is_agent(u)]
+    users = [u for u in users if u != "Administrator" and is_agent(u)]
+    return users or ["Administrator"]  # nobody has an agent role yet: at least the administrator hears it
 
 
 def queue_members(queue: str | None) -> list[str]:
@@ -87,19 +90,20 @@ def queue_members(queue: str | None) -> list[str]:
 # ------------------------------------------------------------------ raise / clear
 def raise_alert(kind: str, users, title: str, body: str = "", *, reference_doctype: str | None = None,
                 reference_name: str | None = None, route: str | None = None, group_key: str | None = None,
-                priority: str | None = None, lines: list[str] | None = None):
-    """Alert these agents. Repeating kinds are stored (once per user and group while open) and sent to the desk."""
+                priority: str | None = None, lines: list[str] | None = None, once: bool = False):
+    """Alert these agents. Repeating kinds are stored (once per user and group while open) and sent to the desk.
+    once=True: a single sound, not stored (e.g. a chat the assistant is answering)."""
     rule = rules().get(kind)
     if not rule or not rule["enabled"]:
         return
     users = [u for u in dict.fromkeys(users or []) if is_agent(u)]
     if not users:
         return
-    store = kind not in EPHEMERAL or rule["repeat_until_ack"]
+    store = (kind not in EPHEMERAL or rule["repeat_until_ack"]) and not once
     now = now_datetime()
     base = {"kind": kind, "title": (title or "")[:140], "body": strip_html(body or "")[:500], "lines": lines or [],
             "reference_doctype": reference_doctype, "reference_name": reference_name, "route": route,
-            "group_key": group_key, "priority": priority, "alerted_on": str(now), "stored": store}
+            "group_key": group_key, "priority": priority, "alerted_on": str(now), "stored": store, "once": bool(once)}
     for u in users:
         payload = dict(base)
         if store:
@@ -161,7 +165,32 @@ def config():
                           "desktop_notifications": cint(pref.desktop_notifications)})
         for i in pref.items:
             out_prefs["items"][i.kind] = {"sound": i.sound, "popup": i.popup, "repeat": i.repeat}
-    return {"enabled": True, "rules": r, "prefs": out_prefs, "expire_hours": cint((_settings() or {}).get("expire_hours")) or 24}
+    return {"enabled": True, "is_agent": is_agent(frappe.session.user), "rules": r, "prefs": out_prefs,
+            "expire_hours": cint((_settings() or {}).get("expire_hours")) or 24}
+
+
+@frappe.whitelist(methods=["GET"])
+def diagnose():
+    """Why this user may not hear alerts: roles and team rules (the browser checks the rest)."""
+    r = rules()
+    return {"is_agent": is_agent(frappe.session.user), "agent_roles": agent_roles(),
+            "enabled_kinds": [k for k, v in r.items() if v["enabled"]], "user": frappe.session.user}
+
+
+@frappe.whitelist(methods=["POST"])
+def send_test(kind: str = "New Chat"):
+    """Send yourself a real alert through the server, the same way chats and tickets do."""
+    if kind not in KINDS:
+        frappe.throw(_("Unknown activity."))
+    if not is_agent(frappe.session.user):
+        return _("No alert sent: {0} does not have an agent role ({1}). Alerts only go to agents.").format(
+            frappe.session.user, ", ".join(agent_roles()))
+    if not rules()[kind]["enabled"]:
+        return _("No alert sent: {0} alerts are switched off in Support Alert Settings.").format(_(kind))
+    raise_alert(kind, [frappe.session.user], _("Test alert: {0}").format(_(kind)),
+                _("If you heard the {0} sound, alerts work in this browser.").format(_(rules()[kind]["sound"])),
+                group_key=f"test:{frappe.session.user}:{frappe.generate_hash(length=6)}", route=None)
+    return _("Test alert sent. It should appear within a few seconds (15 at most if live updates are off).")
 
 
 @frappe.whitelist(methods=["GET"])
@@ -248,6 +277,22 @@ def on_new_chat(conv, reason: str | None = None):
     raise_alert("New Chat", users, _("New chat: {0}").format(_chat_label(conv)), _last_inbound(conv.name),
                 reference_doctype=CONV, reference_name=conv.name, route=_chat_route(conv.name),
                 group_key=f"chat:{conv.name}", lines=[x for x in (conv.get("channel"), reason) if x])
+
+
+@_safe
+def on_assistant_chat(conv):
+    """A new chat the assistant is answering: one New Chat sound for the team (no repeat). If the assistant hands
+    it over, the usual ringing alert follows."""
+    s = _settings()
+    if not s or not cint(s.get("alert_assistant_chats")) or conv.get("channel") not in ("Live Chat", "WhatsApp"):
+        return
+    from thinknxg_support.integrations import routing
+
+    q = routing.pick_queue(conv.get("channel"))
+    users = (queue_members(q.name) if q else []) or all_agents()
+    raise_alert("New Chat", users, _("New chat (assistant answering): {0}").format(_chat_label(conv)), _last_inbound(conv.name),
+                reference_doctype=CONV, reference_name=conv.name, route=_chat_route(conv.name),
+                group_key=f"botchat:{conv.name}", once=True)
 
 
 @_safe

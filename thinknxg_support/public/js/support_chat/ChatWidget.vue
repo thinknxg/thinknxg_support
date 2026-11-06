@@ -117,14 +117,42 @@
 						<p v-if="mode === 'guest' && phase === 'chat' && !agentReplied && state.handling !== 'Bot'" class="txc-note">{{ t("email_hint") }}</p>
 						<div v-if="phase === 'ended'" class="txc-ended">
 							<p>{{ expired ? t("expired") : t("ended") }}</p>
-							<template v-if="!expired && !rated">
+							<!-- Post-chat feedback survey (configured in Support Portal Settings) -->
+							<form v-if="!expired && !rated && survey" class="txc-survey" @submit.prevent="sendSurvey" :aria-label="survey.title">
+								<strong class="txc-survey__title">{{ survey.title }}</strong>
+								<p class="txc-muted">{{ survey.intro }}</p>
+								<fieldset>
+									<legend>{{ t("sv_rate") }}</legend>
+									<div class="txc-stars txc-stars--big" role="radiogroup" :aria-label="t('sv_rate')" @mouseleave="sv.hover = 0">
+										<button v-for="n in 5" :key="n" type="button" role="radio" :aria-checked="sv.rating === n"
+											:aria-label="n + ' – ' + survey.labels[n]" :class="{ on: n <= (sv.hover || sv.rating) }"
+											@mouseenter="sv.hover = n" @focus="sv.hover = n" @blur="sv.hover = 0" @click="sv.rating = n">★</button>
+									</div>
+									<small class="txc-survey__label">{{ (sv.hover || sv.rating) ? survey.labels[sv.hover || sv.rating] : "\u00a0" }}</small>
+								</fieldset>
+								<fieldset v-if="survey.ask_resolution">
+									<legend>{{ t("sv_resolved") }}</legend>
+									<div class="txc-seg">
+										<button v-for="o in ['Yes', 'Partially', 'No']" :key="o" type="button" :aria-pressed="sv.resolved === o"
+											:class="{ on: sv.resolved === o }" @click="sv.resolved = o">{{ t("sv_" + o.toLowerCase()) }}</button>
+									</div>
+								</fieldset>
+								<label v-if="survey.ask_comment" class="txc-survey__comment">
+									<span>{{ t("sv_comment") }}<template v-if="commentRequired"> *</template></span>
+									<textarea v-model="sv.comment" rows="3" maxlength="2000" :required="commentRequired"></textarea>
+								</label>
+								<p v-if="sv.error" class="txc-error" role="alert">{{ sv.error }}</p>
+								<button class="txc-btn txc-btn--primary" :disabled="!canSendSurvey || sv.sending">{{ t("sv_submit") }}</button>
+								<button v-if="!survey.required" type="button" class="txc-link" @click="skipSurvey">{{ t("sv_skip") }}</button>
+							</form>
+							<template v-else-if="!expired && !rated">
 								<p class="txc-muted">{{ t("rate") }}</p>
 								<div class="txc-stars">
 									<button v-for="n in 5" :key="n" type="button" :aria-label="n + '/5'" @click="rate(n)">★</button>
 								</div>
 							</template>
 							<p v-else-if="rated" class="txc-muted">{{ t("thanks") }}</p>
-							<button type="button" class="txc-btn" @click="newChat">{{ t("new_chat") }}</button>
+							<button v-if="!(survey && survey.required && !rated && !expired)" type="button" class="txc-btn" @click="newChat">{{ t("new_chat") }}</button>
 						</div>
 					</template>
 				</template>
@@ -184,6 +212,12 @@ const busy = ref(false);
 const error = ref("");
 const confirmEnd = ref(false);
 const rated = ref(false);
+const sv = reactive({ rating: 0, hover: 0, resolved: "", comment: "", sending: false, error: "" });
+const survey = computed(() => (cfg.value && cfg.value.survey) || null);
+const commentRequired = computed(() => !!(survey.value && survey.value.ask_comment && survey.value.comment_required_at
+	&& sv.rating && sv.rating <= survey.value.comment_required_at));
+const canSendSurvey = computed(() => sv.rating > 0 && (!survey.value.ask_resolution || sv.resolved)
+	&& (!commentRequired.value || sv.comment.trim()));
 const expired = ref(false);
 const unread = ref(0);
 const scroller = ref(null);
@@ -319,6 +353,10 @@ async function refresh(full = false) {
 		let r;
 		if (mode.value === "customer") {
 			r = await chatCall("my_state", { organization: props.organization });
+			if (conversation && !r.conversation && phase.value === "chat") {
+				phase.value = "ended"; // the chat was closed (by the agent): keep the transcript, ask for feedback
+				return;
+			}
 			if (r.conversation !== conversation) return await fetchMessages();
 			r = r.state;
 		} else {
@@ -478,7 +516,31 @@ async function rate(n) {
 	}
 }
 
+async function sendSurvey() {
+	if (!canSendSurvey.value || sv.sending) return;
+	sv.sending = true;
+	sv.error = "";
+	const args = { rating: sv.rating, resolved: sv.resolved || null, comment: sv.comment.trim() || null };
+	try {
+		if (mode.value === "customer") await chatCall("customer_survey", { ...args, organization: props.organization }, { post: true });
+		else {
+			const s = session.get();
+			if (s) await chatCall("survey", { ...args, conversation: s.conversation }, { post: true, token: s.token });
+		}
+		rated.value = true;
+	} catch (e) {
+		sv.error = (e && e.message) || t("error");
+	} finally {
+		sv.sending = false;
+	}
+}
+
+function skipSurvey() {
+	rated.value = true; // not asked again for this chat in this window
+}
+
 function newChat() {
+	Object.assign(sv, { rating: 0, hover: 0, resolved: "", comment: "", sending: false, error: "" });
 	messages.value = [];
 	pending.value = [];
 	conversation = null;

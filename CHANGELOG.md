@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.8.0 — 2026-11-06
+* **Post-chat feedback survey**: 1–5 star agent rating (Excellent … Very Poor), issue resolved (Yes / Partially /
+  No) and comments; shown in the chat widget when a chat closes and sent as a link on WhatsApp; Off / Optional /
+  Required; comments required for low ratings (configurable)
+* **Support Chat Feedback** linked to chat, agent, queue and customer; supervisors see all, agents their own
+* Negative feedback alerts and e-mails to supervisors; positive feedback alerts to the agent (alert centre)
+* **Agent CSAT** report by agent, week or month; feedback number cards on the Support Query Management workspace
+* Fix: alert sounds did not play. Sound is now unlocked in each tab on the first click or key press, only a tab with
+  sound allowed rings (the tab in use takes over), alerts arrive by polling when live updates are down, and the
+  Administrator account gets alerts. New **Check Alerts** diagnostics and a server-sent test alert
+* Fix: *Escalate to Team* on a chat or ticket that was already escalated failed with
+  "'str' object has no attribute 'name'"; it now raises the escalation level
+* Fix: the audit log (`/app/support-portal-event`) said "Page not found": the DocType was flagged *read_only*
+  ("User Cannot Search"), which hides it from the desk
+
 ## 1.7.1 — 2026-11-06
 * Fix: visitors' live chat messages showed their HTML tags ("<p>When will you be available?</p>") to agents and the
   assistant. The widget sends simple HTML; guest messages are now turned back into text before saving

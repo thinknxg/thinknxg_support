@@ -13,7 +13,8 @@
   "agent_roles",
   "column_break_a1",
   "expire_hours",
-  "keep_days"
+  "keep_days",
+  "alert_assistant_chats"
  ],
  "fields": [
   {
@@ -63,6 +64,14 @@
    "label": "Keep Alert History (days)",
    "default": "90",
    "idx": 7
+  },
+  {
+   "fieldname": "alert_assistant_chats",
+   "fieldtype": "Check",
+   "label": "Also Alert When the Assistant Takes a New Chat",
+   "default": "1",
+   "description": "One New Chat sound, no repeats. If the assistant hands the chat to a person, the usual ringing alert follows",
+   "idx": 8
   }
  ],
  "index_web_pages_for_search": 0,

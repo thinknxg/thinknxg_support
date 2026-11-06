@@ -75,6 +75,21 @@
   "column_break_closing",
   "chat_closing_message",
   "wrap_up_questions",
+  "survey_section",
+  "survey_mode",
+  "survey_title",
+  "survey_intro",
+  "survey_ask_resolution",
+  "survey_ask_comment",
+  "survey_comment_required_at",
+  "column_break_survey",
+  "survey_whatsapp",
+  "survey_whatsapp_message",
+  "negative_feedback_at",
+  "negative_feedback_roles",
+  "email_negative_feedback",
+  "notify_agent_negative",
+  "notify_agent_positive",
   "whatsapp_tab",
   "enable_whatsapp",
   "whatsapp_display_number",
@@ -581,31 +596,140 @@
    "idx": 68
   },
   {
+   "fieldname": "survey_section",
+   "fieldtype": "Section Break",
+   "label": "Customer Feedback Survey",
+   "description": "Asked automatically when a live chat or WhatsApp chat ends: 1-5 stars, whether the issue was resolved, and a comment. Linked to the chat and the agent",
+   "idx": 69
+  },
+  {
+   "fieldname": "survey_mode",
+   "fieldtype": "Select",
+   "label": "Ask for Feedback",
+   "options": "Off\nOptional\nRequired",
+   "default": "Optional",
+   "description": "Required: the customer cannot skip it, and must answer before starting another chat that day",
+   "idx": 70
+  },
+  {
+   "fieldname": "survey_title",
+   "fieldtype": "Data",
+   "label": "Survey Title",
+   "default": "Support Experience Feedback",
+   "idx": 71
+  },
+  {
+   "fieldname": "survey_intro",
+   "fieldtype": "Small Text",
+   "label": "Survey Intro",
+   "default": "Please rate your experience with our support agent.",
+   "idx": 72
+  },
+  {
+   "fieldname": "survey_ask_resolution",
+   "fieldtype": "Check",
+   "label": "Ask Whether the Issue Was Resolved",
+   "default": "1",
+   "idx": 73
+  },
+  {
+   "fieldname": "survey_ask_comment",
+   "fieldtype": "Check",
+   "label": "Ask for Comments",
+   "default": "1",
+   "idx": 74
+  },
+  {
+   "fieldname": "survey_comment_required_at",
+   "fieldtype": "Int",
+   "label": "Comment Required at or Below (stars)",
+   "default": "2",
+   "description": "0 = comments are always optional",
+   "idx": 75
+  },
+  {
+   "fieldname": "column_break_survey",
+   "fieldtype": "Column Break",
+   "idx": 76
+  },
+  {
+   "fieldname": "survey_whatsapp",
+   "fieldtype": "Check",
+   "label": "Send a Feedback Link on WhatsApp",
+   "default": "1",
+   "idx": 77
+  },
+  {
+   "fieldname": "survey_whatsapp_message",
+   "fieldtype": "Small Text",
+   "label": "Survey Whatsapp Message",
+   "default": "How did we do? Please rate this chat: {link}",
+   "description": "{link} is replaced by the feedback page link (valid 3 days)",
+   "idx": 78
+  },
+  {
+   "fieldname": "negative_feedback_at",
+   "fieldtype": "Int",
+   "label": "Negative at or Below (stars)",
+   "default": "2",
+   "description": "Also negative whenever the customer says the issue was not resolved",
+   "idx": 79
+  },
+  {
+   "fieldname": "negative_feedback_roles",
+   "fieldtype": "Small Text",
+   "label": "Negative Feedback Roles",
+   "default": "Support Manager",
+   "description": "Roles alerted about negative feedback, one per line",
+   "idx": 80
+  },
+  {
+   "fieldname": "email_negative_feedback",
+   "fieldtype": "Check",
+   "label": "Also Email Negative Feedback",
+   "default": "1",
+   "idx": 81
+  },
+  {
+   "fieldname": "notify_agent_negative",
+   "fieldtype": "Check",
+   "label": "Tell the Agent About Negative Feedback",
+   "default": "0",
+   "idx": 82
+  },
+  {
+   "fieldname": "notify_agent_positive",
+   "fieldtype": "Check",
+   "label": "Tell the Agent About Positive Feedback",
+   "default": "1",
+   "idx": 83
+  },
+  {
    "fieldname": "whatsapp_tab",
    "fieldtype": "Tab Break",
    "label": "WhatsApp",
-   "idx": 69
+   "idx": 84
   },
   {
    "fieldname": "enable_whatsapp",
    "fieldtype": "Check",
    "label": "Enable WhatsApp",
    "description": "Receive and answer WhatsApp messages through the WhatsApp Cloud API (Meta)",
-   "idx": 70
+   "idx": 85
   },
   {
    "fieldname": "whatsapp_display_number",
    "fieldtype": "Data",
    "label": "WhatsApp Number",
    "description": "Public number with country code, e.g. +968 9xxx xxxx. Used for the 'Chat on WhatsApp' button",
-   "idx": 71
+   "idx": 86
   },
   {
    "fieldname": "show_whatsapp_button",
    "fieldtype": "Check",
    "label": "Show 'Chat on WhatsApp' Button",
    "default": "1",
-   "idx": 72
+   "idx": 87
   },
   {
    "fieldname": "whatsapp_prefill_text",
@@ -613,31 +737,31 @@
    "label": "Whatsapp Prefill Text",
    "default": "Hello, I need help with",
    "description": "Text pre-filled when a visitor opens WhatsApp from the chat window",
-   "idx": 73
+   "idx": 88
   },
   {
    "fieldname": "column_break_wa",
    "fieldtype": "Column Break",
-   "idx": 74
+   "idx": 89
   },
   {
    "fieldname": "whatsapp_phone_number_id",
    "fieldtype": "Data",
    "label": "Phone Number ID",
-   "idx": 75
+   "idx": 90
   },
   {
    "fieldname": "whatsapp_business_account_id",
    "fieldtype": "Data",
    "label": "WhatsApp Business Account ID",
-   "idx": 76
+   "idx": 91
   },
   {
    "fieldname": "whatsapp_api_version",
    "fieldtype": "Data",
    "label": "Graph API Version",
    "default": "v22.0",
-   "idx": 77
+   "idx": 92
   },
   {
    "fieldname": "whatsapp_access_token",
@@ -645,53 +769,53 @@
    "label": "Access Token",
    "length": 500,
    "description": "Permanent System User token with whatsapp_business_messaging permission",
-   "idx": 78
+   "idx": 93
   },
   {
    "fieldname": "whatsapp_app_secret",
    "fieldtype": "Password",
    "label": "App Secret",
    "description": "Used to verify webhook signatures",
-   "idx": 79
+   "idx": 94
   },
   {
    "fieldname": "whatsapp_verify_token",
    "fieldtype": "Password",
    "label": "Webhook Verify Token",
    "description": "Any random string; enter the same value in the Meta app webhook settings",
-   "idx": 80
+   "idx": 95
   },
   {
    "fieldname": "whatsapp_webhook_section",
    "fieldtype": "Section Break",
    "label": "Webhook & Templates",
-   "idx": 81
+   "idx": 96
   },
   {
    "fieldname": "whatsapp_webhook_url",
    "fieldtype": "Data",
    "label": "Webhook Callback URL",
    "read_only": 1,
-   "idx": 82
+   "idx": 97
   },
   {
    "fieldname": "whatsapp_template_name",
    "fieldtype": "Data",
    "label": "Re-engagement Template",
    "description": "Approved template sent when the 24-hour customer service window has closed",
-   "idx": 83
+   "idx": 98
   },
   {
    "fieldname": "whatsapp_template_language",
    "fieldtype": "Data",
    "label": "Template Language",
    "default": "en",
-   "idx": 84
+   "idx": 99
   },
   {
    "fieldname": "column_break_wa2",
    "fieldtype": "Column Break",
-   "idx": 85
+   "idx": 100
   },
   {
    "fieldname": "whatsapp_link_contacts",
@@ -699,27 +823,27 @@
    "label": "Match Numbers to Contacts",
    "default": "1",
    "description": "Link WhatsApp chats to the Contact and Customer that own the number",
-   "idx": 86
+   "idx": 101
   },
   {
    "fieldname": "whatsapp_auto_reply",
    "fieldtype": "Small Text",
    "label": "Out-of-hours Auto Reply",
    "description": "Sent once per chat when a message arrives outside support hours. Leave empty to disable",
-   "idx": 87
+   "idx": 102
   },
   {
    "fieldname": "whatsapp_status",
    "fieldtype": "Small Text",
    "label": "Whatsapp Status",
    "read_only": 1,
-   "idx": 88
+   "idx": 103
   },
   {
    "fieldname": "landing_tab",
    "fieldtype": "Tab Break",
    "label": "Landing Page",
-   "idx": 89
+   "idx": 104
   },
   {
    "fieldname": "landing_enabled",
@@ -727,7 +851,7 @@
    "label": "Public Landing Page",
    "default": "1",
    "description": "Visitors can open the portal home page without logging in. Off: the portal asks everyone to log in",
-   "idx": 90
+   "idx": 105
   },
   {
    "fieldname": "customer_home",
@@ -735,12 +859,12 @@
    "label": "Home Page for Logged-in Customers",
    "options": "Landing Page\nDashboard",
    "default": "Landing Page",
-   "idx": 91
+   "idx": 106
   },
   {
    "fieldname": "column_break_land",
    "fieldtype": "Column Break",
-   "idx": 92
+   "idx": 107
   },
   {
    "fieldname": "public_knowledge",
@@ -748,40 +872,40 @@
    "label": "Public Knowledge Base",
    "default": "1",
    "description": "Visitors can search and read published help articles without logging in",
-   "idx": 93
+   "idx": 108
   },
   {
    "fieldname": "index_landing",
    "fieldtype": "Check",
    "label": "Let Search Engines Index the Landing Page",
    "description": "Off by default. Other portal pages are never indexed",
-   "idx": 94
+   "idx": 109
   },
   {
    "fieldname": "meta_description",
    "fieldtype": "Small Text",
    "label": "Search Engine Description",
-   "idx": 95
+   "idx": 110
   },
   {
    "fieldname": "landing_sections_section",
    "fieldtype": "Section Break",
    "label": "Sections",
    "description": "Shown from top to bottom in this order. Drag rows to reorder, untick Enabled to hide, and set Audience to show a section only to visitors or only to logged-in customers",
-   "idx": 96
+   "idx": 111
   },
   {
    "fieldname": "landing_sections",
    "fieldtype": "Table",
    "label": "Landing Sections",
    "options": "Support Portal Section",
-   "idx": 97
+   "idx": 112
   },
   {
    "fieldname": "menu_tab",
    "fieldtype": "Tab Break",
    "label": "Menu",
-   "idx": 98
+   "idx": 113
   },
   {
    "fieldname": "menu_links",
@@ -789,13 +913,13 @@
    "label": "Menu Links",
    "options": "Support Portal Menu Link",
    "description": "Links shown in the portal's top bar (Header) or at the bottom of the page (Footer)",
-   "idx": 99
+   "idx": 114
   },
   {
    "fieldname": "security_tab",
    "fieldtype": "Tab Break",
    "label": "Security",
-   "idx": 100
+   "idx": 115
   },
   {
    "fieldname": "require_contact_link",
@@ -803,32 +927,32 @@
    "label": "Require Contact Link",
    "default": "1",
    "description": "Access grants only apply when the user's Contact is linked to the Customer",
-   "idx": 101
+   "idx": 116
   },
   {
    "fieldname": "allowed_attachment_extensions",
    "fieldtype": "Small Text",
    "label": "Allowed Attachment Extensions",
-   "idx": 102
+   "idx": 117
   },
   {
    "fieldname": "max_attachment_mb",
    "fieldtype": "Int",
    "label": "Max Attachment Mb",
    "default": "10",
-   "idx": 103
+   "idx": 118
   },
   {
    "fieldname": "max_attachments_per_message",
    "fieldtype": "Int",
    "label": "Max Attachments Per Message",
    "default": "5",
-   "idx": 104
+   "idx": 119
   },
   {
    "fieldname": "column_break_sec",
    "fieldtype": "Column Break",
-   "idx": 105
+   "idx": 120
   },
   {
    "fieldname": "message_rate_limit",
@@ -836,7 +960,7 @@
    "label": "Message Rate Limit",
    "description": "Messages / replies per user per minute",
    "default": "30",
-   "idx": 106
+   "idx": 121
   },
   {
    "fieldname": "ticket_rate_limit",
@@ -844,14 +968,14 @@
    "label": "Ticket Rate Limit",
    "description": "New tickets / requests per user per minute",
    "default": "10",
-   "idx": 107
+   "idx": 122
   },
   {
    "fieldname": "event_retention_days",
    "fieldtype": "Int",
    "label": "Event Retention Days",
    "default": "365",
-   "idx": 108
+   "idx": 123
   }
  ],
  "index_web_pages_for_search": 0,
