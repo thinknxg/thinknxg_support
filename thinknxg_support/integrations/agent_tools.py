@@ -20,14 +20,15 @@ def permission_query_conditions(user=None):
 
 def has_permission(doc, ptype=None, user=None):
     user = user or frappe.session.user
+    # Frappe v16 treats a falsy hook result (None included) as "deny": True defers to role permissions
     if {"Support Manager", "Support Portal Administrator", "System Manager"} & set(frappe.get_roles(user)):
-        return None
+        return True
     others = bool(doc.owner and doc.owner != user)  # a new record has no owner yet: it becomes the creator's
     if others and doc.visibility == "Only Me":
         return False  # someone else's private response
     if others and ptype in ("write", "delete", "cancel", "submit", "amend"):
         return False  # agents change only their own responses
-    return None
+    return True
 
 
 @frappe.whitelist(methods=["GET"])

@@ -202,6 +202,7 @@ def permission_query_conditions(user=None):
 
 def has_permission(doc, ptype=None, user=None):
     user = user or frappe.session.user
+    # Frappe v16 treats a falsy hook result (None included) as "deny": answer True to defer to role permissions
     if {"Support Manager", "Support Portal Administrator", "System Manager"} & set(frappe.get_roles(user)):
-        return None
+        return True
     return doc.agent == user and ptype in (None, "read", "print", "email", "report", "export")

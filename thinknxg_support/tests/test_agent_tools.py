@@ -159,6 +159,7 @@ class TestAgentTools(BaseTestCase):
                 row.enabled = 0
         s.flags.ignore_permissions = True
         s.save()
+        frappe.db.delete(ALERT, {"group_key": f"chat:{conv.name}"})  # the alert raised when the chat started
         alerts.on_new_chat(frappe.get_doc(CONV, conv.name))
         self.assertFalse(frappe.db.exists(ALERT, {"group_key": f"chat:{conv.name}"}))
 
