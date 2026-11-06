@@ -1,0 +1,14 @@
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+*.iml
+.idea/
+pubspec.lock
+# created by tool/configure_platforms.sh (flutter create); commit them once they are customised further
+android/
+ios/
+windows/
+linux/
+macos/
+web/

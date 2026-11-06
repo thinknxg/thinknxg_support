@@ -39,9 +39,12 @@ class TestLiveChat(BaseTestCase):
             live_chat.guest_send(b["conversation"], a["token"], "hi")
 
     def test_guest_html_is_escaped(self):
-        r = live_chat.start_guest("<img src=x onerror=alert(1)>", name="Eve", email="eve@example.com")
+        r = live_chat.start_guest("Hi <img src=x onerror=alert(1)>", name="Eve", email="eve@example.com")
         content = live_chat.guest_messages(r["conversation"], r["token"])["messages"][0]["content"]
         self.assertNotIn("<img", content)
+        self.assertIn("Hi", content)
+        with self.assertRaises(frappe.ValidationError):  # nothing left once markup is removed
+            live_chat.start_guest("<img src=x onerror=alert(1)>", name="Eve", email="eve@example.com")
 
     def test_internal_notes_hidden_from_guest(self):
         r = self._start()

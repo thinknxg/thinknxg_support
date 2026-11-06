@@ -12,9 +12,13 @@ CONV = "Support Conversation Link"
 ALERT = "Support Agent Alert"
 
 
+ENQUEUE_ARGS = ("queue", "enqueue_after_commit", "job_id", "deduplicate", "timeout", "now", "at_front", "job_name",
+                "is_async", "event", "on_success", "on_failure")
+
+
 def run_now(fn, **kw):
     fn = frappe.get_attr(fn) if isinstance(fn, str) else fn
-    return fn(**{k: v for k, v in kw.items() if k not in ("queue", "enqueue_after_commit", "job_id", "deduplicate", "timeout")})
+    return fn(**{k: v for k, v in kw.items() if k not in ENQUEUE_ARGS})
 
 
 def staff(email, role="Support Agent"):
@@ -47,6 +51,15 @@ class TestAgentTools(BaseTestCase):
         from thinknxg_support.install import ensure_agent_tool_defaults
 
         ensure_agent_tool_defaults()
+        s = frappe.get_single("Support Alert Settings")  # other tests change rules: start from the defaults
+        for row in s.rules:
+            d = alerts.DEFAULTS.get(row.kind)
+            if d:
+                row.update({k: d[k] for k in ("enabled", "popup", "sound", "repeat_until_ack", "max_repeats",
+                                              "desktop_notification", "volume")})
+                row.repeat_seconds = d["repeat_seconds"] or 15
+        s.flags.ignore_permissions = True
+        s.save()
         frappe.db.delete(ALERT)
         frappe.cache.delete_keys("thinknxg_support:rl:")
         self.p = patch.object(frappe, "enqueue", side_effect=run_now)
@@ -146,6 +159,7 @@ class TestAgentTools(BaseTestCase):
                 row.enabled = 0
         s.flags.ignore_permissions = True
         s.save()
+        frappe.db.delete(ALERT, {"group_key": f"chat:{conv.name}"})  # the alert raised when the chat started
         alerts.on_new_chat(frappe.get_doc(CONV, conv.name))
         self.assertFalse(frappe.db.exists(ALERT, {"group_key": f"chat:{conv.name}"}))
 

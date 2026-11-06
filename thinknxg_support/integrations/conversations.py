@@ -248,9 +248,14 @@ def publish_agent_event(conv, kind: str):
 def post_agent_message(conv, content: str, internal: int = 0, source: str = "desk", sender: str | None = None,
                        external_id: str | None = None, sender_type: str = "Agent", response_source: str | None = None,
                        sender_name: str | None = None, actions: dict | None = None, confidence: str | None = None,
-                       ai_usage: str | None = None) -> dict:
-    """Every message TO the customer goes through here: agents, the assistant, chatbot rules and system notes."""
+                       ai_usage: str | None = None, client_message_id: str | None = None) -> dict:
+    """Every message TO the customer goes through here: agents, the assistant, chatbot rules and system notes.
+    client_message_id (Agent Apps): a retried send returns the first message instead of a second one."""
     sender = sender or frappe.session.user
+    if client_message_id:
+        dup = frappe.db.get_value(MSG, {"conversation": conv.name, "client_message_id": client_message_id}, "name")
+        if dup:
+            return {"name": dup, "duplicate": True}
     if external_id:
         dup = frappe.db.get_value(MSG, {"external_message_id": external_id}, "name")
         if dup:
@@ -267,6 +272,7 @@ def post_agent_message(conv, content: str, internal: int = 0, source: str = "des
         "content": clean_html(content),
         "is_internal": cint(internal),
         "external_message_id": external_id,
+        "client_message_id": client_message_id,
         "channel": conv.get("channel") or "Portal",
         "delivery_status": "Pending" if conv.get("channel") == "WhatsApp" and not cint(internal) else None,
         "sender_type": sender_type,

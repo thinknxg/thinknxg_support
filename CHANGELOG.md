@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.9.0 — 2026-11-06
+* **thinkNXG Support Agent apps** (Windows, Android, iOS; one Flutter codebase in `agent_app/`): sign in with the
+  staff account in the browser (OAuth + PKCE), inbox for Portal / Live Chat / WhatsApp, claim, reply, internal
+  notes, transfer, End chat with wrap-up, Helpdesk tickets (reply, note, status, priority, assign), alerts
+* **Staff API v1** (`thinknxg_support.api.staff.v1`, documented in `docs/agent-api.md`): versioned, paginated with
+  stable cursors, per-agent read state, atomic claim (one winner, 409 for the other), duplicate-safe replies
+  (client request id), queue visibility applied to lists and direct lookups alike, Helpdesk permissions for tickets
+* **Support Agent App Settings**: switch the apps on or off, sign-in addresses, polling intervals, one-click OAuth
+  client (public client, staff roles only)
+* New records: Support Agent Read State, Support Agent Device, Support Agent Request (idempotency log)
+* Unique index on (conversation, client message id) for messages
+* CI: Flutter analyse / test / Windows, Android and iOS builds; backend tests on a Frappe v16 bench with Helpdesk
+
 ## 1.8.0 — 2026-11-06
 * **Post-chat feedback survey**: 1–5 star agent rating (Excellent … Very Poor), issue resolved (Yes / Partially /
   No) and comments; shown in the chat widget when a chat closes and sent as a link on WhatsApp; Off / Optional /

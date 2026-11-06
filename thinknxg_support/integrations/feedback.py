@@ -128,10 +128,13 @@ def notify(doc):
             emails = [e for e in (frappe.db.get_value("User", u, "email") for u in set(users)) if e]
             if emails:
                 esc = frappe.utils.escape_html
-                frappe.sendmail(recipients=emails, subject=_("Negative chat feedback: {0} ({1}/5)").format(doc.customer_name, doc.rating),
-                                message="".join(f"<p>{esc(x)}</p>" for x in [*lines, doc.comment or ""]) +
-                                f'<p><a href="{get_url("/app/" + route)}">{esc(_("Open the feedback"))}</a></p>',
-                                reference_doctype=doc.doctype, reference_name=doc.name)
+                try:
+                    frappe.sendmail(recipients=emails, subject=_("Negative chat feedback: {0} ({1}/5)").format(doc.customer_name, doc.rating),
+                                    message="".join(f"<p>{esc(x)}</p>" for x in [*lines, doc.comment or ""]) +
+                                    f'<p><a href="{get_url("/app/" + route)}">{esc(_("Open the feedback"))}</a></p>',
+                                    reference_doctype=doc.doctype, reference_name=doc.name)
+                except Exception:
+                    frappe.log_error(title="thinkNXG Support: feedback e-mail failed")
     elif doc.sentiment == "Positive" and doc.agent and cint(s.get("notify_agent_positive") if s.get("notify_agent_positive") is not None else 1):
         alerts.raise_alert("Positive Feedback", [doc.agent], _("{0} rated your chat {1}/5").format(doc.customer_name, doc.rating),
                            doc.comment or "", reference_doctype=doc.doctype, reference_name=doc.name, route=route,
@@ -199,6 +202,7 @@ def permission_query_conditions(user=None):
 
 def has_permission(doc, ptype=None, user=None):
     user = user or frappe.session.user
+    # Frappe v16 treats a falsy hook result (None included) as "deny": answer True to defer to role permissions
     if {"Support Manager", "Support Portal Administrator", "System Manager"} & set(frappe.get_roles(user)):
-        return None
+        return True
     return doc.agent == user and ptype in (None, "read", "print", "email", "report", "export")

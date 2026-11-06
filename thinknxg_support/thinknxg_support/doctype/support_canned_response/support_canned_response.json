@@ -171,14 +171,9 @@
   {
    "role": "Support Agent",
    "read": 1,
-   "create": 1
-  },
-  {
-   "role": "Support Agent",
-   "read": 1,
+   "create": 1,
    "write": 1,
-   "delete": 1,
-   "if_owner": 1
+   "delete": 1
   }
  ],
  "sort_field": "modified",

@@ -12,8 +12,9 @@ def check(bucket: str, limit: int | None = None, window: int = 60):
     user = frappe.session.user or "Guest"
     if user == "Guest":
         user = "ip:" + (getattr(frappe.local, "request_ip", None) or "unknown")
-    key = f"thinknxg_support:rl:{bucket}:{user}:{int(time.time() // window)}"
     cache = frappe.cache
+    # site-scoped key (make_key), so sites sharing one Redis never share limits and delete_keys() can reset them
+    key = cache.make_key(f"thinknxg_support:rl:{bucket}:{user}:{int(time.time() // window)}")
     count = cache.incrby(key, 1) if hasattr(cache, "incrby") else cache.incr(key)
     if cint(count) == 1:
         cache.expire(key, window)

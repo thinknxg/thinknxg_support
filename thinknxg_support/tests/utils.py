@@ -8,15 +8,29 @@ except ImportError:  # pragma: no cover
 from thinknxg_support.utils import clear_request_cache
 
 
+def _tree_leaf(doctype, root, parent_field, name_field, leaf):
+    """A fresh site (setup wizard not run) has no Customer Group / Territory tree yet."""
+    found = frappe.db.get_value(doctype, {"is_group": 0})
+    if found:
+        return found
+    if not frappe.db.exists(doctype, root):
+        frappe.get_doc({"doctype": doctype, name_field: root, "is_group": 1}).insert(ignore_permissions=True)
+    if not frappe.db.exists(doctype, leaf):
+        frappe.get_doc({"doctype": doctype, name_field: leaf, "is_group": 0, parent_field: root}).insert(ignore_permissions=True)
+    return leaf
+
+
 def make_customer(name):
     if frappe.db.exists("Customer", name):
         return name
+    group = _tree_leaf("Customer Group", "All Customer Groups", "parent_customer_group", "customer_group_name", "Commercial")
+    territory = _tree_leaf("Territory", "All Territories", "parent_territory", "territory_name", "Test Territory")
     doc = frappe.get_doc({
         "doctype": "Customer",
         "customer_name": name,
         "customer_type": "Company",
-        "customer_group": frappe.db.get_value("Customer Group", {"is_group": 0}) or "All Customer Groups",
-        "territory": frappe.db.get_value("Territory", {"is_group": 0}) or "All Territories",
+        "customer_group": group,
+        "territory": territory,
     }).insert(ignore_permissions=True)
     return doc.name
 

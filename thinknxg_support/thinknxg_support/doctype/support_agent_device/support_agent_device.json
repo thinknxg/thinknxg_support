@@ -1,0 +1,144 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "Signed-in Agent App devices (for push notifications)",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "platform",
+  "enabled",
+  "column_break_d1",
+  "device_name",
+  "app_version",
+  "last_seen",
+  "token_section",
+  "push_token",
+  "token_hash"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "search_index": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "platform",
+   "fieldtype": "Select",
+   "label": "Platform",
+   "options": "Android\niOS\nWindows",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "1",
+   "in_list_view": 1,
+   "idx": 3
+  },
+  {
+   "fieldname": "column_break_d1",
+   "fieldtype": "Column Break",
+   "idx": 4
+  },
+  {
+   "fieldname": "device_name",
+   "fieldtype": "Data",
+   "label": "Device Name",
+   "in_list_view": 1,
+   "idx": 5
+  },
+  {
+   "fieldname": "app_version",
+   "fieldtype": "Data",
+   "label": "App Version",
+   "idx": 6
+  },
+  {
+   "fieldname": "last_seen",
+   "fieldtype": "Datetime",
+   "label": "Last Seen",
+   "read_only": 1,
+   "idx": 7
+  },
+  {
+   "fieldname": "token_section",
+   "fieldtype": "Section Break",
+   "label": "Push Token",
+   "idx": 8
+  },
+  {
+   "fieldname": "push_token",
+   "fieldtype": "Small Text",
+   "label": "Push Token",
+   "description": "FCM registration token. Removed at sign-out",
+   "idx": 9
+  },
+  {
+   "fieldname": "token_hash",
+   "fieldtype": "Data",
+   "label": "Token Hash",
+   "read_only": 1,
+   "search_index": 1,
+   "idx": 10
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Agent Device",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "hash",
+ "in_create": 1
+}

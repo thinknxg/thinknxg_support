@@ -47,13 +47,16 @@ def notify(user: str, subject: str, doctype: str, docname: str, *, portal_pref: 
         except Exception:
             frappe.log_error(title="thinkNXG Support: portal notification failed")
     if email_pref and p.get(email_pref):
-        frappe.sendmail(
-            recipients=[frappe.db.get_value("User", user, "email") or user],
-            subject=frappe.utils.strip_html(subject),
-            message=(email_body or subject) + f'<p><a href="{frappe.utils.get_url(PORTAL_ROUTE)}">'
-                                              f'{_("Open the support portal")}</a></p>',
-            delayed=True,
-        )
+        try:
+            frappe.sendmail(
+                recipients=[frappe.db.get_value("User", user, "email") or user],
+                subject=frappe.utils.strip_html(subject),
+                message=(email_body or subject) + f'<p><a href="{frappe.utils.get_url(PORTAL_ROUTE)}">'
+                                                  f'{_("Open the support portal")}</a></p>',
+                delayed=True,
+            )
+        except Exception:
+            frappe.log_error(title="thinkNXG Support: notification e-mail failed")
 
 
 def _user_for_email(email: str | None) -> str | None:

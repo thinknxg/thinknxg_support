@@ -235,6 +235,8 @@ class TestKnowledgeVisibility(IntegrationTestCase):
     def test_assistant_indexes_native_articles(self):
         from thinknxg_support.integrations.ai import retrieval
 
+        frappe.db.set_single_value("Support AI Settings", "index_helpdesk_articles", 1)  # other tests switch it off
+
         names = {(r[1], r[4]) for r in retrieval.sources() if r[0] == "Support Knowledge Article"}
         self.assertEqual(len(names), 2)
         self.assertIn("Customers", {a for _n, a in names})

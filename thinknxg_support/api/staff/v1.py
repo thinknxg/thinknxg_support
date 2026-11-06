@@ -1,0 +1,601 @@
+"""thinkNXG Support staff API, version 1 (Agent Apps). Contract: docs/agent-api.md.
+
+Every endpoint: staff_auth.require_staff() first, then access to the record (queue visibility for conversations,
+Helpdesk permissions for tickets). Writes reuse the server functions the web console uses.
+"""
+from __future__ import annotations
+
+import json
+
+import frappe
+from frappe import _
+from frappe.utils import cint, get_datetime, now_datetime, strip_html
+
+from thinknxg_support.api.staff import cursors
+from thinknxg_support.api.staff.errors import ChannelActionRequired, Conflict
+from thinknxg_support.integrations import staff_auth
+
+CONV = "Support Conversation Link"
+MSG = "Support Portal Message"
+READ = "Support Agent Read State"
+API_VERSION = 1
+
+
+def _iso(v):
+    return get_datetime(v).isoformat() if v else None
+
+
+# ------------------------------------------------------------------ sign-in and bootstrap
+@frappe.whitelist(allow_guest=True, methods=["GET"])
+def auth_config():
+    """Public sign-in details for the apps (no secrets): the site's OAuth endpoints and client id."""
+    if not frappe.db.exists("DocType", staff_auth.SETTINGS) or not staff_auth.settings().enabled:
+        return {"enabled": False}
+    s = staff_auth.settings()
+    client_id = frappe.db.get_value("OAuth Client", s.oauth_client, "client_id") if s.oauth_client else None
+    return {"enabled": bool(client_id), "api_version": API_VERSION, "site_name": frappe.local.site,
+            "client_id": client_id, "scopes": "all openid", "redirect_uris": staff_auth.redirect_uris(),
+            **staff_auth.oauth_endpoints()}
+
+
+def _member_queues(user: str) -> list[str]:
+    return frappe.get_all("Support Chat Queue Member", filters={"user": user, "active": 1, "parenttype": "Support Chat Queue"},
+                          pluck="parent", distinct=True)
+
+
+@frappe.whitelist(methods=["GET"])
+def bootstrap():
+    staff_auth.require_staff()
+    from thinknxg_support.integrations import capabilities, helpdesk_agent
+    from thinknxg_support.utils import settings as portal_settings
+
+    user = frappe.session.user
+    u = frappe.db.get_value("User", user, ["full_name", "email", "user_image"], as_dict=True) or {}
+    caps = capabilities.get() if hasattr(capabilities, "get") else {}
+    ps = portal_settings()
+    s = staff_auth.settings()
+    mine = set(_member_queues(user))
+    queues = frappe.get_all("Support Chat Queue", or_filters={"enabled": 1, "name": ["in", list(mine) or [""]]},
+                            pluck="name", order_by="priority desc")
+    return {
+        "api_version": API_VERSION, "server_time": now_datetime().isoformat(),
+        "site": {"url": frappe.utils.get_url(), "name": frappe.local.site,
+                 "app_version": frappe.get_attr("thinknxg_support.__version__")},
+        "agent": {"user": user, "full_name": u.get("full_name") or user, "email": u.get("email") or user,
+                  "image": u.get("user_image"), "is_manager": staff_auth.is_manager(),
+                  "helpdesk_agent": helpdesk_agent.is_hd_agent() if helpdesk_agent.available() else False},
+        "capabilities": {
+            "conversations": True, "live_chat": bool(ps.get("enable_live_chat")),
+            "whatsapp": bool(ps.get("enable_whatsapp")), "raven": bool(ps.get("enable_raven")),
+            "helpdesk": helpdesk_agent.available(), "assistant": _assistant_on(),
+            "wrap_up": True, "canned_responses": True, "alerts": True, "push": bool(s.push_enabled),
+            "realtime": False,  # first release: authenticated polling (see docs/agent-api.md)
+            "integrations": {k: bool((v or {}).get("installed")) for k, v in (caps.get("apps") or {}).items()}
+            if isinstance(caps, dict) else {},
+        },
+        "queues": [{"name": q, "member": q in mine} for q in queues],
+        "poll": {"inbox_seconds": s.inbox_poll_seconds or 10, "thread_seconds": s.thread_poll_seconds or 4,
+                 "alerts_seconds": s.alerts_poll_seconds or 15},
+    }
+
+
+def _assistant_on() -> bool:
+    try:
+        return bool(frappe.get_cached_doc("Support AI Settings").enable_ai)
+    except Exception:
+        return False
+
+
+# ------------------------------------------------------------------ conversation access (lists and lookups alike)
+def _scope_sql(user: str) -> tuple[str, list]:
+    """Agents see conversations in their queues, assigned to them, or not in any queue. Managers see all."""
+    if staff_auth.is_manager(user):
+        return "1=1", []
+    queues = _member_queues(user)
+    parts, args = ["c.assigned_agent = %s", "coalesce(c.queue, '') = ''"], [user]
+    if queues:
+        parts.append("c.queue in %s")
+        args.append(tuple(queues))
+    return "(" + " or ".join(parts) + ")", args
+
+
+def _can_access(conv, user: str | None = None) -> bool:
+    user = user or frappe.session.user
+    if staff_auth.is_manager(user):
+        return True
+    return bool(conv.get("assigned_agent") == user or not conv.get("queue") or conv.get("queue") in _member_queues(user))
+
+
+def _conv(name: str, ptype: str = "read"):
+    staff_auth.require_staff()
+    if not frappe.db.exists(CONV, name):
+        raise frappe.DoesNotExistError(_("Conversation not found."))
+    doc = frappe.get_doc(CONV, name)
+    doc.check_permission(ptype)
+    if not _can_access(doc):
+        raise frappe.PermissionError(_("This conversation is in a queue you are not part of."))
+    return doc
+
+
+def _display_name(r) -> str:
+    from thinknxg_support.api.v1.agent import _display_name as dn
+
+    return dn(r)
+
+
+def _agent(user):
+    return {"user": user, "name": frappe.utils.get_fullname(user)} if user else None
+
+
+def _read_marker(user: str, names: list[str]) -> dict:
+    if not names:
+        return {}
+    return {r.conversation: r.last_read_at for r in frappe.get_all(READ, filters={"user": user, "conversation": ["in", names]},
+                                                                   fields=["conversation", "last_read_at"])}
+
+
+def _unread_counts(user: str, names: list[str]) -> dict:
+    markers = _read_marker(user, names)
+    out = {}
+    for n in names:
+        cond = {"conversation": n, "direction": "Inbound"}
+        if markers.get(n):
+            cond["creation"] = [">", markers[n]]
+        out[n] = frappe.db.count(MSG, cond)
+    return out
+
+
+CONV_FIELDS = ("c.name, c.subject, c.status, c.channel, c.customer, c.is_guest, c.guest_name, c.whatsapp_number, "
+               "c.whatsapp_profile_name, c.started_by, c.assigned_agent, c.last_activity_at, c.last_message_reference, "
+               "c.whatsapp_window_expires, c.helpdesk_ticket, c.handling, c.queue, c.modified")
+
+
+def _summary(r, unread: int, preview: str = "") -> dict:
+    return {
+        "id": r.name, "subject": r.subject or "", "display_name": _display_name(r), "channel": r.channel or "Portal",
+        "status": r.status, "handling": r.handling, "queue": r.queue, "assignee": _agent(r.assigned_agent),
+        "customer": r.customer, "is_guest": bool(cint(r.is_guest)), "ticket": r.helpdesk_ticket,
+        "last_activity_at": _iso(r.last_activity_at or r.modified), "unread": unread, "preview": preview,
+        "whatsapp_window_open": bool(r.whatsapp_window_expires and get_datetime(r.whatsapp_window_expires) > now_datetime())
+        if r.channel == "WhatsApp" else None,
+        "version": str(r.modified),
+    }
+
+
+@frappe.whitelist(methods=["GET"])
+def conversations(view: str = "all", channel: str | None = None, status: str = "open", queue: str | None = None,
+                  q: str | None = None, cursor: str | None = None, limit: int = 30):
+    """Paginated inbox, newest activity first. view: all | mine | unassigned | waiting (handed to people, nobody yet)."""
+    staff_auth.require_staff()
+    if not frappe.has_permission(CONV, "read"):
+        raise frappe.PermissionError
+    user = frappe.session.user
+    limit = max(1, min(cint(limit) or 30, 50))
+    scope, args = _scope_sql(user)
+    where = [scope]
+    if view == "mine":
+        where.append("c.assigned_agent = %s"); args.append(user)
+    elif view == "unassigned":
+        where.append("coalesce(c.assigned_agent, '') = ''")
+    elif view == "waiting":
+        where.append("c.handling = 'Queued' and coalesce(c.assigned_agent, '') = ''")
+    if channel in ("Portal", "Live Chat", "WhatsApp"):
+        where.append("c.channel = %s"); args.append(channel)
+    if status == "open":
+        where.append("c.status != 'Closed'")
+    elif status == "closed":
+        where.append("c.status = 'Closed'")
+    if queue:
+        where.append("c.queue = %s"); args.append(queue)
+    if q:
+        like = f"%{strip_html(q)[:60]}%"
+        where.append("(c.subject like %s or c.guest_name like %s or c.guest_email like %s or c.whatsapp_number like %s "
+                     "or c.whatsapp_profile_name like %s or c.customer like %s or c.name like %s)")
+        args += [like] * 7
+    after = cursors.decode(cursor)
+    if after:
+        where.append("(coalesce(c.last_activity_at, c.modified), c.name) < (%s, %s)")
+        args += [after["t"], after["n"]]
+    rows = frappe.db.sql(f"""select {CONV_FIELDS}, coalesce(c.last_activity_at, c.modified) as sort_at
+        from `tab{CONV}` c where {' and '.join(where)}
+        order by sort_at desc, c.name desc limit %s""", (*args, limit + 1), as_dict=True)
+    page = rows[:limit]
+    refs = [r.last_message_reference for r in page if r.last_message_reference]
+    previews = {}
+    if refs:
+        for m in frappe.get_all(MSG, filters={"name": ["in", refs], "is_internal": 0},
+                                fields=["name", "content", "direction", "sender_type"]):
+            prefix = "" if m.direction == "Inbound" else ((m.sender_type or "") + ": ")
+            previews[m.name] = (prefix + strip_html(m.content or ""))[:120]
+    unread = _unread_counts(user, [r.name for r in page])
+    nxt = cursors.encode(str(page[-1].sort_at), page[-1].name) if len(rows) > limit and page else None
+    return {"items": [_summary(r, unread.get(r.name, 0), previews.get(r.last_message_reference, "")) for r in page],
+            "next_cursor": nxt}
+
+
+def _actions(doc) -> dict:
+    user = frappe.session.user
+    from thinknxg_support.integrations import whatsapp
+
+    window = whatsapp.window_open(doc) if doc.channel == "WhatsApp" else None
+    open_ = doc.status != "Closed"
+    try:
+        from thinknxg_support.integrations.ai.engine import automation_applies
+
+        can_return = bool(open_ and doc.handling != "Bot" and automation_applies(doc))
+    except Exception:
+        can_return = False
+    return {"claim": open_ and doc.assigned_agent != user, "transfer": open_, "reply": open_ and window is not False,
+            "note": True, "close": open_, "take_over": open_ and doc.handling == "Bot", "return_to_assistant": can_return,
+            "whatsapp_window_open": window}
+
+
+def conversation_detail(doc) -> dict:
+    r = frappe._dict(doc.as_dict())
+    unread = _unread_counts(frappe.session.user, [doc.name]).get(doc.name, 0)
+    out = _summary(r, unread)
+    out.update({
+        "contact": {"name": doc.get("guest_name") if doc.is_guest else frappe.db.get_value("User", doc.started_by, "full_name"),
+                    "email": doc.get("guest_email") or (frappe.db.get_value("User", doc.started_by, "email") if doc.started_by else None),
+                    "phone": doc.get("guest_phone") or (f"+{doc.whatsapp_number}" if doc.whatsapp_number else None)},
+        "customer_name": frappe.db.get_value("Customer", doc.customer, "customer_name") if doc.customer else None,
+        "created_at": _iso(doc.creation), "handoff_reason": doc.get("handoff_reason"),
+        "actions": _actions(doc),
+        "read_up_to": _iso(_read_marker(frappe.session.user, [doc.name]).get(doc.name)),
+    })
+    return out
+
+
+@frappe.whitelist(methods=["GET"])
+def conversation(name: str):
+    return conversation_detail(_conv(name))
+
+
+def _message(m) -> dict:
+    try:
+        actions = json.loads(m.get("actions_json") or "{}")
+    except ValueError:
+        actions = {}
+    return {"id": m.name, "direction": "inbound" if m.direction == "Inbound" else ("internal" if cint(m.is_internal) else "outbound"),
+            "internal": bool(cint(m.is_internal)), "sender_type": m.sender_type, "author": m.sender_name or m.sender,
+            "author_user": m.sender, "html": m.content or "", "attachment": m.attachment, "created_at": _iso(m.creation),
+            "delivery": {"status": m.delivery_status, "error": m.delivery_error} if m.delivery_status else None,
+            "client_request_id": m.client_message_id, "read_by_customer": bool(cint(m.read_by_customer)),
+            "actions": actions}
+
+
+MSG_FIELDS = ["name", "direction", "sender", "sender_name", "content", "attachment", "is_internal", "creation",
+              "delivery_status", "delivery_error", "sender_type", "client_message_id", "read_by_customer", "actions_json"]
+
+
+@frappe.whitelist(methods=["GET"])
+def messages(name: str, before: str | None = None, after: str | None = None, limit: int = 30):
+    """Timeline page, oldest first within the page. `before` pages back; `after` returns newer messages (polling)."""
+    _conv(name)
+    limit = max(1, min(cint(limit) or 30, 100))
+    b, a = cursors.decode(before), cursors.decode(after)
+    cond, args = ["conversation = %s"], [name]
+    if b:
+        cond.append("(creation, name) < (%s, %s)"); args += [b["t"], b["n"]]
+    if a:
+        cond.append("(creation, name) > (%s, %s)"); args += [a["t"], a["n"]]
+    order = "asc" if a else "desc"
+    rows = frappe.db.sql(f"select {', '.join(MSG_FIELDS)} from `tab{MSG}` where {' and '.join(cond)} "
+                         f"order by creation {order}, name {order} limit %s", (*args, limit + 1), as_dict=True)
+    more = len(rows) > limit
+    rows = rows[:limit]
+    if not a:
+        rows = list(reversed(rows))  # oldest first within the page
+    first, last = (rows[0], rows[-1]) if rows else (None, None)
+    older = bool(more and not a)  # pages back exist only when paging backwards ran out of room
+    return {"items": [_message(m) for m in rows],
+            "before_cursor": cursors.encode(str(first.creation), first.name) if first and older else None,
+            "has_more_before": older,
+            # when paging back, the newest row of the conversation is not on this page: keep the caller's cursor
+            "latest_cursor": (cursors.encode(str(last.creation), last.name) if last and not b else after)}
+
+
+@frappe.whitelist(methods=["POST"])
+def mark_read(name: str, message: str):
+    """Explicit read acknowledgement for this agent, up to and including `message`. Only moves forward."""
+    doc = _conv(name)
+    m = frappe.db.get_value(MSG, message, ["conversation", "creation"], as_dict=True)
+    if not m or m.conversation != doc.name:
+        frappe.throw(_("Message not in this conversation."))
+    user = frappe.session.user
+    row = frappe.db.get_value(READ, {"user": user, "conversation": doc.name}, ["name", "last_read_at"], as_dict=True)
+    if row and row.last_read_at and get_datetime(row.last_read_at) >= get_datetime(m.creation):
+        return {"read_up_to": _iso(row.last_read_at)}
+    if row:
+        frappe.db.set_value(READ, row.name, {"last_read_message": message, "last_read_at": m.creation}, update_modified=False)
+    else:
+        frappe.get_doc({"doctype": READ, "user": user, "conversation": doc.name, "last_read_message": message,
+                        "last_read_at": m.creation}).insert(ignore_permissions=True)
+    # keep the web console's shared flag in step for messages this agent has now read
+    frappe.db.sql(f"update `tab{MSG}` set read_by_agent=1 where conversation=%s and direction='Inbound' and creation<=%s",
+                  (doc.name, m.creation))
+    if not frappe.db.exists(MSG, {"conversation": doc.name, "direction": "Inbound", "read_by_agent": 0}):
+        frappe.db.set_value(CONV, doc.name, "unread_agent", 0, update_modified=False)
+    return {"read_up_to": _iso(m.creation)}
+
+
+# ------------------------------------------------------------------ claim, transfer, takeover, close
+def _lock(name: str):
+    """Row lock for the rest of this request: two agents claiming at once are serialised; one wins."""
+    return frappe.db.sql(f"select name, assigned_agent, status, handling, queue, modified from `tab{CONV}` where name=%s for update",
+                         name, as_dict=True)[0]
+
+
+@frappe.whitelist(methods=["POST"])
+def claim(name: str):
+    doc = _conv(name, "write")
+    row = _lock(name)
+    user = frappe.session.user
+    if row.status == "Closed":
+        raise Conflict(_("This conversation is closed."), current=conversation_detail(doc))
+    if row.assigned_agent and row.assigned_agent != user:
+        raise Conflict(_("{0} already has this conversation.").format(frappe.utils.get_fullname(row.assigned_agent)),
+                       current=conversation_detail(doc))
+    if row.assigned_agent != user:
+        from thinknxg_support.integrations import conversations, routing
+
+        doc.reload()
+        routing.assign(doc, user, doc.queue, "Manual")
+        if doc.handling in ("Bot", "Queued", None, ""):
+            doc.db_set("handling", "Agent", update_modified=False)
+        conversations.publish_agent_event(doc, "assigned")
+    return conversation_detail(frappe.get_doc(CONV, name))
+
+
+@frappe.whitelist(methods=["POST"])
+def transfer(name: str, user: str | None = None, queue: str | None = None, expected_assignee: str | None = None):
+    doc = _conv(name, "write")
+    row = _lock(name)
+    if expected_assignee is not None and (row.assigned_agent or "") != (expected_assignee or ""):
+        raise Conflict(_("The owner changed before your transfer. Reload to see the latest."), current=conversation_detail(doc))
+    if user and not staff_auth.is_staff(user):
+        frappe.throw(_("{0} is not a support agent.").format(user))
+    from thinknxg_support.api.v1 import agent as console
+
+    console.transfer(name, user=user, queue=queue)
+    return conversation_detail(frappe.get_doc(CONV, name))
+
+
+@frappe.whitelist(methods=["POST"])
+def take_over(name: str):
+    _conv(name, "write")
+    _lock(name)
+    from thinknxg_support.api.v1 import agent as console
+
+    console.take_over(name)
+    return conversation_detail(frappe.get_doc(CONV, name))
+
+
+@frappe.whitelist(methods=["POST"])
+def return_to_assistant(name: str):
+    _conv(name, "write")
+    from thinknxg_support.api.v1 import agent as console
+
+    console.return_to_assistant(name)
+    return conversation_detail(frappe.get_doc(CONV, name))
+
+
+@frappe.whitelist(methods=["GET"])
+def closing_form():
+    staff_auth.require_staff()
+    from thinknxg_support.integrations import agent_tools
+
+    return agent_tools.closing_form()
+
+
+@frappe.whitelist(methods=["POST"])
+def close(name: str, reason: str | None = None, notes: str | None = None, answers=None, send_closing_message: int = 1,
+          expected_status: str | None = None):
+    doc = _conv(name, "write")
+    row = _lock(name)
+    if expected_status and row.status != expected_status:
+        raise Conflict(_("This conversation changed (now {0}).").format(row.status), current=conversation_detail(doc))
+    from thinknxg_support.integrations import agent_tools
+
+    agent_tools.end_chat(name, reason=reason, notes=notes, answers=answers, send_closing_message=send_closing_message)
+    return conversation_detail(frappe.get_doc(CONV, name))
+
+
+@frappe.whitelist(methods=["GET"])
+def canned_responses(channel: str | None = None):
+    staff_auth.require_staff()
+    from thinknxg_support.integrations import agent_tools
+
+    return agent_tools.canned_responses(channel)
+
+
+# ------------------------------------------------------------------ replies and notes (idempotent)
+def _text_html(text: str) -> str:
+    from thinknxg_support.integrations.conversations import _text_to_html
+
+    return _text_to_html((text or "").strip())
+
+
+@frappe.whitelist(methods=["POST"])
+def reply(name: str, text: str, client_request_id: str, internal: int = 0):
+    """Reply to the customer (internal=0) or add a staff-only note (internal=1). Retrying with the same
+    client_request_id returns the first message instead of sending again."""
+    doc = _conv(name, "write")
+    cid = (client_request_id or "").strip()[:64]
+    if len(cid) < 8:
+        frappe.throw(_("client_request_id is required (use a UUID)."))
+    if not (text or "").strip():
+        frappe.throw(_("Write a message first."))
+    existing = frappe.db.get_value(MSG, {"conversation": doc.name, "client_message_id": cid}, MSG_FIELDS, as_dict=True)
+    if existing:
+        return {"message": _message(existing), "duplicate": True}
+    internal = cint(internal)
+    if not internal and doc.status == "Closed":
+        raise ChannelActionRequired(_("This conversation is closed."), "conversation_closed", [])
+    if not internal and doc.channel == "WhatsApp":
+        from thinknxg_support.integrations import whatsapp
+
+        if not whatsapp.window_open(doc):
+            raise ChannelActionRequired(
+                _("WhatsApp only allows free replies within 24 hours of the customer's last message. "
+                  "Send an approved template from the web console, or wait for the customer to write."),
+                "whatsapp_window_closed", [{"action": "open_web_console", "label": _("Open in the web console")}])
+    from thinknxg_support.integrations import conversations
+
+    out = conversations.post_agent_message(doc, _text_html(text), internal=internal, source="app",
+                                           client_message_id=cid)
+    msg = frappe.db.get_value(MSG, out.get("name") or {"conversation": doc.name, "client_message_id": cid}, MSG_FIELDS,
+                              as_dict=True)
+    return {"message": _message(msg), "duplicate": bool(out.get("duplicate"))}
+
+
+# ------------------------------------------------------------------ tickets (Helpdesk)
+def _hd():
+    staff_auth.require_staff()
+    from thinknxg_support.integrations import helpdesk_agent
+
+    if not helpdesk_agent.available():
+        raise ChannelActionRequired(_("Helpdesk is not installed on this site."), "helpdesk_unavailable")
+    return helpdesk_agent
+
+
+@frappe.whitelist(methods=["GET"])
+def tickets(view: str = "mine", status: str | None = "open", priority: str | None = None, q: str | None = None,
+            cursor: str | None = None, limit: int = 30):
+    return _hd().list_tickets(view=view, status=status, priority=priority, q=q, cursor=cursor, limit=limit)
+
+
+@frappe.whitelist(methods=["GET"])
+def ticket(name: str):
+    return _hd().ticket_detail(name)
+
+
+@frappe.whitelist(methods=["GET"])
+def ticket_timeline(name: str, cursor: str | None = None, limit: int = 30):
+    return _hd().timeline(name, cursor=cursor, limit=limit)
+
+
+def _once(request_id: str, action: str, reference: str, fn):
+    """Run `fn` once per client request id; a retry gets the stored result."""
+    rid = (request_id or "").strip()[:64]
+    if len(rid) < 8:
+        frappe.throw(_("client_request_id is required (use a UUID)."))
+    key = f"{frappe.session.user}:{rid}"
+    row = frappe.db.get_value("Support Agent Request", {"request_id": key}, ["result", "action", "reference"], as_dict=True)
+    if row:
+        if row.action != action or row.reference != reference:
+            frappe.throw(_("This client_request_id was already used for something else."))
+        return {**json.loads(row.result or "{}"), "duplicate": True}
+    log = frappe.get_doc({"doctype": "Support Agent Request", "request_id": key, "user": frappe.session.user,
+                          "action": action, "reference": reference})
+    try:
+        log.insert(ignore_permissions=True)  # unique request_id: a concurrent retry fails here
+    except frappe.DuplicateEntryError:
+        frappe.db.rollback()
+        row = frappe.db.get_value("Support Agent Request", {"request_id": key}, "result")
+        return {**json.loads(row or "{}"), "duplicate": True}
+    try:
+        result = fn()
+    except Exception:
+        frappe.db.delete("Support Agent Request", {"name": log.name})  # nothing happened: a retry may run again
+        raise
+    frappe.db.set_value("Support Agent Request", log.name, "result", json.dumps(result, default=str), update_modified=False)
+    return {**result, "duplicate": False}
+
+
+@frappe.whitelist(methods=["POST"])
+def ticket_reply(name: str, text: str, client_request_id: str):
+    hd = _hd()
+    if not (text or "").strip():
+        frappe.throw(_("Write a message first."))
+    return _once(client_request_id, "ticket_reply", name, lambda: hd.reply(name, _text_html(text)))
+
+
+@frappe.whitelist(methods=["POST"])
+def ticket_note(name: str, text: str, client_request_id: str):
+    hd = _hd()
+    if not (text or "").strip():
+        frappe.throw(_("Write a note first."))
+    return _once(client_request_id, "ticket_note", name, lambda: hd.note(name, _text_html(text)))
+
+
+@frappe.whitelist(methods=["POST"])
+def ticket_update(name: str, status: str | None = None, priority: str | None = None, team: str | None = None,
+                  expected_modified: str | None = None):
+    return _hd().update(name, {"status": status, "priority": priority, "agent_group": team}, expected_modified)
+
+
+@frappe.whitelist(methods=["POST"])
+def ticket_assign(name: str, agent: str | None = None, expected_assignees=None):
+    exp = frappe.parse_json(expected_assignees) if isinstance(expected_assignees, str) else expected_assignees
+    return _hd().assign(name, agent or frappe.session.user, exp)
+
+
+# ------------------------------------------------------------------ alerts, notification links, devices
+@frappe.whitelist(methods=["GET"])
+def alerts():
+    staff_auth.require_staff()
+    from thinknxg_support.integrations import alerts as al
+
+    return {"items": al.my_alerts()}
+
+
+@frappe.whitelist(methods=["POST"])
+def acknowledge_alerts(ids):
+    staff_auth.require_staff()
+    from thinknxg_support.integrations import alerts as al
+
+    return {"acknowledged": al.acknowledge(ids)}
+
+
+@frappe.whitelist(methods=["GET"])
+def open_target(doctype: str, name: str):
+    """Where a notification or alert link should go, checked again for this agent. 403/404 when not allowed."""
+    staff_auth.require_staff()
+    if doctype == CONV:
+        _conv(name)
+        return {"kind": "conversation", "id": name}
+    if doctype == "HD Ticket":
+        _hd().get_ticket(name)
+        return {"kind": "ticket", "id": name}
+    if doctype == "Support Escalation":
+        e = frappe.get_doc(doctype, name)
+        e.check_permission("read")
+        if e.reference_doctype in (CONV, "HD Ticket"):
+            return open_target(e.reference_doctype, e.reference_name)
+        return {"kind": "web", "url": frappe.utils.get_url(f"/app/support-escalation/{name}")}
+    raise frappe.PermissionError(_("This link cannot be opened in the app."))
+
+
+@frappe.whitelist(methods=["POST"])
+def register_device(push_token: str, platform: str, device_name: str | None = None, app_version: str | None = None):
+    staff_auth.require_staff()
+    import hashlib
+
+    if platform not in ("Android", "iOS", "Windows"):
+        frappe.throw(_("Unknown platform."))
+    token = (push_token or "").strip()
+    if not token or len(token) > 4096:
+        frappe.throw(_("Invalid push token."))
+    h = hashlib.sha256(token.encode()).hexdigest()
+    existing = frappe.db.get_value("Support Agent Device", {"token_hash": h}, "name")
+    values = {"user": frappe.session.user, "platform": platform, "device_name": (device_name or "")[:140],
+              "app_version": (app_version or "")[:40], "enabled": 1, "push_token": token, "token_hash": h,
+              "last_seen": now_datetime()}
+    if existing:  # a token moves to whoever signs in on that device now
+        frappe.db.set_value("Support Agent Device", existing, values)
+        return {"device": existing}
+    d = frappe.get_doc({"doctype": "Support Agent Device", **values}).insert(ignore_permissions=True)
+    return {"device": d.name}
+
+
+@frappe.whitelist(methods=["POST"])
+def sign_out(push_token: str | None = None):
+    """Called by the app before it revokes its token and clears local data: stop push to this device."""
+    staff_auth.require_staff()
+    import hashlib
+
+    if push_token:
+        h = hashlib.sha256(push_token.strip().encode()).hexdigest()
+        frappe.db.delete("Support Agent Device", {"token_hash": h, "user": frappe.session.user})
+    return {"ok": True}

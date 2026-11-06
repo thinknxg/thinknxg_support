@@ -1,0 +1,76 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "Per agent: how far each conversation has been read (follows the agent across web, desktop and mobile)",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "conversation",
+  "last_read_message",
+  "last_read_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "conversation",
+   "fieldtype": "Link",
+   "label": "Conversation",
+   "options": "Support Conversation Link",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "last_read_message",
+   "fieldtype": "Link",
+   "label": "Last Read Message",
+   "options": "Support Portal Message",
+   "idx": 3
+  },
+  {
+   "fieldname": "last_read_at",
+   "fieldtype": "Datetime",
+   "label": "Last Read At",
+   "in_list_view": 1,
+   "description": "Creation time of the last message this agent has read",
+   "idx": 4
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Agent Read State",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "delete": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0,
+ "autoname": "hash",
+ "in_create": 1
+}
