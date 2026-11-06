@@ -188,7 +188,14 @@ class TestStaffApi(BaseTestCase):
         r, name = self._chat()
         as_user(self.a1)
         v1.claim(name)
-        with patch("thinknxg_support.utils.uploaded_files", return_value=[("invoice.pdf", b"%PDF-1.4 test")]):
+        import io
+
+        from pypdf import PdfWriter  # Frappe v16 checks that a PDF really is one
+
+        w, buf = PdfWriter(), io.BytesIO()
+        w.add_blank_page(width=72, height=72)
+        w.write(buf)
+        with patch("thinknxg_support.utils.uploaded_files", return_value=[("invoice.pdf", buf.getvalue())]):
             out = v1.reply(name, "Here is your invoice", client_request_id="33333333-aaaa-bbbb-cccc-000000000001")
         self.assertEqual(out["message"]["attachment"]["name"], "invoice.pdf")
         msg = out["message"]["id"]
