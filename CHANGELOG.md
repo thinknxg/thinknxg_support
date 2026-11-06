@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.1 — 2026-11-06
+* Fix: visitors' live chat messages showed their HTML tags ("<p>When will you be available?</p>") to agents and the
+  assistant. The widget sends simple HTML; guest messages are now turned back into text before saving
+* Patch repairs visitor messages already saved that way
+
 ## 1.7.0 — 2026-11-06
 * **Alert centre** on every desk page for new chats, chat messages, new tickets, ticket assignments, conversation
   messages and escalations: distinct pop-ups and sounds, repeat until acknowledged or picked up, one ringing tab,
