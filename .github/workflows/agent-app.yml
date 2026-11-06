@@ -6,11 +6,19 @@ on:
   pull_request:
     paths: ["agent_app/**", ".github/workflows/agent-app.yml"]
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Also attach the builds to this GitHub release (e.g. agent-app-v1.9.0); leave empty to skip"
+        required: false
+        default: ""
 
 defaults:
   run:
     working-directory: agent_app
     shell: bash
+
+permissions:
+  contents: write  # only used to attach builds to a release on manual runs
 
 env:
   # Push (Firebase) settings: empty values build an app without push; set these repository secrets to enable it.
@@ -70,6 +78,13 @@ jobs:
         run: |
           if [ -f android/key.properties ]; then echo "Signed with the release key." >> $GITHUB_STEP_SUMMARY;
           else echo "Android: no release key configured; the APK/AAB are signed with the debug key (test builds only)." >> $GITHUB_STEP_SUMMARY; fi
+      - name: Attach to the release
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk thinkNXG-Support-Agent-test.apk
+          gh release upload "${{ inputs.release_tag }}" thinkNXG-Support-Agent-test.apk --clobber
       - uses: actions/upload-artifact@v4
         with:
           name: thinknxg-agent-android
@@ -126,6 +141,11 @@ jobs:
         with:
           name: thinknxg-agent-windows-installer
           path: agent_app/build/installer/*.exe
+      - name: Attach to the release
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ inputs.release_tag }}" build/installer/*.exe --clobber
 
   ios:
     name: iOS (TestFlight when signing is configured)
