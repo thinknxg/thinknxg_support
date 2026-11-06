@@ -1,0 +1,184 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "Every alert sent to an agent and when it was acknowledged",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "kind",
+  "status",
+  "title",
+  "column_break_l1",
+  "alerted_on",
+  "acknowledged_on",
+  "ack_seconds",
+  "handled_reason",
+  "ref_section",
+  "body",
+  "reference_doctype",
+  "reference_name",
+  "route",
+  "group_key",
+  "priority"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "search_index": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "kind",
+   "fieldtype": "Select",
+   "label": "Activity",
+   "options": "New Chat\nChat Message\nNew Ticket\nTicket Assigned\nConversation Message\nEscalation",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Open\nAcknowledged\nHandled\nExpired",
+   "default": "Open",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 3
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "in_list_view": 1,
+   "idx": 4
+  },
+  {
+   "fieldname": "column_break_l1",
+   "fieldtype": "Column Break",
+   "idx": 5
+  },
+  {
+   "fieldname": "alerted_on",
+   "fieldtype": "Datetime",
+   "label": "Alerted On",
+   "read_only": 1,
+   "idx": 6
+  },
+  {
+   "fieldname": "acknowledged_on",
+   "fieldtype": "Datetime",
+   "label": "Acknowledged On",
+   "read_only": 1,
+   "idx": 7
+  },
+  {
+   "fieldname": "ack_seconds",
+   "fieldtype": "Float",
+   "label": "Seconds to Acknowledge",
+   "read_only": 1,
+   "precision": "1",
+   "idx": 8
+  },
+  {
+   "fieldname": "handled_reason",
+   "fieldtype": "Data",
+   "label": "Handled Reason",
+   "read_only": 1,
+   "description": "Why it stopped, when not acknowledged by this person",
+   "idx": 9
+  },
+  {
+   "fieldname": "ref_section",
+   "fieldtype": "Section Break",
+   "label": "Details",
+   "idx": 10
+  },
+  {
+   "fieldname": "body",
+   "fieldtype": "Small Text",
+   "label": "Body",
+   "idx": 11
+  },
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "label": "Reference Doctype",
+   "options": "DocType",
+   "idx": 12
+  },
+  {
+   "fieldname": "reference_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Reference Name",
+   "options": "reference_doctype",
+   "idx": 13
+  },
+  {
+   "fieldname": "route",
+   "fieldtype": "Data",
+   "label": "Route",
+   "idx": 14
+  },
+  {
+   "fieldname": "group_key",
+   "fieldtype": "Data",
+   "label": "Group Key",
+   "search_index": 1,
+   "idx": 15
+  },
+  {
+   "fieldname": "priority",
+   "fieldtype": "Data",
+   "label": "Priority",
+   "idx": 16
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Agent Alert",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "delete": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "delete": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0,
+ "autoname": "hash",
+ "title_field": "title",
+ "in_create": 1
+}

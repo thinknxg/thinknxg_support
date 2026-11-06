@@ -69,6 +69,12 @@
   "chat_auto_close_hours",
   "guest_chat_rate_limit",
   "guest_chat_retention_days",
+  "chat_closing_section",
+  "closure_reasons",
+  "require_closure_reason",
+  "column_break_closing",
+  "chat_closing_message",
+  "wrap_up_questions",
   "whatsapp_tab",
   "enable_whatsapp",
   "whatsapp_display_number",
@@ -535,31 +541,71 @@
    "idx": 62
   },
   {
+   "fieldname": "chat_closing_section",
+   "fieldtype": "Section Break",
+   "label": "Ending a Chat",
+   "description": "What agents fill in when they end a chat in the Support Chat console",
+   "idx": 63
+  },
+  {
+   "fieldname": "closure_reasons",
+   "fieldtype": "Small Text",
+   "label": "Closure Reasons",
+   "description": "One per line",
+   "idx": 64
+  },
+  {
+   "fieldname": "require_closure_reason",
+   "fieldtype": "Check",
+   "label": "Require Closure Reason",
+   "default": "1",
+   "idx": 65
+  },
+  {
+   "fieldname": "column_break_closing",
+   "fieldtype": "Column Break",
+   "idx": 66
+  },
+  {
+   "fieldname": "chat_closing_message",
+   "fieldtype": "Small Text",
+   "label": "Closing Message to the Customer",
+   "description": "Optional, sent when an agent ends the chat (they can untick it)",
+   "idx": 67
+  },
+  {
+   "fieldname": "wrap_up_questions",
+   "fieldtype": "Table",
+   "label": "Wrap-up Questions",
+   "options": "Support Chat Closing Question",
+   "idx": 68
+  },
+  {
    "fieldname": "whatsapp_tab",
    "fieldtype": "Tab Break",
    "label": "WhatsApp",
-   "idx": 63
+   "idx": 69
   },
   {
    "fieldname": "enable_whatsapp",
    "fieldtype": "Check",
    "label": "Enable WhatsApp",
    "description": "Receive and answer WhatsApp messages through the WhatsApp Cloud API (Meta)",
-   "idx": 64
+   "idx": 70
   },
   {
    "fieldname": "whatsapp_display_number",
    "fieldtype": "Data",
    "label": "WhatsApp Number",
    "description": "Public number with country code, e.g. +968 9xxx xxxx. Used for the 'Chat on WhatsApp' button",
-   "idx": 65
+   "idx": 71
   },
   {
    "fieldname": "show_whatsapp_button",
    "fieldtype": "Check",
    "label": "Show 'Chat on WhatsApp' Button",
    "default": "1",
-   "idx": 66
+   "idx": 72
   },
   {
    "fieldname": "whatsapp_prefill_text",
@@ -567,31 +613,31 @@
    "label": "Whatsapp Prefill Text",
    "default": "Hello, I need help with",
    "description": "Text pre-filled when a visitor opens WhatsApp from the chat window",
-   "idx": 67
+   "idx": 73
   },
   {
    "fieldname": "column_break_wa",
    "fieldtype": "Column Break",
-   "idx": 68
+   "idx": 74
   },
   {
    "fieldname": "whatsapp_phone_number_id",
    "fieldtype": "Data",
    "label": "Phone Number ID",
-   "idx": 69
+   "idx": 75
   },
   {
    "fieldname": "whatsapp_business_account_id",
    "fieldtype": "Data",
    "label": "WhatsApp Business Account ID",
-   "idx": 70
+   "idx": 76
   },
   {
    "fieldname": "whatsapp_api_version",
    "fieldtype": "Data",
    "label": "Graph API Version",
    "default": "v22.0",
-   "idx": 71
+   "idx": 77
   },
   {
    "fieldname": "whatsapp_access_token",
@@ -599,53 +645,53 @@
    "label": "Access Token",
    "length": 500,
    "description": "Permanent System User token with whatsapp_business_messaging permission",
-   "idx": 72
+   "idx": 78
   },
   {
    "fieldname": "whatsapp_app_secret",
    "fieldtype": "Password",
    "label": "App Secret",
    "description": "Used to verify webhook signatures",
-   "idx": 73
+   "idx": 79
   },
   {
    "fieldname": "whatsapp_verify_token",
    "fieldtype": "Password",
    "label": "Webhook Verify Token",
    "description": "Any random string; enter the same value in the Meta app webhook settings",
-   "idx": 74
+   "idx": 80
   },
   {
    "fieldname": "whatsapp_webhook_section",
    "fieldtype": "Section Break",
    "label": "Webhook & Templates",
-   "idx": 75
+   "idx": 81
   },
   {
    "fieldname": "whatsapp_webhook_url",
    "fieldtype": "Data",
    "label": "Webhook Callback URL",
    "read_only": 1,
-   "idx": 76
+   "idx": 82
   },
   {
    "fieldname": "whatsapp_template_name",
    "fieldtype": "Data",
    "label": "Re-engagement Template",
    "description": "Approved template sent when the 24-hour customer service window has closed",
-   "idx": 77
+   "idx": 83
   },
   {
    "fieldname": "whatsapp_template_language",
    "fieldtype": "Data",
    "label": "Template Language",
    "default": "en",
-   "idx": 78
+   "idx": 84
   },
   {
    "fieldname": "column_break_wa2",
    "fieldtype": "Column Break",
-   "idx": 79
+   "idx": 85
   },
   {
    "fieldname": "whatsapp_link_contacts",
@@ -653,27 +699,27 @@
    "label": "Match Numbers to Contacts",
    "default": "1",
    "description": "Link WhatsApp chats to the Contact and Customer that own the number",
-   "idx": 80
+   "idx": 86
   },
   {
    "fieldname": "whatsapp_auto_reply",
    "fieldtype": "Small Text",
    "label": "Out-of-hours Auto Reply",
    "description": "Sent once per chat when a message arrives outside support hours. Leave empty to disable",
-   "idx": 81
+   "idx": 87
   },
   {
    "fieldname": "whatsapp_status",
    "fieldtype": "Small Text",
    "label": "Whatsapp Status",
    "read_only": 1,
-   "idx": 82
+   "idx": 88
   },
   {
    "fieldname": "landing_tab",
    "fieldtype": "Tab Break",
    "label": "Landing Page",
-   "idx": 83
+   "idx": 89
   },
   {
    "fieldname": "landing_enabled",
@@ -681,7 +727,7 @@
    "label": "Public Landing Page",
    "default": "1",
    "description": "Visitors can open the portal home page without logging in. Off: the portal asks everyone to log in",
-   "idx": 84
+   "idx": 90
   },
   {
    "fieldname": "customer_home",
@@ -689,12 +735,12 @@
    "label": "Home Page for Logged-in Customers",
    "options": "Landing Page\nDashboard",
    "default": "Landing Page",
-   "idx": 85
+   "idx": 91
   },
   {
    "fieldname": "column_break_land",
    "fieldtype": "Column Break",
-   "idx": 86
+   "idx": 92
   },
   {
    "fieldname": "public_knowledge",
@@ -702,40 +748,40 @@
    "label": "Public Knowledge Base",
    "default": "1",
    "description": "Visitors can search and read published help articles without logging in",
-   "idx": 87
+   "idx": 93
   },
   {
    "fieldname": "index_landing",
    "fieldtype": "Check",
    "label": "Let Search Engines Index the Landing Page",
    "description": "Off by default. Other portal pages are never indexed",
-   "idx": 88
+   "idx": 94
   },
   {
    "fieldname": "meta_description",
    "fieldtype": "Small Text",
    "label": "Search Engine Description",
-   "idx": 89
+   "idx": 95
   },
   {
    "fieldname": "landing_sections_section",
    "fieldtype": "Section Break",
    "label": "Sections",
    "description": "Shown from top to bottom in this order. Drag rows to reorder, untick Enabled to hide, and set Audience to show a section only to visitors or only to logged-in customers",
-   "idx": 90
+   "idx": 96
   },
   {
    "fieldname": "landing_sections",
    "fieldtype": "Table",
    "label": "Landing Sections",
    "options": "Support Portal Section",
-   "idx": 91
+   "idx": 97
   },
   {
    "fieldname": "menu_tab",
    "fieldtype": "Tab Break",
    "label": "Menu",
-   "idx": 92
+   "idx": 98
   },
   {
    "fieldname": "menu_links",
@@ -743,13 +789,13 @@
    "label": "Menu Links",
    "options": "Support Portal Menu Link",
    "description": "Links shown in the portal's top bar (Header) or at the bottom of the page (Footer)",
-   "idx": 93
+   "idx": 99
   },
   {
    "fieldname": "security_tab",
    "fieldtype": "Tab Break",
    "label": "Security",
-   "idx": 94
+   "idx": 100
   },
   {
    "fieldname": "require_contact_link",
@@ -757,32 +803,32 @@
    "label": "Require Contact Link",
    "default": "1",
    "description": "Access grants only apply when the user's Contact is linked to the Customer",
-   "idx": 95
+   "idx": 101
   },
   {
    "fieldname": "allowed_attachment_extensions",
    "fieldtype": "Small Text",
    "label": "Allowed Attachment Extensions",
-   "idx": 96
+   "idx": 102
   },
   {
    "fieldname": "max_attachment_mb",
    "fieldtype": "Int",
    "label": "Max Attachment Mb",
    "default": "10",
-   "idx": 97
+   "idx": 103
   },
   {
    "fieldname": "max_attachments_per_message",
    "fieldtype": "Int",
    "label": "Max Attachments Per Message",
    "default": "5",
-   "idx": 98
+   "idx": 104
   },
   {
    "fieldname": "column_break_sec",
    "fieldtype": "Column Break",
-   "idx": 99
+   "idx": 105
   },
   {
    "fieldname": "message_rate_limit",
@@ -790,7 +836,7 @@
    "label": "Message Rate Limit",
    "description": "Messages / replies per user per minute",
    "default": "30",
-   "idx": 100
+   "idx": 106
   },
   {
    "fieldname": "ticket_rate_limit",
@@ -798,14 +844,14 @@
    "label": "Ticket Rate Limit",
    "description": "New tickets / requests per user per minute",
    "default": "10",
-   "idx": 101
+   "idx": 107
   },
   {
    "fieldname": "event_retention_days",
    "fieldtype": "Int",
    "label": "Event Retention Days",
    "default": "365",
-   "idx": 102
+   "idx": 108
   }
  ],
  "index_web_pages_for_search": 0,

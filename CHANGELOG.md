@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.7.0 — 2026-11-06
+* **Alert centre** on every desk page for new chats, chat messages, new tickets, ticket assignments, conversation
+  messages and escalations: distinct pop-ups and sounds, repeat until acknowledged or picked up, one ringing tab,
+  background-tab timing on the audio clock, system notifications, title badge
+* **Support Alert Settings** (team defaults per activity) and **My Alert Preferences** (per agent: mute, volume,
+  sound, pop-up, repeat, test sounds); custom sound files
+* **Support Agent Alert** log and **Agent Alert Response** report (time to acknowledge, picked up, missed)
+* **Canned responses**: categories, `/shortcut` typeahead and picker in the chat console, placeholders, edit before
+  sending, private or team, usage counts; Helpdesk canned responses included
+* **End chat** wrap-up: closure reason, configurable wrap-up questions, notes, optional closing message; saved on the
+  conversation and in its history
+* Escalation pop-ups now use the alert centre (Escalation sound)
+
 ## 1.6.0 — 2026-11-05
 * Landing page: *Popular Articles* grouped by knowledge-base category for visitors and customers, most-read first
   (reads + helpful votes, or Helpdesk views); *Items to Show* = articles per category (new installs: 4)

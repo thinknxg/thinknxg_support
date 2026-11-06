@@ -1,0 +1,119 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "rules_section",
+  "rules",
+  "who_section",
+  "agent_roles",
+  "column_break_a1",
+  "expire_hours",
+  "keep_days"
+ ],
+ "fields": [
+  {
+   "fieldname": "rules_section",
+   "fieldtype": "Section Break",
+   "label": "Alerts by Activity",
+   "description": "Team defaults. Each agent can change sounds, pop-ups, repeats and volume in My Alert Preferences",
+   "idx": 1
+  },
+  {
+   "fieldname": "rules",
+   "fieldtype": "Table",
+   "label": "Rules",
+   "options": "Support Alert Rule",
+   "idx": 2
+  },
+  {
+   "fieldname": "who_section",
+   "fieldtype": "Section Break",
+   "label": "Who Gets Alerts",
+   "idx": 3
+  },
+  {
+   "fieldname": "agent_roles",
+   "fieldtype": "Small Text",
+   "label": "Agent Roles",
+   "default": "Support Agent\nSupport Manager\nAgent\nAgent Manager",
+   "description": "Users with these roles (and desk access) count as agents. One per line. New chats go to the chat queue's members first; new tickets to the ticket's Helpdesk team first",
+   "idx": 4
+  },
+  {
+   "fieldname": "column_break_a1",
+   "fieldtype": "Column Break",
+   "idx": 5
+  },
+  {
+   "fieldname": "expire_hours",
+   "fieldtype": "Int",
+   "label": "Stop Alerting After (hours)",
+   "default": "24",
+   "description": "Unacknowledged alerts older than this stop repeating",
+   "idx": 6
+  },
+  {
+   "fieldname": "keep_days",
+   "fieldtype": "Int",
+   "label": "Keep Alert History (days)",
+   "default": "90",
+   "idx": 7
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Alert Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

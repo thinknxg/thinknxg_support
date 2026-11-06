@@ -167,7 +167,6 @@ class TestEscalations(BaseTestCase):
         as_user("Guest")
         with self.assertRaises(frappe.PermissionError):
             escalations.escalate_document(CONV, conv.name, note="x")
-        self.assertEqual(escalations.pending_alerts(), [])
         as_user("Administrator")
         self.assertFalse(frappe.has_permission(ESC, "read", user="Guest"))
 

@@ -1,0 +1,130 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "mute_all",
+  "column_break_p1",
+  "volume",
+  "desktop_notifications",
+  "items_section",
+  "items"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User",
+   "reqd": 1,
+   "unique": 1,
+   "default": "__user",
+   "in_list_view": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "mute_all",
+   "fieldtype": "Check",
+   "label": "Mute All Sounds",
+   "description": "Pop-ups still show",
+   "idx": 2
+  },
+  {
+   "fieldname": "column_break_p1",
+   "fieldtype": "Column Break",
+   "idx": 3
+  },
+  {
+   "fieldname": "volume",
+   "fieldtype": "Int",
+   "label": "Volume %",
+   "default": "80",
+   "idx": 4
+  },
+  {
+   "fieldname": "desktop_notifications",
+   "fieldtype": "Check",
+   "label": "System Notifications When the Tab Is in the Background",
+   "default": "1",
+   "idx": 5
+  },
+  {
+   "fieldname": "items_section",
+   "fieldtype": "Section Break",
+   "label": "By Activity",
+   "idx": 6
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Support Alert Preference Item",
+   "idx": 7
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Alert Preference",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Agent",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "if_owner": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "field:user",
+ "naming_rule": "By fieldname"
+}

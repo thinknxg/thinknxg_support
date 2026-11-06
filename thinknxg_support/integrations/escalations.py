@@ -100,6 +100,10 @@ def on_record_update(doc):
         _sync_todo(doc, old, doc.assigned_to)
     if doc.has_value_changed("status") and doc.status in ("Resolved", "Closed"):
         _close_todos(doc.name, "Closed")
+    if doc.has_value_changed("status") and doc.status in ("In Progress", "Resolved", "Closed"):
+        from thinknxg_support.integrations import alerts
+
+        alerts.on_escalation_taken(doc.name, _("Status {0}").format(doc.status))
 
 
 def _close_todos(name: str, status: str, user: str | None = None):
@@ -604,8 +608,9 @@ def notify(name: str, reason: str = "new"):
     sent = []
     subject = f"[{p['priority']}] {p['title']}: {p['subject']} ({doc.name})"
     if cint(s.notify_in_app):
-        for u in users:
-            frappe.publish_realtime(EVENT, {**p, "sound": cint(s.alert_sound)}, user=u)
+        from thinknxg_support.integrations import alerts
+
+        alerts.on_escalation(doc, reason, users, p)
         sent.append(_("in-app ({0})").format(len(users)))
     if cint(s.notify_system):
         n = 0
@@ -660,41 +665,6 @@ def _send_whatsapp(s, p: dict) -> str:
             failed += 1
             frappe.log_error(title="thinkNXG Support: escalation WhatsApp alert failed", message=f"{n}: {e}")
     return _("WhatsApp ({0} sent, {1} failed)").format(ok, failed)
-
-
-# ------------------------------------------------------------------ in-app alerts on page load
-@frappe.whitelist(methods=["GET"])
-def pending_alerts():
-    """Escalations this person should see but may have missed while offline: new ones they are notified about,
-    and their own overdue ones. Acknowledged alerts stay hidden."""
-    if not enabled() or not cint(settings().notify_in_app) or not STAFF_ROLES & set(frappe.get_roles()):
-        return []
-    rows = frappe.get_all(ESC, filters={"status": ["in", OPEN], "escalated_on": [">", add_to_date(now_datetime(), days=-2)]},
-                          fields=["name"], order_by="escalated_on desc", limit=30)
-    out = []
-    for r in rows:
-        doc = frappe.get_doc(ESC, r.name)
-        mine = doc.assigned_to == frappe.session.user
-        wanted = (doc.status == "New" and frappe.session.user in recipients(doc, "new")) or (mine and (doc.status == "Pending" or doc.overdue))
-        if not wanted or frappe.cache.get_value(_ack_key(doc.name, frappe.session.user)):
-            continue
-        reason = ("overdue_response" if doc.response_overdue else "overdue_resolution") if doc.overdue else "new"
-        out.append({**payload(doc, reason), "sound": 0})
-        if len(out) >= 5:
-            break
-    return out
-
-
-def _ack_key(name: str, user: str) -> str:
-    return f"thinknxg_support:esc_ack:{name}:{user}"
-
-
-@frappe.whitelist(methods=["POST"])
-def acknowledge(name: str):
-    if not STAFF_ROLES & set(frappe.get_roles()):
-        frappe.throw(_("Not permitted."), frappe.PermissionError)
-    frappe.cache.set_value(_ack_key(name, frappe.session.user), 1, expires_in_sec=3 * 86400)
-    return True
 
 
 # ------------------------------------------------------------------ overdue job (every 5 minutes)

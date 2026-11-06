@@ -50,9 +50,10 @@ def assign(conv, agent: str | None, queue: str | None, reason: str = "Automatic"
                         "reason": reason, "assigned_at": now_datetime()}).insert(ignore_permissions=True)
     conv.db_set({"assigned_agent": agent, "queue": queue}, update_modified=False)
     if agent:
-        from thinknxg_support.integrations import escalations
+        from thinknxg_support.integrations import alerts, escalations
 
         escalations.on_activity("Support Conversation Link", conv.name, "assigned", agent)
+        alerts.on_chat_assigned(conv, agent)
 
 
 def handoff(conv, reason: str, message: str | None = None, announce: bool = True):
@@ -71,6 +72,9 @@ def handoff(conv, reason: str, message: str | None = None, announce: bool = True
     from thinknxg_support.integrations import escalations
 
     escalations.on_chat_handoff(conv, reason, agent, queue.name if queue else None)
+    from thinknxg_support.integrations import alerts
+
+    alerts.on_new_chat(conv, reason)
     if announce:
         if message:
             text = message
@@ -129,3 +133,6 @@ def on_closed(conv):
     from thinknxg_support.integrations import escalations
 
     escalations.on_activity(CONV, conv.name, "closed")
+    from thinknxg_support.integrations import alerts
+
+    alerts.on_conversation_closed(conv.name)
