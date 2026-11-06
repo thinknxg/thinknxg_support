@@ -51,6 +51,15 @@ class TestAgentTools(BaseTestCase):
         from thinknxg_support.install import ensure_agent_tool_defaults
 
         ensure_agent_tool_defaults()
+        s = frappe.get_single("Support Alert Settings")  # other tests change rules: start from the defaults
+        for row in s.rules:
+            d = alerts.DEFAULTS.get(row.kind)
+            if d:
+                row.update({k: d[k] for k in ("enabled", "popup", "sound", "repeat_until_ack", "max_repeats",
+                                              "desktop_notification", "volume")})
+                row.repeat_seconds = d["repeat_seconds"] or 15
+        s.flags.ignore_permissions = True
+        s.save()
         frappe.db.delete(ALERT)
         frappe.cache.delete_keys("thinknxg_support:rl:")
         self.p = patch.object(frappe, "enqueue", side_effect=run_now)

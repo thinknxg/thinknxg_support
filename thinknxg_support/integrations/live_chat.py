@@ -417,15 +417,18 @@ def email_guest_if_away(conv, msg):
             f"<p>{_('Our support team replied to your chat:')}</p>"
             f"<blockquote>{msg.content or ''}</blockquote>"
             f"<p>{_('Reply to this email or open the chat on our website to continue.')}</p>")
-    frappe.sendmail(
-        recipients=[conv.guest_email],
-        subject=_("Reply from {0}").format(s.portal_title or "thinkNXG Support"),
-        message=body,
-        reply_to=s.support_email or None,
-        reference_doctype=CONV,
-        reference_name=conv.name,
-        delayed=True,
-    )
+    try:
+        frappe.sendmail(
+            recipients=[conv.guest_email],
+            subject=_("Reply from {0}").format(s.portal_title or "thinkNXG Support"),
+            message=body,
+            reply_to=s.support_email or None,
+            reference_doctype=CONV,
+            reference_name=conv.name,
+            delayed=True,
+        )
+    except Exception:
+        frappe.log_error(title="thinkNXG Support: chat reply e-mail failed")
 
 
 def close_idle_chats():
