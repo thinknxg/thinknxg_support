@@ -64,6 +64,7 @@ jobs:
         run: |
           cd ~/frappe-bench
           bench get-app --branch version-16 erpnext
+          bench get-app telephony  # Helpdesk requires it
           bench get-app helpdesk
           bench get-app thinknxg_support "$GITHUB_WORKSPACE/app"
       - name: Create site
