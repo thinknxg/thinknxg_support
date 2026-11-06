@@ -25,8 +25,17 @@ before_uninstall = "thinknxg_support.install.before_uninstall"
 # Live chat launcher on public website pages (checks settings at runtime and stays hidden when disabled)
 web_include_js = ["support_chat.bundle.js"]
 
-# Desk: pop-up alerts for escalated support queries, and the "Escalate" action on tickets, chats and requests
-app_include_js = ["/assets/thinknxg_support/js/escalation_alerts.js", "/assets/thinknxg_support/js/escalate_button.js"]
+# Desk: the support alert centre (pop-ups and sounds for chats, tickets, conversations, escalations) on every page,
+# and the "Escalate" action on tickets, chats and requests
+app_include_js = ["/assets/thinknxg_support/js/alert_center.js", "/assets/thinknxg_support/js/escalate_button.js"]
+
+# Agents see the team's canned responses and their own private ones
+permission_query_conditions = {
+    "Support Canned Response": "thinknxg_support.integrations.agent_tools.permission_query_conditions",
+}
+has_permission = {
+    "Support Canned Response": "thinknxg_support.integrations.agent_tools.has_permission",
+}
 web_include_css = ["support_chat.bundle.css"]
 
 # Portal lives at /thinkdesk. ERPNext ships its own /support page, which is left untouched.
@@ -44,13 +53,18 @@ doc_events = {
         "on_update": [
             "thinknxg_support.integrations.notifications.on_ticket_update",
             "thinknxg_support.integrations.escalations.on_hd_ticket",
+            "thinknxg_support.integrations.alerts.on_hd_ticket",
         ],
-        "after_insert": "thinknxg_support.integrations.escalations.on_hd_ticket",
+        "after_insert": [
+            "thinknxg_support.integrations.escalations.on_hd_ticket",
+            "thinknxg_support.integrations.alerts.on_hd_ticket",
+        ],
     },
     "Communication": {
         "after_insert": [
             "thinknxg_support.integrations.notifications.on_communication",
             "thinknxg_support.integrations.escalations.on_communication",
+            "thinknxg_support.integrations.alerts.on_communication",
         ],
     },
     "Support Request": {
@@ -76,6 +90,7 @@ scheduler_events = {
         "*/5 * * * *": ["thinknxg_support.integrations.escalations.check_overdue"],
     },
     "hourly": [
+        "thinknxg_support.integrations.alerts.expire_and_purge",
         "thinknxg_support.tasks.retry_failed_deliveries",
         "thinknxg_support.integrations.live_chat.close_idle_chats",
         "thinknxg_support.integrations.whatsapp.retry_failed",

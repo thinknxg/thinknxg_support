@@ -196,17 +196,23 @@ def add_inbound_message(conv, content: str, *, sender: str | None, sender_name: 
     )
     from thinknxg_support.integrations import realtime
 
-    from thinknxg_support.integrations import escalations
+    from thinknxg_support.integrations import alerts, escalations
 
+    started = False
     if not conv.get("handling"):
         from thinknxg_support.integrations.ai.engine import initial_handling
 
         conv.handling = initial_handling(conv)
         frappe.db.set_value(CONV, conv.name, "handling", conv.handling, update_modified=False)
+        started = True
         if conv.handling != "Bot":
             escalations.on_direct_chat(conv)  # a chat that starts with people is escalated from the start
     if conv.handling != "Bot":
         escalations.on_activity(CONV, conv.name, "customer_message")
+        if started:
+            alerts.on_new_chat(conv)
+        else:
+            alerts.on_customer_message(conv)
     realtime.bump(conv.name)
     publish_agent_event(conv, "message")
     if conv.handling == "Bot":
@@ -292,9 +298,10 @@ def post_agent_message(conv, content: str, internal: int = 0, source: str = "des
 
     realtime.bump(conv.name)
     if human and not cint(internal):
-        from thinknxg_support.integrations import escalations
+        from thinknxg_support.integrations import alerts, escalations
 
         escalations.on_activity(CONV, conv.name, "agent_reply", sender)
+        alerts.on_agent_reply(conv.name)
     publish_agent_event(conv, "reply")
     return {"name": msg.name}
 

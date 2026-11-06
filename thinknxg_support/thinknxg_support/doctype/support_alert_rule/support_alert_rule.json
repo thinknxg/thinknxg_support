@@ -1,0 +1,127 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "kind",
+  "enabled",
+  "popup",
+  "sound",
+  "volume",
+  "repeat_until_ack",
+  "repeat_seconds",
+  "max_repeats",
+  "desktop_notification",
+  "custom_sound"
+ ],
+ "fields": [
+  {
+   "fieldname": "kind",
+   "fieldtype": "Select",
+   "label": "Activity",
+   "options": "New Chat\nChat Message\nNew Ticket\nTicket Assigned\nConversation Message\nEscalation",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 2,
+   "idx": 1
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "1",
+   "in_list_view": 1,
+   "columns": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "popup",
+   "fieldtype": "Check",
+   "label": "Pop-up",
+   "default": "1",
+   "in_list_view": 1,
+   "columns": 1,
+   "idx": 3
+  },
+  {
+   "fieldname": "sound",
+   "fieldtype": "Select",
+   "label": "Sound",
+   "options": "Chime\nBell\nPing\nPop\nRing\nDouble Beep\nKnock\nSiren\nAlarm\nNone",
+   "default": "Chime",
+   "in_list_view": 1,
+   "columns": 1,
+   "idx": 4
+  },
+  {
+   "fieldname": "volume",
+   "fieldtype": "Int",
+   "label": "Volume %",
+   "default": "80",
+   "in_list_view": 1,
+   "columns": 1,
+   "idx": 5
+  },
+  {
+   "fieldname": "repeat_until_ack",
+   "fieldtype": "Check",
+   "label": "Repeat Until Acknowledged",
+   "in_list_view": 1,
+   "columns": 1,
+   "idx": 6
+  },
+  {
+   "fieldname": "repeat_seconds",
+   "fieldtype": "Int",
+   "label": "Every (seconds)",
+   "default": "15",
+   "in_list_view": 1,
+   "columns": 1,
+   "idx": 7
+  },
+  {
+   "fieldname": "max_repeats",
+   "fieldtype": "Int",
+   "label": "Max Times",
+   "in_list_view": 1,
+   "columns": 1,
+   "description": "0 = until acknowledged",
+   "idx": 8
+  },
+  {
+   "fieldname": "desktop_notification",
+   "fieldtype": "Check",
+   "label": "Desktop Notification",
+   "default": "1",
+   "in_list_view": 1,
+   "columns": 1,
+   "description": "A system notification when the browser tab is in the background",
+   "idx": 9
+  },
+  {
+   "fieldname": "custom_sound",
+   "fieldtype": "Attach",
+   "label": "Custom Sound",
+   "description": "Optional MP3/OGG/WAV that replaces the built-in sound",
+   "idx": 10
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 1,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Alert Rule",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

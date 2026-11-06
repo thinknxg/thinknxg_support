@@ -2,6 +2,21 @@
 // with the AI assistant and chatbot working in front of the team.
 const API = "thinknxg_support.api.v1.agent.";
 const DOCM = "thinknxg_support.thinknxg_support.doctype.support_conversation_link.support_conversation_link.";
+const TOOLS = "thinknxg_support.integrations.agent_tools.";
+
+// Canned response text for the reply box: HTML to plain text, placeholders filled from the chat.
+function cannedText(html, c) {
+	const div = document.createElement("div");
+	div.innerHTML = (html || "").replace(/<\/(p|div|li|h[1-6])>/gi, "\n\n").replace(/<br\s*\/?>/gi, "\n");
+	const name = (c.display_name || "").replace(/^\+/, "");
+	const vals = {
+		customer_name: name, customer_first_name: name.split(" ")[0] || name,
+		agent_name: frappe.session.user_fullname || "", agent_first_name: (frappe.session.user_fullname || "").split(" ")[0],
+		company: (frappe.boot.sysdefaults && frappe.boot.sysdefaults.company) || "", ticket: c.helpdesk_ticket || "",
+		conversation: c.name || "",
+	};
+	return (div.textContent || "").replace(/\{(\w+)\}/g, (m, k) => (k in vals ? vals[k] : m)).replace(/\n{3,}/g, "\n\n").trim();
+}
 const CHANNEL_LABEL = { Portal: __("Portal"), "Live Chat": __("Live chat"), WhatsApp: __("WhatsApp") };
 const HANDLING_LABEL = { Bot: __("Assistant"), Queued: __("Waiting for agent"), Agent: __("Agent") };
 const SENDER_BADGE = { AI: __("AI"), Bot: __("Bot"), System: __("System") };
@@ -94,6 +109,11 @@ class SupportChatConsole {
 				.tx-console .txk-compose.note textarea { background:var(--yellow-50, #fefce8); }
 				.tx-console .txk-banner { padding:8px 12px; border-radius:8px; background:var(--blue-50, #eff6ff); font-size:12px; display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
 				.tx-console .txk-bar { display:flex; justify-content:space-between; gap:8px; align-items:center; flex-wrap:wrap; }
+				.tx-console .txk-canned { position:relative; }
+				.tx-console .txk-suggest { position:absolute; inset-inline:12px; bottom:100%; margin-bottom:4px; max-height:240px; overflow:auto; background:var(--card-bg); border:1px solid var(--border-color); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.12); z-index:5; }
+				.tx-console .txk-suggest button { display:block; width:100%; text-align:start; border:0; background:none; padding:7px 10px; font-size:12px; }
+				.tx-console .txk-suggest button.on, .tx-console .txk-suggest button:hover { background:var(--control-bg); }
+				.tx-console .txk-suggest b { margin-inline-end:6px; }
 				.tx-console .txk-empty { margin:auto; color:var(--text-muted); text-align:center; padding:40px; }
 				@media (max-width: 900px) { .tx-console .txk { grid-template-columns:1fr; height:auto; }
 					.tx-console .txk-side { max-height:40vh; } .tx-console .txk-main { min-height:60vh; } }
@@ -164,7 +184,6 @@ class SupportChatConsole {
 	onEvent(d) {
 		this.refresh(true);
 		if (this.active && d && d.conversation === this.active) this.loadThread(true);
-		if (d && d.kind === "handoff" && d.conversation !== this.active) frappe.utils.play_sound && frappe.utils.play_sound("alert");
 	}
 
 	refresh(quiet) {
@@ -305,18 +324,27 @@ class SupportChatConsole {
 			</div>
 			<div class="txk-msgs">${msgs}</div>
 			<div class="txk-live"></div>
-			<div class="txk-compose ${this.internal ? "note" : ""}">
+			<div class="txk-compose txk-canned ${this.internal ? "note" : ""}">
+				<div class="txk-suggest" hidden></div>
 				${banner}
 				<textarea class="form-control" placeholder="${this.internal ? __("Internal note: only agents see this") : __("Reply to the customer. Enter sends, Shift+Enter adds a line.")}"></textarea>
 				<div class="txk-bar">
 					<label class="small"><input type="checkbox" class="txk-internal" ${this.internal ? "checked" : ""}> ${__("Internal note")}</label>
-					<button class="btn btn-primary btn-sm txk-send">${__("Send")}</button>
+					<span>
+						<button class="btn btn-default btn-sm txk-canned-btn" title="${__("Insert a canned response (or type / in the box)")}">${__("Canned responses")}</button>
+						<button class="btn btn-primary btn-sm txk-send">${__("Send")}</button>
+					</span>
 				</div>
 			</div>`);
 		const $msgs = this.$main.find(".txk-msgs");
 		$msgs.scrollTop($msgs[0].scrollHeight);
 		const $ta = this.$main.find("textarea").val(keepDraft);
-		$ta.on("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); this.send(c); } });
+		$ta.on("keydown", (e) => {
+			if (this.suggestKeys(e, c)) return;
+			if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); this.send(c); }
+		});
+		$ta.on("input", () => this.suggest($ta, c));
+		this.$main.find(".txk-canned-btn").on("click", () => this.cannedDialog(c));
 		$ta.on("input", () => {
 			if (this.internal || Date.now() - this.lastTyping < 3000) return;
 			this.lastTyping = Date.now();
@@ -352,13 +380,136 @@ class SupportChatConsole {
 		} else go();
 	}
 
+	// ---------------------------------------------------------------- canned responses
+	loadCanned(c) {
+		if (this.canned && this.cannedChannel === c.channel) return Promise.resolve(this.canned);
+		return frappe.call({ method: TOOLS + "canned_responses", args: { channel: c.channel || "Portal" }, type: "GET" })
+			.then((r) => { this.canned = r.message || []; this.cannedChannel = c.channel; return this.canned; });
+	}
+
+	insertCanned(row, c) {
+		const $ta = this.$main.find("textarea");
+		const text = cannedText(row.content, c);
+		const cur = $ta.val() || "";
+		$ta.val(/^\/\S*$/.test(cur.trim()) || !cur.trim() ? text : cur.replace(/\s*$/, "\n\n") + text).trigger("focus");
+		$ta[0].setSelectionRange($ta.val().length, $ta.val().length);
+		this.$main.find(".txk-suggest").prop("hidden", true);
+		frappe.call({ method: TOOLS + "canned_used", args: { name: row.name }, type: "POST", quiet: true });
+	}
+
+	// Typing /word at the start of the box lists matching canned responses (arrows + Enter or Tab to pick).
+	suggest($ta, c) {
+		const $box = this.$main.find(".txk-suggest");
+		const m = /^\/(\S*)$/.exec(($ta.val() || "").trim());
+		if (!m) { $box.prop("hidden", true); this.suggestions = null; return; }
+		this.loadCanned(c).then((rows) => {
+			const q = m[1].toLowerCase();
+			this.suggestions = rows.filter((r) => !q || (r.shortcut || "").startsWith(q) || (r.title || "").toLowerCase().includes(q)).slice(0, 8);
+			this.suggestIndex = 0;
+			const esc = frappe.utils.escape_html;
+			$box.html(this.suggestions.map((r, i) => `<button type="button" data-i="${i}" class="${i === 0 ? "on" : ""}">
+				${r.shortcut ? `<b>/${esc(r.shortcut)}</b>` : ""}${esc(r.title)} <span class="text-muted">· ${esc(r.category || "")}</span></button>`).join("")
+				|| `<div class="text-muted small" style="padding:8px 10px">${__("No canned response matches")}</div>`).prop("hidden", false);
+			$box.find("button").on("mousedown", (e) => { e.preventDefault(); this.insertCanned(this.suggestions[+e.currentTarget.dataset.i], c); });
+		});
+	}
+
+	suggestKeys(e, c) {
+		const $box = this.$main.find(".txk-suggest");
+		if ($box.prop("hidden") || !this.suggestions || !this.suggestions.length) return false;
+		if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+			e.preventDefault();
+			this.suggestIndex = (this.suggestIndex + (e.key === "ArrowDown" ? 1 : -1) + this.suggestions.length) % this.suggestions.length;
+			$box.find("button").removeClass("on").eq(this.suggestIndex).addClass("on");
+			return true;
+		}
+		if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); this.insertCanned(this.suggestions[this.suggestIndex], c); return true; }
+		if (e.key === "Escape") { $box.prop("hidden", true); return true; }
+		return false;
+	}
+
+	cannedDialog(c) {
+		this.loadCanned(c).then((rows) => {
+			const esc = frappe.utils.escape_html;
+			const cats = [...new Set(rows.map((r) => r.category).filter(Boolean))].sort();
+			const d = new frappe.ui.Dialog({
+				title: __("Canned responses"), size: "large",
+				fields: [
+					{ fieldname: "q", fieldtype: "Data", label: __("Search"), placeholder: __("Title, shortcut or text") },
+					{ fieldname: "cb", fieldtype: "Column Break" },
+					{ fieldname: "cat", fieldtype: "Select", label: __("Category"), options: ["", ...cats] },
+					{ fieldname: "sb", fieldtype: "Section Break" },
+					{ fieldname: "list", fieldtype: "HTML" },
+				],
+				secondary_action_label: __("Manage canned responses"),
+				secondary_action: () => { d.hide(); frappe.set_route("List", "Support Canned Response"); },
+			});
+			const render = () => {
+				const q = (d.get_value("q") || "").toLowerCase(), cat = d.get_value("cat");
+				const list = rows.filter((r) => (!cat || r.category === cat) && (!q || (r.title || "").toLowerCase().includes(q)
+					|| (r.shortcut || "").includes(q) || cannedText(r.content, c).toLowerCase().includes(q)));
+				d.fields_dict.list.$wrapper.html(list.length ? list.map((r, i) => `
+					<div class="txk-cr" data-i="${rows.indexOf(r)}" style="border:1px solid var(--border-color);border-radius:8px;padding:8px 10px;margin-bottom:8px;cursor:pointer">
+						<div><b>${esc(r.title)}</b> ${r.shortcut ? `<code>/${esc(r.shortcut)}</code>` : ""}
+						<span class="text-muted small">· ${esc(r.category || __("Uncategorised"))}${r.visibility === "Only Me" ? " · " + __("Only me") : ""}</span></div>
+						<div class="text-muted small" style="white-space:pre-wrap;max-height:4.5em;overflow:hidden">${esc(cannedText(r.content, c))}</div>
+					</div>`).join("") : `<p class="text-muted">${__("No canned responses yet.")}</p>`);
+				d.fields_dict.list.$wrapper.find(".txk-cr").on("click", (e) => { d.hide(); this.insertCanned(rows[+e.currentTarget.dataset.i], c); });
+			};
+			d.fields_dict.q.$input.on("input", render);
+			d.fields_dict.cat.$input.on("change", render);
+			render();
+			d.show();
+			setTimeout(() => d.fields_dict.q.$input.trigger("focus"), 200);
+		});
+	}
+
+	// ---------------------------------------------------------------- end chat with wrap-up
+	endChat(c, done) {
+		frappe.call({ method: TOOLS + "closing_form", type: "GET" }).then((r) => {
+			const f = r.message || { reasons: [], questions: [] };
+			const fields = [];
+			if (f.reasons.length) fields.push({ fieldname: "reason", fieldtype: "Select", label: __("Why is the chat ending?"),
+				options: ["", ...f.reasons], reqd: f.require_reason ? 1 : 0 });
+			f.questions.forEach((q) => {
+				const fn = "q_" + q.idx;
+				if (q.answer_type === "Yes/No") fields.push({ fieldname: fn, fieldtype: "Select", label: q.question, options: ["", __("Yes"), __("No")], reqd: q.required });
+				else if (q.answer_type === "Choice") fields.push({ fieldname: fn, fieldtype: "Select", label: q.question, options: ["", ...q.options], reqd: q.required });
+				else if (q.answer_type === "Rating") fields.push({ fieldname: fn, fieldtype: "Rating", label: q.question, reqd: q.required });
+				else fields.push({ fieldname: fn, fieldtype: "Small Text", label: q.question, reqd: q.required });
+			});
+			fields.push({ fieldname: "notes", fieldtype: "Small Text", label: __("Notes for the team"),
+				description: __("Saved with the chat history. The customer does not see them.") });
+			if (f.closing_message && c.status !== "Closed") {
+				fields.push({ fieldname: "send_closing_message", fieldtype: "Check", default: 1,
+					label: __("Send the closing message"), description: frappe.utils.escape_html(f.closing_message) });
+			}
+			const d = new frappe.ui.Dialog({
+				title: __("End chat"), fields,
+				primary_action_label: __("End chat"),
+				primary_action: (v) => {
+					const answers = {};
+					f.questions.forEach((q) => {
+						let a = v["q_" + q.idx];
+						if (q.answer_type === "Rating" && a) a = String(Math.round(a * 5));
+						if (a) answers[q.idx] = a;
+					});
+					frappe.call({ method: TOOLS + "end_chat", type: "POST", freeze: true, args: { name: c.name, reason: v.reason,
+						notes: v.notes, answers: JSON.stringify(answers), send_closing_message: v.send_closing_message ? 1 : 0 } })
+						.then(() => { d.hide(); frappe.show_alert({ message: __("Chat ended"), indicator: "green" }); done(); });
+				},
+			});
+			d.show();
+		});
+	}
+
 	action(act, c) {
 		const name = c.name;
 		const reload = () => { this.loadThread(true); this.refresh(true); };
 		if (act === "assign") frappe.call({ method: API + "assign", args: { name } }).then(reload);
 		if (act === "takeover") frappe.call({ method: API + "take_over", args: { name } }).then(reload);
 		if (act === "tobot") frappe.call({ method: API + "return_to_assistant", args: { name } }).then(reload);
-		if (act === "close") frappe.call({ method: API + "set_status", args: { name, status: "Closed" } }).then(reload);
+		if (act === "close") this.endChat(c, reload);
 		if (act === "reopen") frappe.call({ method: API + "set_status", args: { name, status: "Open" } }).then(reload);
 		if (act === "form") frappe.set_route("Form", "Support Conversation Link", name);
 		if (act === "ticket") frappe.call({ method: DOCM + "escalate", args: { name }, freeze: true }).then(reload);

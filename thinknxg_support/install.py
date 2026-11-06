@@ -21,6 +21,7 @@ def after_install():
     ensure_landing()
     ensure_kb_source()
     ensure_escalation_defaults()
+    ensure_agent_tool_defaults()
     from thinknxg_support.integrations import capabilities
 
     capabilities.refresh(save=True)
@@ -89,6 +90,39 @@ def ensure_ai_defaults():
         frappe.get_doc({"doctype": "Support Chat Queue", "queue_name": "General Support", "enabled": 1,
                         "assignment_rule": "Least Busy", "only_online_agents": 1, "channel_live_chat": 1,
                         "channel_whatsapp": 1, "channel_portal": 1}).insert(ignore_permissions=True)
+
+
+def ensure_agent_tool_defaults():
+    """Alert rules per activity, chat closure reasons and wrap-up questions. Never overwrites existing values."""
+    if frappe.db.exists("DocType", "Support Alert Settings"):
+        from thinknxg_support.integrations.alerts import DEFAULTS
+
+        s = frappe.get_single("Support Alert Settings")
+        have = {r.kind for r in s.rules}
+        for kind, d in DEFAULTS.items():
+            if kind not in have:
+                s.append("rules", {"kind": kind, "enabled": 1, "popup": 1, "sound": d["sound"], "volume": d["volume"],
+                                   "repeat_until_ack": d["repeat_until_ack"], "repeat_seconds": d["repeat_seconds"] or 15,
+                                   "max_repeats": d["max_repeats"], "desktop_notification": d["desktop_notification"]})
+        s.flags.ignore_permissions = True
+        s.save()
+    ps = frappe.get_single("Support Portal Settings")
+    changed = False
+    if ps.meta.has_field("closure_reasons") and not ps.closure_reasons:
+        ps.closure_reasons = "\n".join(["Resolved", "Answered with a help article", "Ticket created for follow-up",
+                                        "Customer stopped responding", "Transferred to another channel", "Duplicate chat",
+                                        "Spam or test", "Other"])
+        changed = True
+    if ps.meta.has_field("wrap_up_questions") and not ps.wrap_up_questions:
+        for q, kind, opts, req in (("Was the customer's issue resolved?", "Yes/No", "", 1),
+                                   ("Topic", "Choice", "Billing\nTechnical\nAccount and access\nOrders and delivery\nOther", 0),
+                                   ("Does the customer need a follow-up?", "Yes/No", "", 0)):
+            ps.append("wrap_up_questions", {"question": q, "answer_type": kind, "options": opts, "required": req, "enabled": 1})
+        changed = True
+    if changed:
+        ps.flags.ignore_permissions = True
+        ps.flags.ignore_validate = True
+        ps.save()
 
 
 def ensure_escalation_defaults():

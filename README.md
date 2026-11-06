@@ -209,6 +209,54 @@ The source can also be a list of page URLs (Markdown `.md` or HTML), one per lin
   exist because hosting steps, prices, support contacts and partner programmes described for Frappe
   may not be true for thinkNXG.
 
+## Agent alerts, canned responses and chat wrap-up (1.7)
+
+### Alert centre
+
+Every desk page carries one alert centre. Each activity has its own pop-up colour and sound:
+
+| Activity | Who is alerted | Default sound | Repeats | Stops when |
+|---|---|---|---|---|
+| New Chat | The assigned agent, else the chat queue's members, else all agents | Ring | Every 10 s until acknowledged | Acknowledged, the chat is assigned (others stop), answered or closed |
+| Chat Message | The assigned agent, else the queue's members | Ping | Once | Answered |
+| New Ticket | The ticket's assignees, else its Helpdesk team, else all agents | Chime | Every 60 s, 3 times | Acknowledged, assigned, replied to or moved on from Open |
+| Ticket Assigned | The new assignee | Bell | Every 30 s, 5 times | Acknowledged or replied to |
+| Conversation Message | The assigned agent, else all agents | Pop | Once | Answered |
+| Escalation | As set in Support Escalation Settings | Siren (distinct, loudest) | Every 15 s until acknowledged | Acknowledged, or the escalation moves to In Progress / Resolved / Closed |
+
+* **Support Alert Settings** (team defaults): per activity, on/off, pop-up, sound (Chime, Bell, Ping, Pop, Ring,
+  Double Beep, Knock, Siren, Alarm or an uploaded MP3/OGG/WAV), volume, repeat until acknowledged, interval, maximum
+  repeats and system notifications; which roles count as agents; how long alerts keep sounding (default 24 h).
+* **My Alert Preferences** (each agent): mute all, overall volume, system notifications, and per activity their own
+  sound, pop-up and repeat choice, with **Test Sound** buttons. The ⚙ on any alert opens it.
+* **Works on any screen**: alerts appear on every desk page. Only one browser tab plays sounds, so several open tabs
+  don't ring together. Repeats are timed by the browser's audio clock, so they keep ringing in a background tab.
+  With the tab in the background, a system notification appears too (allow it once in My Alert Preferences).
+  Browsers need one click on the page before they play sound; a button asks for it.
+* **Acknowledgement tracking**: every alert that needs acknowledging is kept in *Support Agent Alert* with how
+  long it took. The **Agent Alert Response** report shows, per agent and activity, alerts, acknowledged, picked up
+  (assigned or answered first), missed, and average / median / longest seconds to acknowledge.
+* The Helpdesk app's own agent screens (`/helpdesk`) do not load desk scripts: keep one desk tab open (any `/app`
+  page) to hear ticket alerts.
+
+### Canned responses
+
+**Support Canned Response**: title, optional `/shortcut`, category, channel, language, visibility (Team or Only Me)
+and the message, with placeholders `{customer_name}` `{customer_first_name}` `{agent_name}` `{agent_first_name}`
+`{company}` `{ticket}` `{conversation}`. In the Support Chat console, type `/` in the reply box for matching
+responses (arrows and Enter or Tab), or click **Canned responses** to search and filter by category. The text lands
+in the reply box with placeholders filled, ready to edit before sending. Agents create their own; they edit and
+delete only their own; managers manage all. Helpdesk canned responses are listed too when Helpdesk is installed.
+Usage is counted so the most-used come first.
+
+### Ending a chat
+
+**Close** in the console opens **End chat**: the reason (list in Support Portal Settings → Live Chat → *Ending a
+Chat*, required by default), the wrap-up questions (Yes/No, choice, text or rating, optionally required) and notes
+for the team. They are saved on the conversation (*Chat Wrap-up* section, filterable by reason) and added to its
+history as an internal note; the customer only gets the optional closing message. An open escalation for the chat
+gets the reason as a note.
+
 ## Escalations and Support Query Management (1.6)
 
 Every escalated customer query gets one **Support Escalation** record, an alert for the team, and a place in the
