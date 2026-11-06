@@ -20,7 +20,7 @@ def permission_query_conditions(user=None):
 
 def has_permission(doc, ptype=None, user=None):
     user = user or frappe.session.user
-    if doc.visibility == "Only Me" and doc.owner != user and \
+    if doc.visibility == "Only Me" and doc.owner and doc.owner != user and \
             not {"Support Manager", "Support Portal Administrator", "System Manager"} & set(frappe.get_roles(user)):
         return False
     return None

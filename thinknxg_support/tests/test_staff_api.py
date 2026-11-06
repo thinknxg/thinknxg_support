@@ -13,9 +13,13 @@ CONV = "Support Conversation Link"
 MSG = "Support Portal Message"
 
 
+ENQUEUE_ARGS = ("queue", "enqueue_after_commit", "job_id", "deduplicate", "timeout", "now", "at_front", "job_name",
+                "is_async", "event", "on_success", "on_failure")
+
+
 def run_now(fn, **kw):
     fn = frappe.get_attr(fn) if isinstance(fn, str) else fn
-    return fn(**{k: v for k, v in kw.items() if k not in ("queue", "enqueue_after_commit", "job_id", "deduplicate", "timeout")})
+    return fn(**{k: v for k, v in kw.items() if k not in ENQUEUE_ARGS})
 
 
 def staff(email, role="Support Agent"):
@@ -147,6 +151,13 @@ class TestStaffApi(BaseTestCase):
         from thinknxg_support.integrations import helpdesk_agent
 
         as_user("Administrator")
+        if not frappe.db.exists("Email Account", {"default_outgoing": 1, "enable_outgoing": 1}):
+            ea = frappe.get_doc({"doctype": "Email Account", "email_account_name": "App Test Outgoing",
+                                 "email_id": "support@example.com", "enable_outgoing": 1, "default_outgoing": 1,
+                                 "smtp_server": "localhost", "awaiting_password": 1})
+            ea.flags.ignore_validate = True
+            ea.flags.ignore_mandatory = True
+            ea.insert(ignore_permissions=True)
         t = frappe.get_doc({"doctype": "HD Ticket", "subject": "App ticket", "raised_by": "app-customer2@example.com",
                             "description": "<p>Printer broken</p>"}).insert(ignore_permissions=True)
         out = v1.ticket_reply(t.name, "We will call you", client_request_id="22222222-aaaa-bbbb-cccc-000000000001")

@@ -12,9 +12,13 @@ CONV = "Support Conversation Link"
 ALERT = "Support Agent Alert"
 
 
+ENQUEUE_ARGS = ("queue", "enqueue_after_commit", "job_id", "deduplicate", "timeout", "now", "at_front", "job_name",
+                "is_async", "event", "on_success", "on_failure")
+
+
 def run_now(fn, **kw):
     fn = frappe.get_attr(fn) if isinstance(fn, str) else fn
-    return fn(**{k: v for k, v in kw.items() if k not in ("queue", "enqueue_after_commit", "job_id", "deduplicate", "timeout")})
+    return fn(**{k: v for k, v in kw.items() if k not in ENQUEUE_ARGS})
 
 
 def staff(email, role="Support Agent"):

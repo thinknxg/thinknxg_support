@@ -54,8 +54,9 @@ def bootstrap():
     caps = capabilities.get() if hasattr(capabilities, "get") else {}
     ps = portal_settings()
     s = staff_auth.settings()
-    queues = frappe.get_all("Support Chat Queue", filters={"enabled": 1}, pluck="name", order_by="priority desc")
     mine = set(_member_queues(user))
+    queues = frappe.get_all("Support Chat Queue", or_filters={"enabled": 1, "name": ["in", list(mine) or [""]]},
+                            pluck="name", order_by="priority desc")
     return {
         "api_version": API_VERSION, "server_time": now_datetime().isoformat(),
         "site": {"url": frappe.utils.get_url(), "name": frappe.local.site,
