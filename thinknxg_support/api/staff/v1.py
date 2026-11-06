@@ -545,11 +545,16 @@ def ticket_assign(name: str, agent: str | None = None, expected_assignees=None):
 
 # ------------------------------------------------------------------ alerts, notification links, devices
 @frappe.whitelist(methods=["GET"])
-def alerts():
+def alerts(since: float | None = None):
+    """Open (stored) alerts, plus unstored ones (new messages …) since the cursor from the previous poll."""
     staff_auth.require_staff()
     from thinknxg_support.integrations import alerts as al
 
-    return {"items": al.my_alerts()}
+    since = float(since) if since not in (None, "", "null") else None
+    events, cursor = al.recent_events(frappe.session.user, since) if al.is_agent(frappe.session.user) else ([], since or 0)
+    return {"items": al.my_alerts(), "events": [{k: e.get(k) for k in ("id", "kind", "title", "body", "reference_doctype",
+                                                                      "reference_name", "priority")} for e in events],
+            "cursor": cursor}
 
 
 @frappe.whitelist(methods=["POST"])
@@ -777,6 +782,15 @@ def alert_config():
     from thinknxg_support.integrations import alerts as al
 
     return al.config()
+
+
+@frappe.whitelist(methods=["POST"])
+def send_test_alert(kind: str = "New Chat"):
+    """A real alert through the server, the same way chats and tickets raise them (checks sound end to end)."""
+    staff_auth.require_staff()
+    from thinknxg_support.integrations import alerts as al
+
+    return {"message": al.send_test(kind)}
 
 
 @frappe.whitelist(methods=["POST"])

@@ -289,6 +289,25 @@ class TestStaffApi(BaseTestCase):
         s.push_enabled = 0
         s.save()
 
+    def test_unstored_alerts_reach_the_apps(self):
+        from thinknxg_support.integrations import alerts
+
+        r, name = self._chat()
+        as_user(self.a1)
+        first = v1.alerts()
+        self.assertEqual(first["events"], [])  # opening the app does not replay sounds
+        as_user("Administrator")
+        rules = {"Chat Message": {**alerts.DEFAULTS["Chat Message"], "enabled": 1}}
+        with patch.object(alerts, "rules", return_value=rules):
+            alerts.raise_alert("Chat Message", [self.a1], "New message", reference_doctype=CONV, reference_name=name,
+                               group_key=f"msg:{name}")
+        as_user(self.a1)
+        nxt = v1.alerts(since=first["cursor"])
+        self.assertEqual([e["kind"] for e in nxt["events"]], ["Chat Message"])
+        self.assertEqual(v1.alerts(since=nxt["cursor"])["events"], [])  # each event once
+        as_user(self.a2)
+        self.assertFalse([e for e in v1.alerts(since=0)["events"] if e["title"] == "New message"])  # only for a1
+
     def test_alerts_trigger_a_push(self):
         from thinknxg_support.integrations import alerts, push
 
