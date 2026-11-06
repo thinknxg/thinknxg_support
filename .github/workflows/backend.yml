@@ -63,10 +63,11 @@ jobs:
       - name: Get apps
         run: |
           cd ~/frappe-bench
-          bench get-app --branch version-16 erpnext
-          bench get-app telephony  # Helpdesk requires it
-          bench get-app helpdesk
-          bench get-app thinknxg_support "$GITHUB_WORKSPACE/app"
+          # server tests only: skip front-end builds (an upstream Helpdesk UI build failure must not block them)
+          bench get-app --skip-assets --branch version-16 erpnext
+          bench get-app --skip-assets telephony  # Helpdesk requires it
+          bench get-app --skip-assets helpdesk
+          bench get-app --skip-assets thinknxg_support "$GITHUB_WORKSPACE/app"
       - name: Create site
         run: |
           cd ~/frappe-bench
