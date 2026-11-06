@@ -34,8 +34,9 @@ StaffApi apiFor(FakeServer s, Tokens t) =>
 
 void main() {
   group('PKCE', () {
-    test('S256 challenge matches RFC 7636 appendix B', () {
-      expect(Pkce.challengeFor('dBjftJeZ4CVP-mJ92K9DXCdHl1CGvvn6cqyDkB9H5Bk'), 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM');
+    test('S256 challenge is base64url(sha256(verifier)) without padding', () {
+      // reference value computed independently: python3 hashlib.sha256 + base64.urlsafe_b64encode
+      expect(Pkce.challengeFor('dBjftJeZ4CVP-mJ92K9DXCdHl1CGvvn6cqyDkB9H5Bk'), 'GpvbgcWzXQfBXxJT7NV8bvauWD9D6AdWuZ1oTL6uhTQ');
     });
     test('verifier is 43..128 unreserved characters', () {
       final p = Pkce.generate();

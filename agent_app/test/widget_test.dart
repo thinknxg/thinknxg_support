@@ -98,7 +98,7 @@ void main() {
     expect(server.ticketTimeline['42']!.single['html'], contains('Corrected invoice'));
     await tester.tap(find.byKey(const Key('ticket-status')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Resolved').last);
+    await tester.tap(find.widgetWithText(CheckedPopupMenuItem<String>, 'Resolved'));
     await tester.pumpAndSettle();
     expect(server.tickets['42']!['status'], 'Resolved');
   });

@@ -150,6 +150,28 @@ class ConversationSummary {
 
   bool get isClosed => status == 'Closed';
 
+  ConversationSummary withUnread(int n) => ConversationSummary(
+        id: id,
+        subject: subject,
+        displayName: displayName,
+        channel: channel,
+        status: status,
+        handling: handling,
+        queue: queue,
+        assignee: assignee,
+        ticket: ticket,
+        lastActivityAt: lastActivityAt,
+        unread: n,
+        preview: preview,
+        whatsappWindowOpen: whatsappWindowOpen,
+        actions: actions,
+        contactName: contactName,
+        contactEmail: contactEmail,
+        contactPhone: contactPhone,
+        customerName: customerName,
+        handoffReason: handoffReason,
+      );
+
   factory ConversationSummary.fromJson(Map<String, dynamic> j) {
     final contact = _m(j['contact']);
     String? n(Object? v) => v == null || _s(v).isEmpty ? null : _s(v);

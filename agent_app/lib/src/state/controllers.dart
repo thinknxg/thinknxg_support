@@ -259,28 +259,13 @@ class ConversationController extends ChangeNotifier with _Polling {
       await api.markRead(id, last);
       _readUpTo = last;
       if (detail != null && detail!.unread > 0) {
-        detail = ConversationSummary.fromJson({..._summaryJson(detail!), 'unread': 0});
+        detail = detail!.withUnread(0);
         onChanged?.call(detail!);
       }
     } on ApiException {
       // read state is retried on the next tick
     }
   }
-
-  Map<String, dynamic> _summaryJson(ConversationSummary c) => {
-        'id': c.id,
-        'subject': c.subject,
-        'display_name': c.displayName,
-        'channel': c.channel,
-        'status': c.status,
-        'handling': c.handling,
-        'queue': c.queue,
-        'assignee': c.assignee == null ? null : {'user': c.assignee!.user, 'name': c.assignee!.name},
-        'ticket': c.ticket,
-        'last_activity_at': c.lastActivityAt?.toIso8601String(),
-        'preview': c.preview,
-        'whatsapp_window_open': c.whatsappWindowOpen,
-      };
 
   Future<bool> _act(Future<ConversationSummary> Function() fn) async {
     busy = true;
