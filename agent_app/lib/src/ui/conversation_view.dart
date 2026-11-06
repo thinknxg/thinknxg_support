@@ -378,7 +378,8 @@ class _DetailsState extends State<_Details> {
   @override
   void initState() {
     super.initState();
-    if (widget.c.history == null) widget.c.loadHistory();
+    // after this frame: loading notifies listeners, which must not happen while building
+    if (widget.c.history == null) WidgetsBinding.instance.addPostFrameCallback((_) => widget.c.loadHistory());
   }
 
   @override

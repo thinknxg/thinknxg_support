@@ -122,7 +122,7 @@ class FakeServer {
         : (req.body.isEmpty ? <String, dynamic>{} : Map<String, dynamic>.from(jsonDecode(req.body) as Map));
     if (b['internal'] is String) b['internal'] = int.parse(b['internal'] as String);
     final res = download(method, q) ?? _handle(method, q, b);
-    if (failNextWithTimeout > 0) {
+    if (failNextWithTimeout > 0 && !const {'typing', 'live', 'heartbeat'}.contains(method)) {
       failNextWithTimeout--;
       throw http.ClientException('Connection closed before full header was received');
     }
