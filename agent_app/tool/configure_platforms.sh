@@ -77,7 +77,7 @@ fi
 # flutter_local_notifications' Windows code still uses <experimental/coroutine>, which newer MSVC rejects
 WCM=windows/CMakeLists.txt
 if [ -f "$WCM" ] && ! grep -q '_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS' "$WCM"; then
-  perl -0pi -e 's/(cmake_minimum_required\([^)]*\)\n)/$1add_compile_definitions(_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)\n/' "$WCM"
+  perl -0pi -e 's/(cmake_minimum_required\([^)]*\)\r?\n)/$1add_compile_definitions(_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)\n/' "$WCM"
 fi
 
 MAIN_CPP=windows/runner/main.cpp
