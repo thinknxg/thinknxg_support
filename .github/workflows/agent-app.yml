@@ -111,6 +111,50 @@ jobs:
         id: v
         run: |
           echo "version=$(grep '^version:' pubspec.yaml | sed -E 's/version: *([0-9.]+).*/\1/')" >> $GITHUB_OUTPUT
+      - name: Bundle the Visual C++ runtime (app-local, so PCs without it can start the app)
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          $out = "build\windows\x64\runner\Release"
+          $crt = Get-ChildItem "$vs\VC\Redist\MSVC" -Directory | Sort-Object Name -Descending |
+            ForEach-Object { Get-ChildItem (Join-Path $_.FullName "x64") -Directory -Filter "Microsoft.VC*.CRT" -ErrorAction SilentlyContinue } |
+            Select-Object -First 1
+          if (-not $crt) { Write-Error "Visual C++ runtime redistributable not found"; exit 1 }
+          Copy-Item "$($crt.FullName)\*.dll" $out
+          Get-ChildItem $out -Filter "*.dll" | Select-Object Name, Length | Format-Table | Out-String | Write-Host
+      - name: Check every DLL the app needs is next to it or part of Windows
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          $dumpbin = Get-ChildItem "$vs\VC\Tools\MSVC" -Recurse -Filter dumpbin.exe | Where-Object FullName -like "*Hostx64\x64*" | Select-Object -First 1
+          $out = "build\windows\x64\runner\Release"
+          $local = (Get-ChildItem $out -Filter "*.dll").Name | ForEach-Object { $_.ToLower() }
+          $missing = @()
+          foreach ($bin in (Get-ChildItem $out -Include *.exe,*.dll -Recurse)) {
+            $deps = & $dumpbin.FullName /nologo /dependents $bin.FullName | Where-Object { $_ -match '^\s+\S+\.dll\s*$' } | ForEach-Object { $_.Trim().ToLower() }
+            foreach ($d in $deps) {
+              if ($local -contains $d) { continue }
+              if (Test-Path (Join-Path $env:WINDIR "System32\$d")) {
+                # part of Windows on every supported PC, except the VC++ runtime itself
+                if ($d -match '^(msvcp|vcruntime|concrt|vccorlib)') { $missing += "$($bin.Name) -> $d" }
+                continue
+              }
+              if ($d -match '^api-ms-|^ext-ms-') { continue }
+              $missing += "$($bin.Name) -> $d"
+            }
+          }
+          if ($missing) { $missing | Write-Host; Write-Error "DLLs not bundled"; exit 1 }
+          Write-Host "All dependencies are bundled or part of Windows."
+      - name: Start the app (smoke test)
+        shell: pwsh
+        run: |
+          $p = Start-Process "build\windows\x64\runner\Release\thinknxg_agent.exe" -PassThru
+          Start-Sleep -Seconds 15
+          $log = Join-Path $env:LOCALAPPDATA "thinkNXG Support Agent\agent.log"
+          if (Test-Path $log) { Get-Content $log | Write-Host }
+          if ($p.HasExited) { Write-Error "The app exited at start with code $($p.ExitCode)"; exit 1 }
+          Stop-Process -Id $p.Id -Force
+          Write-Host "The app started and kept running."
       - name: Sign the app (when a certificate is configured)
         if: ${{ env.WINDOWS_CERT_BASE64 != '' }}
         shell: pwsh
