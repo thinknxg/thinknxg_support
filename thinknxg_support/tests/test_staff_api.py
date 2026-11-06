@@ -180,13 +180,21 @@ class TestStaffApi(BaseTestCase):
         from thinknxg_support.integrations import staff_auth
 
         as_user("Administrator")
+        # a site whose settings were never saved: the sign-in address fields are empty
+        frappe.db.set_single_value("Support Agent App Settings", {"desktop_redirect_uri": "", "mobile_redirect_uri": ""})
+        frappe.clear_document_cache("Support Agent App Settings", "Support Agent App Settings")
+        self.assertIn("http://127.0.0.1:43823/callback", staff_auth.redirect_uris())
         client_id = staff_auth.ensure_oauth_client(force=True)["client_id"]
+        self.assertEqual(frappe.db.get_single_value("Support Agent App Settings", "desktop_redirect_uri"),
+                         "http://127.0.0.1:43823/callback")
         v = OAuthWebRequestValidator()
         for uri in staff_auth.redirect_uris():
             self.assertTrue(v.validate_redirect_uri(client_id, uri, None), uri)
         self.assertFalse(v.validate_redirect_uri(client_id, "http://127.0.0.1:9999/evil", None))
         cfg = v1.auth_config()
         self.assertEqual(cfg["client_id"], client_id)
+        # what the app checks is exactly what Frappe accepts
+        self.assertEqual(set(cfg["redirect_uris"]), {"http://127.0.0.1:43823/callback", "com.thinknxg.agent://oauth2redirect"})
 
     # ------------------------------------------------------------------ increment 2: workspace
     def test_canned_response_placeholders_are_filled(self):

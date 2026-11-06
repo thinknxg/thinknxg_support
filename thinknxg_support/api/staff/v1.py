@@ -34,7 +34,9 @@ def auth_config():
     s = staff_auth.settings()
     client_id = frappe.db.get_value("OAuth Client", s.oauth_client, "client_id") if s.oauth_client else None
     return {"enabled": bool(client_id), "api_version": API_VERSION, "site_name": frappe.local.site,
-            "client_id": client_id, "scopes": "all openid", "redirect_uris": staff_auth.redirect_uris(),
+            "client_id": client_id, "scopes": "all openid",
+            # the OAuth Client's own list is what sign-in is checked against; the settings are the fallback
+            "redirect_uris": staff_auth.client_redirect_uris(s.oauth_client) or staff_auth.redirect_uris(),
             **staff_auth.oauth_endpoints()}
 
 

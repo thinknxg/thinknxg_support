@@ -59,15 +59,32 @@ def require_staff():
         raise StaffAccessError(_("The Agent Apps are switched off for this site."))
 
 
+DEFAULT_DESKTOP_REDIRECT = "http://127.0.0.1:43823/callback"
+DEFAULT_MOBILE_REDIRECT = "com.thinknxg.agent://oauth2redirect"
+
+
 def redirect_uris() -> list[str]:
+    """The apps' sign-in addresses. An empty field (settings never saved) means the built-in default, which is what
+    the shipped apps use."""
     s = settings()
-    return [u for u in ((s.desktop_redirect_uri or "").strip(), (s.mobile_redirect_uri or "").strip()) if u]
+    return [(s.desktop_redirect_uri or "").strip() or DEFAULT_DESKTOP_REDIRECT,
+            (s.mobile_redirect_uri or "").strip() or DEFAULT_MOBILE_REDIRECT]
+
+
+def client_redirect_uris(client: str | None) -> list[str]:
+    """What Frappe's OAuth provider will actually accept for this client (space-separated, like frappe.oauth)."""
+    raw = frappe.db.get_value("OAuth Client", client, "redirect_uris") if client else None
+    return [u for u in (raw or "").split() if u]
 
 
 def ensure_oauth_client(force: bool = False) -> dict:
     """Create (or update) the OAuth Client the apps use. Authorization code, no secret shipped in the apps."""
     s = frappe.get_single(SETTINGS)
-    uris = redirect_uris() or ["http://127.0.0.1:43823/callback", "com.thinknxg.agent://oauth2redirect"]
+    uris = redirect_uris()
+    if not (s.desktop_redirect_uri and s.mobile_redirect_uri):  # store the defaults so the form shows what is used
+        s.desktop_redirect_uri, s.mobile_redirect_uri = uris
+        s.flags.ignore_permissions = True
+        s.save()
     name = s.oauth_client if s.oauth_client and frappe.db.exists("OAuth Client", s.oauth_client) else None
     # Frappe's OAuth provider splits redirect_uris on single spaces (frappe.oauth.get_url_delimiter): never newlines
     values = {"app_name": "thinkNXG Support Agent", "redirect_uris": " ".join(uris), "default_redirect_uri": uris[0],
