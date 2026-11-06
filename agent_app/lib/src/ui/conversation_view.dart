@@ -1,15 +1,42 @@
 import 'package:flutter/material.dart';
 
+import '../api/api_client.dart';
 import '../api/models.dart';
+import '../platform/files.dart';
 import '../state/controllers.dart';
 import 'common.dart';
 import 'composer.dart';
+import 'pickers.dart';
+
+/// Pick a file for the composer and report problems inline (size, cancelled picker).
+Future<void> pickInto(BuildContext context, void Function(UploadFile) attach) async {
+  try {
+    final f = await FileService.instance.pick();
+    if (f != null) attach(f);
+  } catch (e) {
+    if (context.mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$e')));
+  }
+}
+
+/// Download (access checked by the server) and open with the system viewer.
+Future<void> openDownload(BuildContext context, Future<DownloadedFile> Function() fetch) async {
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  messenger?.showSnackBar(const SnackBar(content: Text('Opening…'), duration: Duration(seconds: 1)));
+  try {
+    await FileService.instance.open(await fetch());
+  } on ApiException catch (e) {
+    messenger?.showSnackBar(SnackBar(content: Text(e.message)));
+  } catch (e) {
+    messenger?.showSnackBar(SnackBar(content: Text('Could not open the file: $e')));
+  }
+}
 
 /// Timeline, header actions and composer for one conversation.
 class ConversationView extends StatefulWidget {
   final ConversationController controller;
   final String me;
   final void Function(String ticketId)? onOpenTicket;
+  final void Function(String conversationId)? onOpenConversation;
   final bool showDetailsPanel;
   final FocusNode? composerFocus;
 
@@ -18,6 +45,7 @@ class ConversationView extends StatefulWidget {
     required this.controller,
     required this.me,
     this.onOpenTicket,
+    this.onOpenConversation,
     this.showDetailsPanel = false,
     this.composerFocus,
   });
@@ -61,7 +89,22 @@ class _ConversationViewState extends State<ConversationView> {
         final d = c.detail!;
         _scrollToEndIfNew(c.messages.length);
         final thread = Column(children: [
-          _Header(d: d, c: c, me: widget.me, onOpenTicket: widget.onOpenTicket),
+          _Header(
+              d: d,
+              c: c,
+              me: widget.me,
+              onOpenTicket: widget.onOpenTicket,
+              onDetails: widget.showDetailsPanel
+                  ? null
+                  : () => showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        builder: (_) => SizedBox(
+                          height: MediaQuery.sizeOf(context).height * .75,
+                          child: _Details(
+                              d: d, c: c, onOpenTicket: widget.onOpenTicket, onOpenConversation: widget.onOpenConversation),
+                        ),
+                      )),
           if (c.actionError != null) ErrorBanner(c.actionError!),
           Expanded(
             child: ListView.builder(
@@ -82,6 +125,8 @@ class _ConversationViewState extends State<ConversationView> {
                   text: m.text,
                   at: m.createdAt,
                   failed: failed,
+                  files: [if (m.attachmentName != null) m.attachmentName!],
+                  onOpenFile: (_) => openDownload(context, () => c.api.attachment(m.id)),
                   footer: failed
                       ? 'Not delivered: ${m.deliveryError ?? 'unknown error'}'
                       : (m.deliveryStatus != null && !m.internal ? m.deliveryStatus : null),
@@ -101,13 +146,21 @@ class _ConversationViewState extends State<ConversationView> {
             onMode: c.setMode,
             onChanged: c.setText,
             onSend: c.send,
+            onAttach: () => pickInto(context, c.attach),
+            onRemoveFile: () => c.attach(null),
+            onCanned: () async {
+              final picked = await CannedPicker.show(context, () => c.api.cannedResponses(channel: d.channel));
+              if (picked != null) await c.insertCanned(picked);
+            },
           ),
         ]);
         if (!widget.showDetailsPanel) return thread;
         return Row(children: [
           Expanded(child: thread),
           const VerticalDivider(width: 1),
-          SizedBox(width: 300, child: _Details(d: d, onOpenTicket: widget.onOpenTicket)),
+          SizedBox(
+              width: 300,
+              child: _Details(d: d, c: c, onOpenTicket: widget.onOpenTicket, onOpenConversation: widget.onOpenConversation)),
         ]);
       },
     );
@@ -119,7 +172,8 @@ class _Header extends StatelessWidget {
   final ConversationController c;
   final String me;
   final void Function(String)? onOpenTicket;
-  const _Header({required this.d, required this.c, required this.me, this.onOpenTicket});
+  final VoidCallback? onDetails;
+  const _Header({required this.d, required this.c, required this.me, this.onOpenTicket, this.onDetails});
 
   @override
   Widget build(BuildContext context) {
@@ -147,12 +201,20 @@ class _Header extends StatelessWidget {
                 if (a.takeOver) const PopupMenuItem(value: 'take_over', child: Text('Take over from assistant')),
                 if (a.returnToAssistant) const PopupMenuItem(value: 'return', child: Text('Return to assistant')),
                 if (d.ticket != null && onOpenTicket != null) PopupMenuItem(value: 'ticket', child: Text('Open ticket #${d.ticket}')),
+                if (onDetails != null) const PopupMenuItem(value: 'details', child: Text('Details and history')),
               ],
             ),
           ]),
           const SizedBox(height: 6),
           Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
             StatusPill(conversationStatusLabel(d), color: conversationStatusColor(context, d)),
+            if (c.live.customerTyping)
+              Text('Customer is typing…', key: const Key('typing'), style: TextStyle(color: Theme.of(context).colorScheme.primary))
+            else if (c.live.aiDrafting)
+              Text('Assistant is writing…', style: Theme.of(context).textTheme.bodySmall)
+            else if (d.channel == 'Live Chat')
+              Text(c.live.visitorOnline ? '● Visitor online' : '○ Visitor away',
+                  style: TextStyle(fontSize: 12, color: c.live.visitorOnline ? Colors.green.shade700 : Theme.of(context).colorScheme.outline)),
             Text(d.channel, style: Theme.of(context).textTheme.bodySmall),
             Text(d.assignee == null ? 'Unassigned' : (mine ? 'Assigned to you' : 'Assigned to ${d.assignee!.name}'),
                 style: Theme.of(context).textTheme.bodySmall),
@@ -189,8 +251,10 @@ class _Header extends StatelessWidget {
         await c.returnToAssistant();
       case 'ticket':
         onOpenTicket?.call(d.ticket!);
+      case 'details':
+        onDetails?.call();
       case 'transfer':
-        final r = await showDialog<({String? user, String? queue})>(context: context, builder: (_) => const _TransferDialog());
+        final r = await TransferPicker.show(context, c.transferTargets);
         if (r != null) await c.transfer(user: r.user, queue: r.queue);
     }
   }
@@ -210,44 +274,6 @@ class _Header extends StatelessWidget {
           sendClosingMessage: r['send'] != false);
     }
   }
-}
-
-class _TransferDialog extends StatefulWidget {
-  const _TransferDialog();
-  @override
-  State<_TransferDialog> createState() => _TransferDialogState();
-}
-
-class _TransferDialogState extends State<_TransferDialog> {
-  final _user = TextEditingController();
-  final _queue = TextEditingController();
-  @override
-  void dispose() {
-    _user.dispose();
-    _queue.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-        title: const Text('Transfer conversation'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: _user, decoration: const InputDecoration(labelText: 'Agent (user email)'), autofocus: true),
-          const SizedBox(height: 8),
-          TextField(controller: _queue, decoration: const InputDecoration(labelText: 'Or queue')),
-        ]),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () {
-              final u = _user.text.trim(), q = _queue.text.trim();
-              if (u.isEmpty && q.isEmpty) return;
-              Navigator.pop(context, (user: u.isEmpty ? null : u, queue: q.isEmpty ? null : q));
-            },
-            child: const Text('Transfer'),
-          ),
-        ],
-      );
 }
 
 /// Wrap-up: closing reason, notes and the site's closing questions (Support Chat Closing Question).
@@ -338,12 +364,26 @@ class _CloseDialogState extends State<_CloseDialog> {
   }
 }
 
-class _Details extends StatelessWidget {
+class _Details extends StatefulWidget {
   final ConversationSummary d;
+  final ConversationController c;
   final void Function(String)? onOpenTicket;
-  const _Details({required this.d, this.onOpenTicket});
+  final void Function(String)? onOpenConversation;
+  const _Details({required this.d, required this.c, this.onOpenTicket, this.onOpenConversation});
+  @override
+  State<_Details> createState() => _DetailsState();
+}
+
+class _DetailsState extends State<_Details> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.c.history == null) widget.c.loadHistory();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final d = widget.d;
     final t = Theme.of(context).textTheme;
     Widget row(String k, String? v) => v == null || v.isEmpty
         ? const SizedBox.shrink()
@@ -354,24 +394,57 @@ class _Details extends StatelessWidget {
               SelectableText(v, style: t.bodyMedium),
             ]),
           );
-    return ListView(padding: const EdgeInsets.all(16), children: [
-      Text('Details', style: t.titleSmall),
-      const SizedBox(height: 12),
-      row('Contact', d.contactName),
-      row('Email', d.contactEmail),
-      row('Phone', d.contactPhone),
-      row('Customer', d.customerName),
-      row('Channel', d.channel),
-      row('Queue', d.queue),
-      row('Assigned to', d.assignee?.name),
-      row('Handed over because', d.handoffReason),
-      row('Subject', d.subject),
-      if (d.ticket != null)
-        OutlinedButton.icon(
-          onPressed: onOpenTicket == null ? null : () => onOpenTicket!(d.ticket!),
-          icon: const Icon(Icons.confirmation_number_outlined),
-          label: Text('Ticket #${d.ticket}'),
-        ),
-    ]);
+    return ListenableBuilder(
+      listenable: widget.c,
+      builder: (context, _) {
+        final h = widget.c.history;
+        return ListView(padding: const EdgeInsets.all(16), children: [
+          Text('Details', style: t.titleSmall),
+          const SizedBox(height: 12),
+          row('Contact', d.contactName),
+          row('Email', d.contactEmail),
+          row('Phone', d.contactPhone),
+          row('Customer', d.customerName),
+          row('Channel', d.channel),
+          row('Queue', d.queue),
+          row('Assigned to', d.assignee?.name),
+          row('Handed over because', d.handoffReason),
+          row('Subject', d.subject),
+          if (d.ticket != null)
+            OutlinedButton.icon(
+              onPressed: widget.onOpenTicket == null ? null : () => widget.onOpenTicket!(d.ticket!),
+              icon: const Icon(Icons.confirmation_number_outlined),
+              label: Text('Ticket #${d.ticket}'),
+            ),
+          const Divider(height: 32),
+          Text('Customer history', style: t.titleSmall),
+          const SizedBox(height: 8),
+          if (widget.c.historyLoading) const LinearProgressIndicator(),
+          if (h != null && h.conversations.isEmpty && h.tickets.isEmpty)
+            Text('No earlier conversations or tickets.', style: t.bodySmall),
+          if (h != null)
+            for (final x in h.conversations)
+              ListTile(
+                key: Key('history-${x.id}'),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(channelIcon(x.channel), size: 18),
+                title: Text(x.subject.isEmpty ? x.displayName : x.subject, maxLines: 1, overflow: TextOverflow.ellipsis),
+                subtitle: Text('${conversationStatusLabel(x)} · ${timeAgo(x.lastActivityAt)}'),
+                onTap: widget.onOpenConversation == null ? null : () => widget.onOpenConversation!(x.id),
+              ),
+          if (h != null)
+            for (final tk in h.tickets)
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.confirmation_number_outlined, size: 18),
+                title: Text('#${tk.id} ${tk.subject}', maxLines: 1, overflow: TextOverflow.ellipsis),
+                subtitle: Text(tk.status),
+                onTap: widget.onOpenTicket == null ? null : () => widget.onOpenTicket!(tk.id),
+              ),
+        ]);
+      },
+    );
   }
 }

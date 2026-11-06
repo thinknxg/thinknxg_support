@@ -61,6 +61,19 @@ abstract class TokenProvider {
   Future<bool> refresh();
 }
 
+class UploadFile {
+  final String name;
+  final List<int> bytes;
+  const UploadFile(this.name, this.bytes);
+  int get size => bytes.length;
+}
+
+class DownloadedFile {
+  final String name;
+  final List<int> bytes;
+  const DownloadedFile(this.name, this.bytes);
+}
+
 String newRequestId([Random? rng]) {
   final r = rng ?? Random.secure();
   final b = List<int>.generate(16, (_) => r.nextInt(256));
@@ -86,23 +99,49 @@ class ApiClient {
     return site.replace(path: '/api/method/$prefix$method', queryParameters: q.isEmpty ? null : q);
   }
 
-  Future<dynamic> get(String method, [Map<String, String?>? query]) => _send('GET', _uri(method, query));
+  Future<dynamic> get(String method, [Map<String, String?>? query]) async =>
+      decode(await _send(() => http.Request('GET', _uri(method, query))));
 
-  Future<dynamic> post(String method, Map<String, Object?> body) => _send('POST', _uri(method), body: body);
+  Future<dynamic> post(String method, Map<String, Object?> body) async => decode(await _send(() {
+        final r = http.Request('POST', _uri(method));
+        r.headers['Content-Type'] = 'application/json';
+        r.body = jsonEncode({for (final e in body.entries) if (e.value != null) e.key: e.value});
+        return r;
+      }));
 
-  Future<dynamic> _send(String verb, Uri uri, {Map<String, Object?>? body, bool retried = false}) async {
+  /// POST with one file (multipart/form-data). Fields are sent as text form fields.
+  Future<dynamic> postFile(String method, Map<String, Object?> fields, UploadFile file) async => decode(await _send(() {
+        final r = http.MultipartRequest('POST', _uri(method));
+        for (final e in fields.entries) {
+          if (e.value != null) r.fields[e.key] = '${e.value}';
+        }
+        r.files.add(http.MultipartFile.fromBytes('file', file.bytes, filename: file.name));
+        return r;
+      }, timeoutOverride: const Duration(seconds: 90)));
+
+  /// GET a file. Errors are decoded like any other call.
+  Future<DownloadedFile> download(String method, Map<String, String?> query) async {
+    final res = await _send(() => http.Request('GET', _uri(method, query)), timeoutOverride: const Duration(seconds: 90));
+    final type = res.headers['content-type'] ?? '';
+    if (res.statusCode != 200 || type.contains('application/json')) {
+      decode(res); // throws the server's error
+      throw const ServerError();
+    }
+    final cd = res.headers['content-disposition'] ?? '';
+    final m = RegExp(r'filename\*?=(?:UTF-8\x27\x27)?"?([^";]+)"?', caseSensitive: false).firstMatch(cd);
+    final name = m == null ? 'download' : Uri.decodeComponent(m.group(1)!);
+    return DownloadedFile(name, res.bodyBytes);
+  }
+
+  Future<http.Response> _send(http.BaseRequest Function() build, {bool retried = false, Duration? timeoutOverride}) async {
     final token = await tokens.accessToken();
     if (token == null) throw const SessionExpired();
-    final req = http.Request(verb, uri)
+    final req = build()
       ..headers['Authorization'] = 'Bearer $token'
       ..headers['Accept'] = 'application/json';
-    if (body != null) {
-      req.headers['Content-Type'] = 'application/json';
-      req.body = jsonEncode({for (final e in body.entries) if (e.value != null) e.key: e.value});
-    }
     http.Response res;
     try {
-      res = await http.Response.fromStream(await _http.send(req).timeout(timeout));
+      res = await http.Response.fromStream(await _http.send(req).timeout(timeoutOverride ?? timeout));
     } on TimeoutException {
       throw const NetworkError('The server did not answer in time. Your message may not have been sent; retry to make sure.');
     } on http.ClientException {
@@ -112,10 +151,10 @@ class ApiClient {
       throw const NetworkError();
     }
     if (res.statusCode == 401 && !retried) {
-      if (await tokens.refresh()) return _send(verb, uri, body: body, retried: true);
+      if (await tokens.refresh()) return _send(build, retried: true, timeoutOverride: timeoutOverride);
       throw const SessionExpired();
     }
-    return decode(res);
+    return res;
   }
 
   static dynamic decode(http.Response res) {

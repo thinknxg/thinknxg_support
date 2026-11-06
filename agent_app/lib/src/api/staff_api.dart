@@ -71,18 +71,37 @@ class StaffApi {
 
   /// Reply to the customer, or (internal) a staff-only note. Retrying with the same [clientRequestId] never sends twice.
   Future<({ChatMessage message, bool duplicate})> reply(String id, String text,
-      {required String clientRequestId, bool internal = false}) async {
-    final r = _map(await client.post('reply', {
-      'name': id,
-      'text': text,
-      'client_request_id': clientRequestId,
-      'internal': internal ? 1 : 0,
-    }));
+      {required String clientRequestId, bool internal = false, UploadFile? file}) async {
+    final fields = {'name': id, 'text': text, 'client_request_id': clientRequestId, 'internal': internal ? 1 : 0};
+    final r = _map(file == null ? await client.post('reply', fields) : await client.postFile('reply', fields, file));
     return (message: ChatMessage.fromJson(_map(r['message'])), duplicate: r['duplicate'] == true);
   }
 
-  Future<List<Map<String, dynamic>>> cannedResponses({String? channel}) async =>
-      [for (final c in _list(await client.get('canned_responses', {'channel': channel}))) _map(c)];
+  Future<List<CannedResponse>> cannedResponses({String? channel}) async =>
+      [for (final c in _list(await client.get('canned_responses', {'channel': channel}))) CannedResponse.fromJson(_map(c))];
+
+  /// Placeholders ({customer_first_name}, {agent_name}, …) filled for this conversation; counts as used.
+  Future<String> cannedRender(String cannedId, String conversationId) async =>
+      '${_map(await client.post('canned_render', {'name': cannedId, 'conversation': conversationId}))['text'] ?? ''}';
+
+  Future<DownloadedFile> attachment(String messageId) => client.download('attachment', {'message': messageId});
+
+  Future<DownloadedFile> ticketAttachment(String ticketId, String fileId) =>
+      client.download('ticket_attachment', {'name': ticketId, 'file': fileId});
+
+  Future<TransferTargets> transferTargets(String id) async =>
+      TransferTargets.fromJson(_map(await client.get('transfer_targets', {'name': id})));
+
+  Future<CustomerHistory> customerHistory(String id) async =>
+      CustomerHistory.fromJson(_map(await client.get('customer_history', {'name': id})));
+
+  Future<LiveState> live(String id) async => LiveState.fromJson(_map(await client.get('live', {'name': id})));
+
+  Future<void> typing(String id) => client.post('typing', {'name': id});
+
+  Future<void> heartbeat() => client.post('heartbeat', {});
+
+  Future<AlertConfig> alertConfig() async => AlertConfig.fromJson(_map(await client.get('alert_config')));
 
   // ---------------------------------------------------------------- tickets
   Future<Page<Ticket>> tickets({String view = 'mine', String? status = 'open', String? priority, String? q, String? cursor, int limit = 30}) async {
@@ -104,8 +123,12 @@ class StaffApi {
     return Page([for (final t in _list(r['items'])) TimelineItem.fromJson(_map(t))], r['next_cursor'] as String?);
   }
 
-  Future<bool> ticketReply(String id, String text, {required String clientRequestId}) async =>
-      _map(await client.post('ticket_reply', {'name': id, 'text': text, 'client_request_id': clientRequestId}))['duplicate'] == true;
+  Future<bool> ticketReply(String id, String text, {required String clientRequestId, UploadFile? file}) async {
+    final fields = {'name': id, 'text': text, 'client_request_id': clientRequestId};
+    return _map(file == null ? await client.post('ticket_reply', fields) : await client.postFile('ticket_reply', fields, file))[
+            'duplicate'] ==
+        true;
+  }
 
   Future<bool> ticketNote(String id, String text, {required String clientRequestId}) async =>
       _map(await client.post('ticket_note', {'name': id, 'text': text, 'client_request_id': clientRequestId}))['duplicate'] == true;

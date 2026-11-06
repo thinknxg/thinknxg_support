@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
 
+import 'src/alerts/device.dart';
 import 'src/auth/browser.dart';
 import 'src/auth/oauth.dart';
 import 'src/auth/token_store.dart';
+import 'src/platform/services.dart';
 import 'src/state/session.dart';
 import 'src/ui/sign_in.dart';
 import 'src/ui/workspace.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  final sink = DeviceAlertSink();
+  sink.init();
+  AppServices.alertSink = sink;
+  AppServices.startPush = PushService.start;
+  AppServices.stopPush = PushService.stop;
+  AppServices.pushToken = () => PushService.token;
   final session = Session(store: SecureTokenStore(), oauth: OAuthService(browser: BrowserAuthenticator.forPlatform()));
   runApp(AgentApp(session: session));
   session.restore();

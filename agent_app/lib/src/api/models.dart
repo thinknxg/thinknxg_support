@@ -212,6 +212,7 @@ class ChatMessage {
   final String? deliveryStatus;
   final String? deliveryError;
   final String? clientRequestId;
+  final String? attachmentName;
 
   const ChatMessage({
     required this.id,
@@ -224,6 +225,7 @@ class ChatMessage {
     this.deliveryStatus,
     this.deliveryError,
     this.clientRequestId,
+    this.attachmentName,
   });
 
   String get text => htmlToText(html);
@@ -246,6 +248,7 @@ class ChatMessage {
       deliveryStatus: delivery['status'] == null ? null : _s(delivery['status']),
       deliveryError: delivery['error'] == null ? null : _s(delivery['error']),
       clientRequestId: j['client_request_id'] == null ? null : _s(j['client_request_id']),
+      attachmentName: j['attachment'] is Map ? _s((j['attachment'] as Map)['name']) : null,
     );
   }
 }
@@ -290,6 +293,8 @@ class Ticket {
   final bool canWrite;
   final List<TicketStatus> statuses;
   final List<String> priorities;
+  final List<String> teams;
+  final List<FileRef> attachments;
 
   const Ticket({
     required this.id,
@@ -312,6 +317,8 @@ class Ticket {
     this.canWrite = false,
     this.statuses = const [],
     this.priorities = const [],
+    this.teams = const [],
+    this.attachments = const [],
   });
 
   factory Ticket.fromJson(Map<String, dynamic> j) {
@@ -342,6 +349,8 @@ class Ticket {
               n(_m(s)['category'])),
       ],
       priorities: [for (final p in _l(j['priorities'])) _s(p)],
+      teams: [for (final t in _l(j['teams'])) _s(t)],
+      attachments: [for (final f in _l(j['attachments'])) FileRef.fromJson(_m(f))],
     );
   }
 }
@@ -354,7 +363,9 @@ class TimelineItem {
   final String author;
   final String html;
   final DateTime? createdAt;
-  const TimelineItem(this.id, this.kind, this.internal, this.direction, this.author, this.html, this.createdAt);
+  final List<FileRef> attachments;
+  const TimelineItem(this.id, this.kind, this.internal, this.direction, this.author, this.html, this.createdAt,
+      [this.attachments = const []]);
   String get text => htmlToText(html);
   factory TimelineItem.fromJson(Map<String, dynamic> j) {
     final d = _s(j['direction']);
@@ -370,7 +381,104 @@ class TimelineItem {
       _s(j['author']),
       _s(j['html']),
       _dt(j['created_at']),
+      [for (final f in _l(j['attachments'])) FileRef.fromJson(_m(f))],
     );
+  }
+}
+
+class FileRef {
+  final String id, name;
+  final int size;
+  const FileRef(this.id, this.name, this.size);
+  factory FileRef.fromJson(Map<String, dynamic> j) => FileRef(_s(j['id']), _s(j['name']), _i(j['size']));
+}
+
+class TransferAgent {
+  final String user, name;
+  final bool online, inQueue;
+  final int openChats;
+  const TransferAgent(this.user, this.name, this.online, this.inQueue, this.openChats);
+}
+
+class TransferTargets {
+  final List<TransferAgent> agents;
+  final List<String> queues;
+  final String? currentUser, currentQueue;
+  const TransferTargets(this.agents, this.queues, this.currentUser, this.currentQueue);
+  factory TransferTargets.fromJson(Map<String, dynamic> j) {
+    final cur = _m(j['current']);
+    return TransferTargets(
+      [
+        for (final a in _l(j['agents']))
+          TransferAgent(_s(_m(a)['user']), _s(_m(a)['name']).isEmpty ? _s(_m(a)['user']) : _s(_m(a)['name']),
+              _b(_m(a)['online']), _b(_m(a)['in_queue']), _i(_m(a)['open_chats'])),
+      ],
+      [for (final q in _l(j['queues'])) _s(q)],
+      cur['user'] as String?,
+      cur['queue'] as String?,
+    );
+  }
+}
+
+class CustomerHistory {
+  final List<ConversationSummary> conversations;
+  final List<Ticket> tickets;
+  const CustomerHistory(this.conversations, this.tickets);
+  factory CustomerHistory.fromJson(Map<String, dynamic> j) => CustomerHistory(
+        [for (final c in _l(j['conversations'])) ConversationSummary.fromJson(_m(c))],
+        [for (final t in _l(j['tickets'])) Ticket.fromJson(_m(t))],
+      );
+}
+
+class LiveState {
+  final bool customerTyping, visitorOnline, aiDrafting;
+  const LiveState({this.customerTyping = false, this.visitorOnline = false, this.aiDrafting = false});
+  factory LiveState.fromJson(Map<String, dynamic> j) =>
+      LiveState(customerTyping: _b(j['customer_typing']), visitorOnline: _b(j['visitor_online']), aiDrafting: _b(j['ai_drafting']));
+}
+
+class CannedResponse {
+  final String id, title;
+  final String? shortcut, category;
+  final String preview;
+  const CannedResponse(this.id, this.title, this.shortcut, this.category, this.preview);
+  factory CannedResponse.fromJson(Map<String, dynamic> j) => CannedResponse(_s(j['name']), _s(j['title']),
+      j['shortcut'] as String?, j['category'] as String?, htmlToText(_s(j['content'])));
+}
+
+/// A team alert rule merged with this agent's preferences (from `alert_config`).
+class AlertRule {
+  final String kind, sound;
+  final bool enabled, repeat, popup;
+  final int repeatSeconds, maxRepeats, volume;
+  const AlertRule(this.kind, this.sound, this.enabled, this.repeat, this.popup, this.repeatSeconds, this.maxRepeats, this.volume);
+}
+
+class AlertConfig {
+  final bool enabled, muteAll;
+  final int volume;
+  final Map<String, AlertRule> rules;
+  const AlertConfig({this.enabled = false, this.muteAll = false, this.volume = 80, this.rules = const {}});
+
+  /// Same rules as the web alert centre: the agent's own choice wins over "Team Default"; mute silences all.
+  factory AlertConfig.fromJson(Map<String, dynamic> j) {
+    final prefs = _m(j['prefs']);
+    final items = _m(prefs['items']);
+    final mute = _b(prefs['mute_all']);
+    final prefVol = prefs['volume'] == null ? 80 : _i(prefs['volume']);
+    final rules = <String, AlertRule>{};
+    _m(j['rules']).forEach((kind, v) {
+      final r = _m(v);
+      final it = _m(items[kind]);
+      final ownSound = _s(it['sound']);
+      final sound = mute ? 'None' : (ownSound.isNotEmpty && ownSound != 'Team Default' ? ownSound : _s(r['sound']));
+      final popup = _s(it['popup']) == 'Show' ? true : (_s(it['popup']) == 'Hide' ? false : _b(r['popup']));
+      final rep = _s(it['repeat']) == 'Until acknowledged' ? true : (_s(it['repeat']) == 'Once' ? false : _b(r['repeat_until_ack']));
+      final ruleVol = r['volume'] == null ? 80 : _i(r['volume']);
+      rules[kind] = AlertRule(kind, sound.isEmpty ? 'None' : sound, _b(r['enabled']), rep, popup,
+          _i(r['repeat_seconds']) < 5 ? 15 : _i(r['repeat_seconds']), _i(r['max_repeats']), (ruleVol * prefVol / 100).round());
+    });
+    return AlertConfig(enabled: _b(j['enabled']), muteAll: mute, volume: prefVol, rules: rules);
   }
 }
 

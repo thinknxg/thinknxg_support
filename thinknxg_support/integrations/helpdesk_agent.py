@@ -145,6 +145,8 @@ def ticket_detail(name: str) -> dict:
     out["can_write"] = bool(frappe.has_permission(T, "write", doc))
     out["statuses"] = statuses()
     out["priorities"] = priorities()
+    out["teams"] = teams()
+    out["attachments"] = ticket_files(doc.name)
     return out
 
 
@@ -185,17 +187,54 @@ def timeline(name: str, cursor: str | None = None, limit: int = 30) -> dict:
         items = [i for i in items if (i["_t"], i["id"]) < (after["t"], after["n"])]
     page = items[:limit]
     nxt = cursors.encode(page[-1]["_t"], page[-1]["id"]) if len(items) > limit and page else None
+    comm_ids = [i["id"] for i in page if i["kind"] == "email"]
+    files = {}
+    if comm_ids:
+        for f in frappe.get_all("File", filters={"attached_to_doctype": "Communication", "attached_to_name": ["in", comm_ids]},
+                                fields=["name", "file_name", "file_size", "attached_to_name"]):
+            files.setdefault(f.attached_to_name, []).append({"id": f.name, "name": f.file_name, "size": f.file_size})
     for i in page:
         i.pop("_t", None)
+        i["attachments"] = files.get(i["id"], [])
     return {"items": list(reversed(page)), "next_cursor": nxt}  # oldest first within the page
 
 
-def reply(name: str, html: str) -> dict:
+def ticket_files(name: str) -> list[dict]:
+    get_ticket(name)
+    comms = frappe.get_all("Communication", filters={"reference_doctype": T, "reference_name": name}, pluck="name")
+    rows = frappe.get_all("File", filters={"attached_to_doctype": T, "attached_to_name": name},
+                          fields=["name", "file_name", "file_size", "creation"])
+    if comms:
+        rows += frappe.get_all("File", filters={"attached_to_doctype": "Communication", "attached_to_name": ["in", comms]},
+                               fields=["name", "file_name", "file_size", "creation"])
+    return [{"id": r.name, "name": r.file_name, "size": r.file_size} for r in rows]
+
+
+def file_on_ticket(name: str, file: str) -> bool:
+    row = frappe.db.get_value("File", file, ["attached_to_doctype", "attached_to_name"], as_dict=True)
+    if not row:
+        return False
+    if row.attached_to_doctype == T and str(row.attached_to_name) == str(name):
+        return True
+    return bool(row.attached_to_doctype == "Communication" and frappe.db.exists(
+        "Communication", {"name": row.attached_to_name, "reference_doctype": T, "reference_name": name}))
+
+
+def teams() -> list[str]:
+    return frappe.get_all("HD Team", pluck="name", order_by="name asc") if frappe.db.exists("DocType", "HD Team") else []
+
+
+def reply(name: str, html: str, files=None) -> dict:
     """Send the customer a reply through Helpdesk's agent workflow (email to the ticket's contact)."""
     doc = get_ticket(name)
     doc.check_permission("write")
+    attachments = []
+    for fname, data in files or []:
+        from thinknxg_support.utils import save_private_file
+
+        attachments.append(save_private_file(fname, data, T, doc.name)["name"])
     if hasattr(doc, "reply_via_agent"):
-        doc.reply_via_agent(message=html)
+        doc.reply_via_agent(message=html, attachments=attachments) if attachments else doc.reply_via_agent(message=html)
     else:
         frappe.throw(_("This Helpdesk version has no agent reply method; reply from the Helpdesk app."))
     last = frappe.get_all("Communication", filters={"reference_doctype": T, "reference_name": name, "sent_or_received": "Sent"},

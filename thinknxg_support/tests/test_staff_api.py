@@ -173,3 +173,101 @@ class TestStaffApi(BaseTestCase):
         closed = next((s["name"] for s in helpdesk_agent.statuses() if s["category"] == "Resolved"), None)
         if closed:
             self.assertEqual(v1.ticket_update(t.name, status=closed)["status"], closed)
+
+    # ------------------------------------------------------------------ increment 2: workspace
+    def test_canned_response_placeholders_are_filled(self):
+        r, name = self._chat()
+        as_user(self.a1)
+        c = frappe.get_doc({"doctype": "Support Canned Response", "title": "Hello app", "shortcut": "helloapp",
+                            "visibility": "Team", "content": "<p>Hi {customer_first_name}, {agent_first_name} here.</p>"}).insert()
+        out = v1.canned_render(c.name, name)
+        self.assertIn("Hi Visitor, app-agent1 here.", out["text"])
+        self.assertEqual(frappe.db.get_value("Support Canned Response", c.name, "usage_count"), 1)
+
+    def test_attachment_upload_and_authorised_download(self):
+        r, name = self._chat()
+        as_user(self.a1)
+        v1.claim(name)
+        with patch("thinknxg_support.utils.uploaded_files", return_value=[("invoice.pdf", b"%PDF-1.4 test")]):
+            out = v1.reply(name, "Here is your invoice", client_request_id="33333333-aaaa-bbbb-cccc-000000000001")
+        self.assertEqual(out["message"]["attachment"]["name"], "invoice.pdf")
+        msg = out["message"]["id"]
+        self.assertTrue(frappe.db.get_value("File", {"attached_to_doctype": MSG, "attached_to_name": msg}, "is_private"))
+        v1.attachment(msg)
+        self.assertEqual(frappe.local.response.filename, "invoice.pdf")
+        as_user(self.outsider)
+        self.assertRaises(frappe.PermissionError, v1.attachment, msg)
+
+    def test_whatsapp_attachments_are_refused_with_a_reason(self):
+        r, name = self._chat()
+        frappe.db.set_value(CONV, name, {"channel": "WhatsApp", "whatsapp_number": "96890000000",
+                                         "whatsapp_window_expires": frappe.utils.add_to_date(None, hours=5)},
+                            update_modified=False)
+        as_user(self.a1)
+        from thinknxg_support.api.staff.errors import ChannelActionRequired
+
+        with patch("thinknxg_support.utils.uploaded_files", return_value=[("a.pdf", b"%PDF-1.4")]):
+            with self.assertRaises(ChannelActionRequired):
+                v1.reply(name, "file", client_request_id="33333333-aaaa-bbbb-cccc-000000000002")
+
+    def test_transfer_targets_and_customer_history(self):
+        r1, first = self._chat()
+        r2, second = self._chat()
+        as_user(self.a1)
+        t = v1.transfer_targets(second)
+        users = [a["user"] for a in t["agents"]]
+        self.assertIn(self.a2, users)
+        self.assertNotIn(self.a1, users)
+        self.assertTrue(next(a for a in t["agents"] if a["user"] == self.a2)["in_queue"])
+        h = v1.customer_history(second)
+        self.assertIn(first, [c["id"] for c in h["conversations"]])  # same guest e-mail
+        self.assertNotIn(second, [c["id"] for c in h["conversations"]])
+        frappe.db.set_value(CONV, first, "queue", "Other Team", update_modified=False)
+        self.assertNotIn(first, [c["id"] for c in v1.customer_history(second)["conversations"]])  # not visible to a1
+
+    def test_typing_and_live_state(self):
+        r, name = self._chat()
+        as_user(self.a1)
+        v1.typing(name)
+        from thinknxg_support.integrations import realtime
+
+        self.assertTrue(realtime.is_online(self.a1))
+        self.assertIn("customer_typing", v1.live(name))
+
+    # ------------------------------------------------------------------ increment 3: push
+    def test_push_text_is_generic_and_dead_tokens_are_dropped(self):
+        from thinknxg_support.integrations import push
+
+        m = push.message_for("tok", {"doctype": CONV, "name": "X1", "kind": "New Chat", "title": "secret customer"}, "Android")
+        self.assertEqual(m["notification"], {"title": "thinkNXG Support", "body": "New support activity"})
+        self.assertNotIn("title", m["data"])  # only routing keys travel
+        as_user(self.a1)
+        v1.register_device("tok-123", "Android", "Pixel")
+        as_user("Administrator")
+        s = frappe.get_single("Support Agent App Settings")
+        s.update({"push_enabled": 1, "fcm_project_id": "demo-project"})
+        s.flags.ignore_permissions = True
+        s.save()
+
+        class R:
+            status_code = 404
+            text = '{"error": {"status": "NOT_FOUND", "details": [{"errorCode": "UNREGISTERED"}]}}'
+
+        with patch.object(push, "access_token", return_value="x"), patch("requests.post", return_value=R()):
+            out = push.deliver([self.a1], {"doctype": CONV, "name": "X1"})
+        self.assertEqual(out["removed"], 1)
+        self.assertEqual(frappe.db.get_value("Support Agent Device", {"user": self.a1}, "enabled"), 0)
+        s.push_enabled = 0
+        s.save()
+
+    def test_alerts_trigger_a_push(self):
+        from thinknxg_support.integrations import alerts, push
+
+        r, name = self._chat()
+        rules = {"New Chat": {**alerts.DEFAULTS["New Chat"], "enabled": 1}}
+        with patch.object(alerts, "rules", return_value=rules), patch.object(push, "enabled", return_value=True), \
+                patch.object(push, "send_to_users") as sent:
+            alerts.raise_alert("New Chat", [self.a1], "New chat", reference_doctype=CONV, reference_name=name,
+                               group_key=f"apptest:{name}")
+        sent.assert_called_once()
+        self.assertEqual(sent.call_args[0][1], {"kind": "New Chat", "doctype": CONV, "name": name})
