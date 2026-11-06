@@ -30,18 +30,21 @@ if [ -f "$KTS" ] && ! grep -q 'thinknxg-agent-release-signing' "$KTS"; then
   cat >> "$KTS" <<'GRADLE'
 
 // thinknxg-agent-release-signing
-val agentKeystoreProperties = java.util.Properties()
 val agentKeystoreFile = rootProject.file("key.properties")
-if (agentKeystoreFile.exists()) agentKeystoreProperties.load(java.io.FileInputStream(agentKeystoreFile))
+val agentKeystoreProperties: Map<String, String> =
+    if (agentKeystoreFile.exists())
+        agentKeystoreFile.readLines().filter { it.contains("=") }
+            .associate { it.substringBefore("=").trim() to it.substringAfter("=").trim() }
+    else emptyMap()
 android {
     compileOptions { isCoreLibraryDesugaringEnabled = true }
     signingConfigs {
         if (agentKeystoreFile.exists()) {
             create("agentRelease") {
-                keyAlias = agentKeystoreProperties["keyAlias"] as String
-                keyPassword = agentKeystoreProperties["keyPassword"] as String
-                storeFile = file(agentKeystoreProperties["storeFile"] as String)
-                storePassword = agentKeystoreProperties["storePassword"] as String
+                keyAlias = agentKeystoreProperties.getValue("keyAlias")
+                keyPassword = agentKeystoreProperties.getValue("keyPassword")
+                storeFile = file(agentKeystoreProperties.getValue("storeFile"))
+                storePassword = agentKeystoreProperties.getValue("storePassword")
             }
         }
     }
@@ -69,6 +72,12 @@ fi
 PLIST=ios/Runner/Info.plist
 if [ -f "$PLIST" ]; then
   perl -pi -e 's#<string>Thinknxg Agent</string>#<string>thinkNXG Agent</string>#' "$PLIST"
+fi
+
+# flutter_local_notifications' Windows code still uses <experimental/coroutine>, which newer MSVC rejects
+WCM=windows/CMakeLists.txt
+if [ -f "$WCM" ] && ! grep -q '_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS' "$WCM"; then
+  perl -0pi -e 's/(cmake_minimum_required\([^)]*\)\n)/$1add_compile_definitions(_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)\n/' "$WCM"
 fi
 
 MAIN_CPP=windows/runner/main.cpp
