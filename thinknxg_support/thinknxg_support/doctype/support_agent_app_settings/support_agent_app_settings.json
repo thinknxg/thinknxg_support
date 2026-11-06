@@ -1,0 +1,170 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "oauth_client",
+  "column_break_s1",
+  "desktop_redirect_uri",
+  "mobile_redirect_uri",
+  "poll_section",
+  "inbox_poll_seconds",
+  "thread_poll_seconds",
+  "column_break_s2",
+  "alerts_poll_seconds",
+  "push_section",
+  "push_enabled",
+  "fcm_project_id",
+  "column_break_s3",
+  "fcm_service_account"
+ ],
+ "fields": [
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Allow the Agent Apps",
+   "default": "1",
+   "idx": 1
+  },
+  {
+   "fieldname": "oauth_client",
+   "fieldtype": "Link",
+   "label": "OAuth Client",
+   "options": "OAuth Client",
+   "description": "Created with the button above. Public client: authorization code with PKCE, no secret in the app",
+   "idx": 2
+  },
+  {
+   "fieldname": "column_break_s1",
+   "fieldtype": "Column Break",
+   "idx": 3
+  },
+  {
+   "fieldname": "desktop_redirect_uri",
+   "fieldtype": "Data",
+   "label": "Windows Sign-in Address",
+   "default": "http://127.0.0.1:43823/callback",
+   "description": "Loopback address the Windows app listens on while you sign in",
+   "idx": 4
+  },
+  {
+   "fieldname": "mobile_redirect_uri",
+   "fieldtype": "Data",
+   "label": "Mobile Sign-in Address",
+   "default": "com.thinknxg.agent://oauth2redirect",
+   "description": "App link registered by the Android and iOS apps",
+   "idx": 5
+  },
+  {
+   "fieldname": "poll_section",
+   "fieldtype": "Section Break",
+   "label": "Updates",
+   "description": "How often the apps check for changes while open",
+   "idx": 6
+  },
+  {
+   "fieldname": "inbox_poll_seconds",
+   "fieldtype": "Int",
+   "label": "Inbox (seconds)",
+   "default": "10",
+   "idx": 7
+  },
+  {
+   "fieldname": "thread_poll_seconds",
+   "fieldtype": "Int",
+   "label": "Open Conversation (seconds)",
+   "default": "4",
+   "idx": 8
+  },
+  {
+   "fieldname": "column_break_s2",
+   "fieldtype": "Column Break",
+   "idx": 9
+  },
+  {
+   "fieldname": "alerts_poll_seconds",
+   "fieldtype": "Int",
+   "label": "Alerts (seconds)",
+   "default": "15",
+   "idx": 10
+  },
+  {
+   "fieldname": "push_section",
+   "fieldtype": "Section Break",
+   "label": "Push Notifications",
+   "description": "Lock-screen text is always generic (\"New support activity\"); the app loads the details after sign-in and checks access again",
+   "idx": 11
+  },
+  {
+   "fieldname": "push_enabled",
+   "fieldtype": "Check",
+   "label": "Send Push Notifications",
+   "default": "0",
+   "idx": 12
+  },
+  {
+   "fieldname": "fcm_project_id",
+   "fieldtype": "Data",
+   "label": "Firebase Project ID",
+   "depends_on": "push_enabled",
+   "idx": 13
+  },
+  {
+   "fieldname": "column_break_s3",
+   "fieldtype": "Column Break",
+   "idx": 14
+  },
+  {
+   "fieldname": "fcm_service_account",
+   "fieldtype": "Password",
+   "label": "Firebase Service Account JSON",
+   "depends_on": "push_enabled",
+   "description": "Kept on the server only. Used for Android and, through Firebase, iOS (APNs key uploaded to Firebase)",
+   "idx": 15
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Agent App Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
