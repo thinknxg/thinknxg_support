@@ -17,7 +17,7 @@ List<_Tone> _pattern(String name) {
     case 'Chime':
       return const [_Tone(0, 784, .35, .6), _Tone(.18, 1175, .5, .55)];
     case 'Bell':
-      return [for (var i = 0; i < 3; i++) _Tone(0, 660 * const [1, 2.76, 5.4][i], 1.1 - i * .3, .6 / (i + 1))];
+      return [for (var i = 0; i < 3; i++) _Tone(0, 660 * const <double>[1, 2.76, 5.4][i], 1.1 - i * .3, .6 / (i + 1))];
     case 'Ping':
       return const [_Tone(0, 1568, .25, .55)];
     case 'Pop':
