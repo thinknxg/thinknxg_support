@@ -16,6 +16,13 @@ class FakeServer {
   final Set<String> seenRequestIds = {};
   final List<String> calls = [];
   int failNextWithTimeout = 0; // the server processes the request but the answer is "lost"
+  bool offline = false; // no answer at all
+  final Map<String, List<int>> files = {}; // message id -> bytes
+  final List<Map<String, dynamic>> alertItems = [];
+  final List<String> acknowledged = [];
+  int typingCalls = 0;
+  int heartbeats = 0;
+  bool customerTyping = false;
   int _seq = 0;
 
   FakeServer() {
@@ -106,16 +113,43 @@ class FakeServer {
     if (!path.startsWith(p)) return http.Response('not found', 404);
     final method = path.substring(p.length);
     calls.add(method);
+    if (offline) throw http.ClientException('Network is unreachable');
     if (req.headers['Authorization'] != 'Bearer $validToken') return _err(401, 'Sign in with your staff account.');
     final q = req.url.queryParameters;
-    final b = req.body.isEmpty ? <String, dynamic>{} : Map<String, dynamic>.from(jsonDecode(req.body) as Map);
-    final res = _handle(method, q, b);
-    if (failNextWithTimeout > 0) {
+    final type = req.headers['content-type'] ?? '';
+    final b = type.startsWith('multipart/form-data')
+        ? _multipart(req.bodyBytes, type)
+        : (req.body.isEmpty ? <String, dynamic>{} : Map<String, dynamic>.from(jsonDecode(req.body) as Map));
+    if (b['internal'] is String) b['internal'] = int.parse(b['internal'] as String);
+    final res = download(method, q) ?? _handle(method, q, b);
+    if (failNextWithTimeout > 0 && !const {'typing', 'live', 'heartbeat'}.contains(method)) {
       failNextWithTimeout--;
       throw http.ClientException('Connection closed before full header was received');
     }
     return res;
   });
+
+  /// Just enough multipart parsing for the tests: text fields, and one file as `__file` (name, bytes).
+  static Map<String, dynamic> _multipart(List<int> body, String type) {
+    final boundary = type.split('boundary=').last;
+    final text = latin1.decode(body);
+    final out = <String, dynamic>{};
+    for (final part in text.split('--$boundary')) {
+      final i = part.indexOf('\r\n\r\n');
+      if (i < 0) continue;
+      final head = part.substring(0, i);
+      var value = part.substring(i + 4);
+      if (value.endsWith('\r\n')) value = value.substring(0, value.length - 2);
+      final name = RegExp(r'name="([^"]+)"').firstMatch(head)?.group(1);
+      final filename = RegExp(r'filename="([^"]+)"').firstMatch(head)?.group(1);
+      if (filename != null) {
+        out['__file'] = (filename, latin1.encode(value));
+      } else if (name != null) {
+        out[name] = value;
+      }
+    }
+    return out;
+  }
 
   http.Response _handle(String method, Map<String, String> q, Map<String, dynamic> b) {
     switch (method) {
@@ -171,6 +205,11 @@ class FakeServer {
               {'error_code': 'whatsapp_window_closed', 'actions': [{'action': 'open_web_console', 'label': 'Open in the web console'}]});
         }
         final m = _msg(b['internal'] == 1 ? 'internal' : 'outbound', b['text'] as String, internal: b['internal'] == 1, rid: rid);
+        if (b['__file'] != null) {
+          final f = b['__file'] as (String, List<int>);
+          m['attachment'] = {'name': f.$1};
+          files[m['id'] as String] = f.$2;
+        }
         messages[id]!.add(m);
         return _ok({'message': m, 'duplicate': false});
       case 'closing_form':
@@ -210,9 +249,57 @@ class FakeServer {
         ];
         return _ok(tickets[b['name']]);
       case 'alerts':
-        return _ok({'items': []});
+        return _ok({'items': alertItems});
       case 'acknowledge_alerts':
-        return _ok({'acknowledged': b['ids']});
+        final ids = [for (final i in b['ids'] as List) '$i'];
+        acknowledged.addAll(ids);
+        alertItems.removeWhere((a) => ids.contains(a['id']));
+        return _ok({'acknowledged': ids});
+      case 'alert_config':
+        return _ok({
+          'enabled': true,
+          'rules': {
+            'New Chat': {'enabled': 1, 'popup': 1, 'sound': 'Ring', 'repeat_until_ack': 1, 'repeat_seconds': 10, 'max_repeats': 0, 'volume': 90},
+            'Chat Message': {'enabled': 1, 'popup': 1, 'sound': 'Ping', 'repeat_until_ack': 0, 'repeat_seconds': 15, 'max_repeats': 0, 'volume': 70},
+          },
+          'prefs': {'mute_all': 0, 'volume': 80, 'items': {}},
+        });
+      case 'canned_responses':
+        return _ok([
+          {'name': 'CR-1', 'title': 'Greeting', 'shortcut': 'hi', 'content': '<p>Hi {customer_first_name}</p>'},
+          {'name': 'CR-2', 'title': 'Refunds', 'shortcut': 'refund', 'content': '<p>Refunds take 5 days.</p>'},
+        ]);
+      case 'canned_render':
+        return _ok({'text': b['name'] == 'CR-1' ? 'Hi Asha' : 'Refunds take 5 days.', 'html': ''});
+      case 'transfer_targets':
+        return _ok({
+          'agents': [
+            {'user': 'agent2@example.com', 'name': 'Agent Two', 'online': true, 'open_chats': 1, 'in_queue': true},
+            {'user': 'agent3@example.com', 'name': 'Agent Three', 'online': false, 'open_chats': 0, 'in_queue': false},
+          ],
+          'queues': ['Billing', 'Technical'],
+          'current': {'user': null, 'queue': 'Billing'},
+        });
+      case 'transfer':
+        final c = _conv(b['name']);
+        c['assignee'] = b['user'] == null ? null : {'user': b['user'], 'name': 'Agent Two'};
+        if (b['queue'] != null) c['queue'] = b['queue'];
+        return _ok(_detail(b['name']));
+      case 'customer_history':
+        return _ok({
+          'conversations': [conversations[5]],
+          'tickets': [tickets['42']],
+        });
+      case 'live':
+        return _ok({'customer_typing': customerTyping, 'visitor_online': true, 'ai_drafting': false});
+      case 'typing':
+        typingCalls++;
+        return _ok({'ok': true});
+      case 'heartbeat':
+        heartbeats++;
+        return _ok({'ok': true});
+      case 'register_device':
+        return _ok({'device': 'D1'});
       case 'open_target':
         if (q['name'] == 'SECRET') return _err(403, 'This conversation is in a queue you are not part of.');
         return _ok({'kind': q['doctype'] == 'HD Ticket' ? 'ticket' : 'conversation', 'id': q['name']});
@@ -220,5 +307,15 @@ class FakeServer {
         return _ok({'ok': true});
     }
     return _err(404, 'Unknown method $method');
+  }
+
+  /// Files are served raw (like Frappe's download response), errors as JSON.
+  http.Response? download(String method, Map<String, String> q) {
+    if (method != 'attachment') return null;
+    final bytes = files[q['message']];
+    if (bytes == null) return _err(404, 'Attachment not found.');
+    final m = messages.values.expand((x) => x).firstWhere((x) => x['id'] == q['message']);
+    return http.Response.bytes(bytes, 200,
+        headers: {'content-type': 'application/pdf', 'content-disposition': 'attachment; filename="${m['attachment']['name']}"'});
   }
 }

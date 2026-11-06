@@ -109,7 +109,18 @@ class Bubble extends StatelessWidget {
   final DateTime? at;
   final String? footer;
   final bool failed;
-  const Bubble({super.key, required this.direction, required this.author, required this.text, this.at, this.footer, this.failed = false});
+  final List<String> files;
+  final void Function(int index)? onOpenFile;
+  const Bubble(
+      {super.key,
+      required this.direction,
+      required this.author,
+      required this.text,
+      this.at,
+      this.footer,
+      this.failed = false,
+      this.files = const [],
+      this.onOpenFile});
 
   @override
   Widget build(BuildContext context) {
@@ -142,7 +153,17 @@ class Bubble extends StatelessWidget {
               Text(clock(at), style: TextStyle(fontSize: 11, color: fg.withValues(alpha: .7))),
             ]),
             const SizedBox(height: 4),
-            SelectableText(text, style: TextStyle(color: fg)),
+            if (text.isNotEmpty) SelectableText(text, style: TextStyle(color: fg)),
+            for (var i = 0; i < files.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: ActionChip(
+                  avatar: const Icon(Icons.description_outlined, size: 16),
+                  label: Text(files[i], overflow: TextOverflow.ellipsis),
+                  tooltip: 'Open ${files[i]}',
+                  onPressed: onOpenFile == null ? null : () => onOpenFile!(i),
+                ),
+              ),
             if (footer != null) ...[
               const SizedBox(height: 4),
               Text(footer!, style: TextStyle(fontSize: 11, color: failed ? s.error : fg.withValues(alpha: .7))),

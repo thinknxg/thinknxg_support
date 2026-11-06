@@ -4,6 +4,7 @@ import '../api/models.dart';
 import '../state/controllers.dart';
 import 'common.dart';
 import 'composer.dart';
+import 'conversation_view.dart' show openDownload, pickInto;
 
 class TicketListView extends StatefulWidget {
   final TicketsController controller;
@@ -157,6 +158,17 @@ class TicketView extends StatelessWidget {
                       ],
                       child: Chip(avatar: const Icon(Icons.arrow_drop_down, size: 18), label: Text('Priority: ${t.priority ?? '-'}')),
                     ),
+                    if (t.teams.isNotEmpty)
+                      PopupMenuButton<String>(
+                        key: const Key('ticket-team'),
+                        tooltip: 'Change team',
+                        enabled: t.canWrite && !c.busy,
+                        onSelected: (x) => c.update(team: x),
+                        itemBuilder: (_) => [
+                          for (final x in t.teams) CheckedPopupMenuItem(value: x, checked: x == t.team, child: Text(x)),
+                        ],
+                        child: Chip(avatar: const Icon(Icons.arrow_drop_down, size: 18), label: Text('Team: ${t.team ?? '-'}')),
+                      ),
                     Text(assigned.isEmpty ? 'Unassigned' : 'Owner: $assigned', style: tt.bodySmall),
                     if (t.canWrite && !t.assignees.any((a) => a.user == me))
                       TextButton(onPressed: c.busy ? null : () => c.assignToMe(me), child: const Text('Assign to me')),
@@ -184,7 +196,14 @@ class TicketView extends StatelessWidget {
                 if (t.description.isNotEmpty)
                   Bubble(direction: MessageDirection.inbound, author: t.raisedBy ?? 'Customer', text: htmlToText(t.description), at: t.createdAt),
                 for (final i in c.timeline)
-                  Bubble(direction: i.internal ? MessageDirection.internal : i.direction, author: i.author, text: i.text, at: i.createdAt),
+                  Bubble(
+                    direction: i.internal ? MessageDirection.internal : i.direction,
+                    author: i.author,
+                    text: i.text,
+                    at: i.createdAt,
+                    files: [for (final f in i.attachments) f.name],
+                    onOpenFile: (n) => openDownload(context, () => c.api.ticketAttachment(t.id, i.attachments[n].id)),
+                  ),
               ]),
             ),
             Composer(
@@ -196,6 +215,8 @@ class TicketView extends StatelessWidget {
               onMode: c.setMode,
               onChanged: (v) => c.draft.text = v,
               onSend: c.send,
+              onAttach: c.draft.mode == ComposerMode.reply ? () => pickInto(context, c.attach) : null,
+              onRemoveFile: () => c.attach(null),
             ),
           ]);
         },

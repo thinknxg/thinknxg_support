@@ -15,6 +15,9 @@ class Composer extends StatefulWidget {
   final ValueChanged<String> onChanged;
   final Future<void> Function() onSend;
   final FocusNode? focusNode;
+  final VoidCallback? onAttach;
+  final VoidCallback? onRemoveFile;
+  final VoidCallback? onCanned;
 
   const Composer({
     super.key,
@@ -27,6 +30,9 @@ class Composer extends StatefulWidget {
     this.replyDisabledReason,
     this.replyLabel = 'Reply to customer',
     this.focusNode,
+    this.onAttach,
+    this.onRemoveFile,
+    this.onCanned,
   });
 
   @override
@@ -107,12 +113,41 @@ class _ComposerState extends State<Composer> {
                   ]),
                 ),
               ),
+            if (d.file != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: InputChip(
+                    key: const Key('composer-file'),
+                    avatar: const Icon(Icons.attach_file, size: 16),
+                    label: Text('${d.file!.name} (${(d.file!.size / 1024).ceil()} KB)'),
+                    onDeleted: sending ? null : widget.onRemoveFile,
+                    deleteButtonTooltipMessage: 'Remove file',
+                  ),
+                ),
+              ),
             Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              if (widget.onCanned != null)
+                IconButton(
+                  key: const Key('composer-canned'),
+                  tooltip: 'Canned responses (Ctrl+/)',
+                  onPressed: sending || replyBlocked ? null : widget.onCanned,
+                  icon: const Icon(Icons.bolt_outlined),
+                ),
+              if (widget.onAttach != null)
+                IconButton(
+                  key: const Key('composer-attach'),
+                  tooltip: 'Attach a file',
+                  onPressed: sending || replyBlocked ? null : widget.onAttach,
+                  icon: const Icon(Icons.attach_file),
+                ),
               Expanded(
                 child: CallbackShortcuts(
                   bindings: {
                     const SingleActivator(LogicalKeyboardKey.enter, control: true): _send,
                     const SingleActivator(LogicalKeyboardKey.enter, meta: true): _send,
+                    if (widget.onCanned != null) const SingleActivator(LogicalKeyboardKey.slash, control: true): widget.onCanned!,
                   },
                   child: TextField(
                     key: const Key('composer-field'),

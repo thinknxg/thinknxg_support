@@ -248,7 +248,7 @@ def publish_agent_event(conv, kind: str):
 def post_agent_message(conv, content: str, internal: int = 0, source: str = "desk", sender: str | None = None,
                        external_id: str | None = None, sender_type: str = "Agent", response_source: str | None = None,
                        sender_name: str | None = None, actions: dict | None = None, confidence: str | None = None,
-                       ai_usage: str | None = None, client_message_id: str | None = None) -> dict:
+                       ai_usage: str | None = None, client_message_id: str | None = None, files=None) -> dict:
     """Every message TO the customer goes through here: agents, the assistant, chatbot rules and system notes.
     client_message_id (Agent Apps): a retried send returns the first message instead of a second one."""
     sender = sender or frappe.session.user
@@ -282,6 +282,12 @@ def post_agent_message(conv, content: str, internal: int = 0, source: str = "des
         "ai_usage": ai_usage,
     })
     msg.insert(ignore_permissions=True)
+    if files:  # agent attachment (Agent apps): stored private, attached to this message only
+        from thinknxg_support.utils import save_private_file
+
+        fname, data = files[0]
+        saved = save_private_file(fname, data, MSG, msg.name)
+        msg.db_set("attachment", frappe.db.get_value("File", saved["name"], "file_url"))
     if not cint(internal):
         frappe.db.sql(
             "update `tabSupport Conversation Link` set unread_customer = unread_customer + 1, "

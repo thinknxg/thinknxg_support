@@ -1,17 +1,46 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
+import 'src/alerts/device.dart';
 import 'src/auth/browser.dart';
 import 'src/auth/oauth.dart';
 import 'src/auth/token_store.dart';
+import 'src/platform/crash_log.dart';
+import 'src/platform/services.dart';
 import 'src/state/session.dart';
 import 'src/ui/sign_in.dart';
 import 'src/ui/workspace.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  final session = Session(store: SecureTokenStore(), oauth: OAuthService(browser: BrowserAuthenticator.forPlatform()));
-  runApp(AgentApp(session: session));
-  session.restore();
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    CrashLog.write('start ${Platform.operatingSystem} ${Platform.operatingSystemVersion}');
+    FlutterError.onError = (d) {
+      CrashLog.write('flutter error', d.exception, d.stack);
+      FlutterError.presentError(d);
+    };
+    // Device services are optional: if one fails on this PC the app still opens (and the reason is logged).
+    try {
+      final sink = DeviceAlertSink();
+      await sink.init().timeout(const Duration(seconds: 5));
+      AppServices.alertSink = sink;
+    } catch (e, st) {
+      CrashLog.write('alerts unavailable', e, st);
+    }
+    AppServices.startPush = PushService.start;
+    AppServices.stopPush = PushService.stop;
+    AppServices.pushToken = () => PushService.token;
+    final session = Session(store: SecureTokenStore(), oauth: OAuthService(browser: BrowserAuthenticator.forPlatform()));
+    runApp(AgentApp(session: session));
+    try {
+      await session.restore();
+    } catch (e, st) {
+      CrashLog.write('restore failed', e, st);
+      session.restoreFailed();
+    }
+  }, (e, st) => CrashLog.write('uncaught', e, st));
 }
 
 class AgentApp extends StatelessWidget {

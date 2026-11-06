@@ -69,7 +69,8 @@ def ensure_oauth_client(force: bool = False) -> dict:
     s = frappe.get_single(SETTINGS)
     uris = redirect_uris() or ["http://127.0.0.1:43823/callback", "com.thinknxg.agent://oauth2redirect"]
     name = s.oauth_client if s.oauth_client and frappe.db.exists("OAuth Client", s.oauth_client) else None
-    values = {"app_name": "thinkNXG Support Agent", "redirect_uris": "\n".join(uris), "default_redirect_uri": uris[0],
+    # Frappe's OAuth provider splits redirect_uris on single spaces (frappe.oauth.get_url_delimiter): never newlines
+    values = {"app_name": "thinkNXG Support Agent", "redirect_uris": " ".join(uris), "default_redirect_uri": uris[0],
               "grant_type": "Authorization Code", "response_type": "Code", "scopes": "all openid",
               "skip_authorization": 0}
     meta = frappe.get_meta("OAuth Client")

@@ -7,21 +7,21 @@ same records on the server; nothing is stored on the device except the sign-in t
 * Backend contract: [`../docs/agent-api.md`](../docs/agent-api.md)
 * Server setup: *Support Agent App Settings* in the desk (thinkNXG Support 1.9+)
 
-## What works in this release (increment 1)
+## What the app does
 
 | Area | |
 |---|---|
-| Sign-in | Site address → system browser → Frappe OAuth (authorization code + PKCE). Session restored on launch, sign-in prompt on expiry (work stays underneath), sign-out revokes the token and clears the device |
-| Inbox | Portal, Live Chat, WhatsApp. All / Mine / Unassigned / Waiting, channel, status and queue filters, search, unread counts (per agent), cursor paging, polling |
-| Conversation | Timeline (paged back, polled forward), read acknowledgement, claim (one winner), transfer, take over / return to assistant, End chat with wrap-up questions, linked ticket |
-| Composer | Clearly labelled **Reply to customer** / **Internal note**, Sending / Sent / Failed, draft kept on failure, Retry never sends twice, server reasons shown (e.g. WhatsApp 24-hour window) |
-| Tickets | Helpdesk queue (Mine / Unassigned / All I can see), timeline of emails and internal notes, reply through Helpdesk's email workflow, internal note, status and priority changes, assign to me, SLA dates, open the linked conversation |
-| Alerts | Open alerts from the server; acknowledging clears them on the web console and other devices; opening an alert re-checks access |
-| Layouts | Windows / tablets: navigation rail, resizable list, thread, details panel (≥1280 px). Phones: bottom navigation, threads full screen, composer above the keyboard |
-| Keyboard (Windows) | Ctrl+1/2/3 sections · Ctrl+K search · Alt+↑/↓ previous / next conversation · Ctrl+E composer · Ctrl+Shift+N internal note · Ctrl+Enter send · Ctrl+R refresh |
-
-Next increments: alert sounds, push notifications (FCM/APNs, generic lock-screen text), signed Windows installer,
-store builds. See *Roadmap* in `docs/agent-api.md`.
+| Sign-in | Site address → system browser → Frappe OAuth (authorization code + PKCE). Session restored on launch, sign-in prompt on expiry (work stays underneath), sign-out revokes the token, stops push to the device and clears local data |
+| Inbox | Portal, Live Chat, WhatsApp. All / Mine / Unassigned / Waiting, channel, status and queue filters, search, unread counts (per agent), cursor paging |
+| Conversation | Timeline (paged back, polled forward), read acknowledgement, claim (one winner), transfer picker (agents online first, with their open chats, or a queue), take over / return to assistant, End chat with wrap-up questions, customer typing / visitor online, customer history (earlier chats and tickets), linked ticket |
+| Composer | **Reply to customer** / **Internal note**, canned responses (search or `/shortcut`, placeholders filled by the server), one attachment per message, Sending / Sent / Failed, draft kept on failure, Retry never sends twice, server reasons shown (WhatsApp 24-hour window, files over WhatsApp) |
+| Files | Attachments open after the server checks access (per file); downloads are kept in the app's temporary folder and removed at sign-out |
+| Tickets | Helpdesk queue, timeline of e-mails and internal notes with attachments, reply (with a file) through Helpdesk's e-mail workflow, internal note, status, priority and team, assign to me, SLA dates, open the linked conversation |
+| Alerts | The web alert centre's sounds and rules (repeat until acknowledged, volume, mute), device notifications with generic text when the app is in the background, acknowledgement shared with the web console and other devices |
+| Push | Android and iOS through Firebase (when configured): generic lock-screen text, the record opens only after the server re-checks access |
+| Connection | Polling (inbox 10 s, conversation 4 s, alerts 15 s), offline banner, full refresh on reconnect and on resume, presence heartbeat |
+| Layouts | Windows / tablets: navigation rail, resizable list, thread, details panel (≥1280 px). Phones: bottom navigation, threads full screen, details in a sheet, composer above the keyboard |
+| Keyboard (Windows) | Ctrl+1/2/3 sections · Ctrl+K search · Alt+↑/↓ previous / next conversation · Ctrl+E composer · Ctrl+Shift+N internal note · Ctrl+/ canned responses · Ctrl+Enter send · Ctrl+R refresh |
 
 ## Set up the server (once per site)
 
@@ -51,15 +51,20 @@ flutter pub get
 flutter analyze --no-fatal-infos
 flutter test                       # unit + widget tests against an in-memory fake of the staff API
 flutter run -d windows             # or: -d <android device id>, -d <iPhone simulator>
-flutter build windows --release    # build/windows/x64/runner/Release/
+flutter build windows --release    # build/windows/x64/runner/Release/ (installer: installer/thinknxg_agent.iss)
 flutter build apk --release        # build/app/outputs/flutter-apk/
 flutter build ios --release --no-codesign
+
+# with push (values from your Firebase project):
+flutter build apk --release --dart-define=FCM_PROJECT_ID=... --dart-define=FCM_API_KEY=... \
+  --dart-define=FCM_SENDER_ID=... --dart-define=FCM_ANDROID_APP_ID=... --dart-define=FCM_IOS_APP_ID=...
 ```
 
 For a local bench over plain http, sign in with `http://localhost:8000` (only localhost may use http).
 
-CI: `.github/workflows/agent-app.yml` analyses, tests and builds Windows, Android and iOS on every change under
-`agent_app/`; `.github/workflows/backend.yml` runs the server tests on a Frappe v16 bench with Helpdesk.
+CI: `.github/workflows/agent-app.yml` analyses, tests and builds the Windows installer, the Android APK and App
+Bundle and the iOS app (signed and uploaded to TestFlight when the signing secrets are set — see
+`docs/agent-api.md`, *Packaging*); `.github/workflows/backend.yml` runs the server tests on a Frappe v16 bench with Helpdesk.
 
 ## Layout
 

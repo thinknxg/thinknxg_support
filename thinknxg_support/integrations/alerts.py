@@ -119,6 +119,19 @@ def raise_alert(kind: str, users, title: str, body: str = "", *, reference_docty
         else:
             payload["id"] = f"e:{group_key or kind}:{frappe.generate_hash(length=8)}"
         frappe.publish_realtime(EVENT, payload, user=u, after_commit=True)
+    if not once:
+        _push(users, kind, reference_doctype, reference_name)
+
+
+def _push(users, kind, reference_doctype, reference_name):
+    """Agent apps (1.9): a push with generic text to the agents' phones. Never breaks the alert itself."""
+    try:
+        from thinknxg_support.integrations import push
+
+        if push.enabled():
+            push.send_to_users(users, {"kind": kind, "doctype": reference_doctype, "name": reference_name})
+    except Exception:
+        frappe.log_error(title="thinkNXG Support: alert push failed")
 
 
 def clear(group_key: str, reason: str, *, keep: list[str] | None = None, prefix: bool = False):

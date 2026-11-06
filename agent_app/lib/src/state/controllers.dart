@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../api/api_client.dart';
 import '../api/models.dart';
+import '../alerts/alert_center.dart';
 import '../api/staff_api.dart';
 
 /// Called with errors no screen can fix itself (session expired): the shell shows the sign-in prompt.
@@ -63,6 +64,8 @@ class InboxController extends ChangeNotifier with _Polling {
   bool loadingMore = false;
   String? error;
   int _generation = 0;
+  bool offline = false;
+  VoidCallback? onReconnect;
 
   InboxController(this.api, {required this.onExpired});
 
@@ -84,6 +87,10 @@ class InboxController extends ChangeNotifier with _Polling {
       final page = await _fetch(null);
       if (gen != _generation) return;
       final fresh = {for (final c in page.items) c.id};
+      if (offline) {
+        offline = false;
+        onReconnect?.call(); // back online: refresh everything that may have changed meanwhile
+      }
       if (items.length > page.items.length) {
         // more pages were loaded: keep them under the refreshed first page
         items = [...page.items, ...items.skip(page.items.length).where((c) => !fresh.contains(c.id))];
@@ -94,6 +101,9 @@ class InboxController extends ChangeNotifier with _Polling {
       error = null;
     } on SessionExpired {
       onExpired();
+    } on NetworkError {
+      offline = true;
+      error = null; // the workspace shows one offline banner instead
     } on ApiException catch (e) {
       error = e.message;
     } finally {
@@ -155,6 +165,7 @@ class Draft {
   String? error;
   List<Map<String, dynamic>> serverActions = const [];
   String? notice;
+  UploadFile? file;
 }
 
 /// One open conversation: detail, timeline (paged back, polled forward), read acknowledgement, actions, composer.
@@ -235,6 +246,13 @@ class ConversationController extends ChangeNotifier with _Polling {
         detail = await api.conversation(id);
         safeNotify();
       }
+      if (detail != null && !detail!.isClosed && detail!.channel != 'WhatsApp') {
+        final l = await api.live(id);
+        if (l.customerTyping != live.customerTyping || l.visitorOnline != live.visitorOnline || l.aiDrafting != live.aiDrafting) {
+          live = l;
+          safeNotify();
+        }
+      }
     } on SessionExpired {
       onExpired();
     } on ApiException {
@@ -309,12 +327,71 @@ class ConversationController extends ChangeNotifier with _Polling {
   void setText(String t) {
     draft.text = t;
     if (draft.state == SendState.sent) draft.state = SendState.idle;
+    final now = DateTime.now();
+    if (t.isNotEmpty && draft.mode == ComposerMode.reply && now.difference(_lastTyping) > const Duration(seconds: 3)) {
+      _lastTyping = now;
+      api.typing(id).catchError((_) {}); // best effort: shows "agent is typing" to the customer
+    }
+  }
+
+  DateTime _lastTyping = DateTime(2000);
+  LiveState live = const LiveState();
+  CustomerHistory? history;
+  bool historyLoading = false;
+
+  void attach(UploadFile? f) {
+    draft.file = f;
+    if (draft.state == SendState.sent) draft.state = SendState.idle;
+    safeNotify();
+  }
+
+  Future<void> loadHistory() async {
+    if (historyLoading) return;
+    historyLoading = true;
+    safeNotify();
+    try {
+      history = await api.customerHistory(id);
+    } on SessionExpired {
+      onExpired();
+    } on ApiException catch (e) {
+      actionError = e.message;
+    } finally {
+      historyLoading = false;
+      safeNotify();
+    }
+  }
+
+  Future<TransferTargets?> transferTargets() async {
+    try {
+      return await api.transferTargets(id);
+    } on SessionExpired {
+      onExpired();
+    } on ApiException catch (e) {
+      actionError = e.message;
+      safeNotify();
+    }
+    return null;
+  }
+
+  /// Insert a canned response (placeholders filled by the server) at the end of the draft.
+  Future<void> insertCanned(CannedResponse c) async {
+    try {
+      final text = await api.cannedRender(c.id, id);
+      draft.text = draft.text.trim().isEmpty ? text : '${draft.text.trimRight()}\n$text';
+      if (draft.state == SendState.sent) draft.state = SendState.idle;
+      safeNotify();
+    } on SessionExpired {
+      onExpired();
+    } on ApiException catch (e) {
+      actionError = e.message;
+      safeNotify();
+    }
   }
 
   /// Send (or retry) the draft. Online only: failures keep the draft for a manual retry.
   Future<void> send() async {
     final text = draft.text.trim();
-    if (text.isEmpty || draft.state == SendState.sending) return;
+    if ((text.isEmpty && draft.file == null) || draft.state == SendState.sending) return;
     draft.requestId ??= requestIdFactory();
     draft.state = SendState.sending;
     draft.error = null;
@@ -322,7 +399,8 @@ class ConversationController extends ChangeNotifier with _Polling {
     draft.serverActions = const [];
     safeNotify();
     try {
-      final r = await api.reply(id, text, clientRequestId: draft.requestId!, internal: draft.mode == ComposerMode.note);
+      final r = await api.reply(id, text,
+          clientRequestId: draft.requestId!, internal: draft.mode == ComposerMode.note, file: draft.file);
       _merge([r.message]);
       if (r.duplicate && r.message.text.trim() != text) {
         draft.notice = 'Your earlier message had already been sent. Edit and send again if you need to add more.';
@@ -330,6 +408,7 @@ class ConversationController extends ChangeNotifier with _Polling {
         draft.state = SendState.failed;
       } else {
         draft.text = '';
+        draft.file = null;
         draft.requestId = null;
         draft.state = SendState.sent;
       }
@@ -463,6 +542,11 @@ class TicketController extends ChangeNotifier with _Polling {
     safeNotify();
   }
 
+  void attach(UploadFile? f) {
+    draft.file = f;
+    safeNotify();
+  }
+
   Future<void> send() async {
     final text = draft.text.trim();
     if (text.isEmpty || draft.state == SendState.sending) return;
@@ -472,11 +556,12 @@ class TicketController extends ChangeNotifier with _Polling {
     safeNotify();
     try {
       if (draft.mode == ComposerMode.reply) {
-        await api.ticketReply(id, text, clientRequestId: draft.requestId!);
+        await api.ticketReply(id, text, clientRequestId: draft.requestId!, file: draft.file);
       } else {
         await api.ticketNote(id, text, clientRequestId: draft.requestId!);
       }
       draft.text = '';
+      draft.file = null;
       draft.requestId = null;
       draft.state = SendState.sent;
       await load(quiet: true);
@@ -494,12 +579,12 @@ class TicketController extends ChangeNotifier with _Polling {
     safeNotify();
   }
 
-  Future<bool> update({String? status, String? priority}) async {
+  Future<bool> update({String? status, String? priority, String? team}) async {
     busy = true;
     actionError = null;
     safeNotify();
     try {
-      final t = await api.ticketUpdate(id, status: status, priority: priority, expectedModified: ticket?.modified);
+      final t = await api.ticketUpdate(id, status: status, priority: priority, team: team, expectedModified: ticket?.modified);
       await load(quiet: true);
       ticket ??= t;
       return true;
@@ -544,14 +629,26 @@ class TicketController extends ChangeNotifier with _Polling {
 class AlertsController extends ChangeNotifier with _Polling {
   final StaffApi api;
   final ExpiredHandler onExpired;
+  final AlertCenter? center;
   List<AgentAlert> items = [];
   String? error;
-  AlertsController(this.api, {required this.onExpired});
+  AlertsController(this.api, {required this.onExpired, this.center});
+
+  /// Team rules and this agent's sound preferences.
+  Future<void> loadConfig() async {
+    if (center == null) return;
+    try {
+      center!.config = await api.alertConfig();
+    } on ApiException {
+      // keep the defaults; the next start tries again
+    }
+  }
 
   Future<void> refresh() async {
     try {
       items = await api.alerts();
       error = null;
+      await center?.update(items);
     } on SessionExpired {
       onExpired();
     } on ApiException catch (e) {
@@ -562,6 +659,7 @@ class AlertsController extends ChangeNotifier with _Polling {
 
   Future<void> acknowledge(List<String> ids) async {
     try {
+      center?.acknowledged(ids);
       final done = await api.acknowledgeAlerts(ids);
       items = items.where((a) => !done.contains(a.id)).toList();
       safeNotify();

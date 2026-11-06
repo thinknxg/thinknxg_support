@@ -11,6 +11,15 @@
   client (public client, staff roles only)
 * New records: Support Agent Read State, Support Agent Device, Support Agent Request (idempotency log)
 * Unique index on (conversation, client message id) for messages
+* Full agent workspace in the apps: canned responses with placeholders, attachments (send one per message, open after
+  a per-file access check), transfer picker (agents online first, queues), customer history, typing and visitor
+  presence, ticket team changes, details sheet on phones
+* Alerts in the apps with the web alert centre's sounds and rules, device notifications, offline banner and refresh
+  on reconnect
+* **Push notifications** (Firebase / APNs) for agent alerts: generic lock-screen text, record opened only after the
+  server re-checks access, dead device tokens switched off; *Send Test Push to Me* in Support Agent App Settings
+* Packaging: Windows installer (Inno Setup, signed when a certificate is configured), Android APK + App Bundle,
+  signed iOS build uploaded to TestFlight when Apple signing is configured
 * CI: Flutter analyse / test / Windows, Android and iOS builds; backend tests on a Frappe v16 bench with Helpdesk
 
 ## 1.8.0 — 2026-11-06

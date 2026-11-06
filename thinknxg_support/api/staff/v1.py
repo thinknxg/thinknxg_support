@@ -258,7 +258,8 @@ def _message(m) -> dict:
         actions = {}
     return {"id": m.name, "direction": "inbound" if m.direction == "Inbound" else ("internal" if cint(m.is_internal) else "outbound"),
             "internal": bool(cint(m.is_internal)), "sender_type": m.sender_type, "author": m.sender_name or m.sender,
-            "author_user": m.sender, "html": m.content or "", "attachment": m.attachment, "created_at": _iso(m.creation),
+            "author_user": m.sender, "html": m.content or "", "created_at": _iso(m.creation),
+            "attachment": {"name": (m.attachment or "").rsplit("/", 1)[-1]} if m.attachment else None,
             "delivery": {"status": m.delivery_status, "error": m.delivery_error} if m.delivery_status else None,
             "client_request_id": m.client_message_id, "read_by_customer": bool(cint(m.read_by_customer)),
             "actions": actions}
@@ -424,12 +425,18 @@ def reply(name: str, text: str, client_request_id: str, internal: int = 0):
     cid = (client_request_id or "").strip()[:64]
     if len(cid) < 8:
         frappe.throw(_("client_request_id is required (use a UUID)."))
-    if not (text or "").strip():
+    if not (text or "").strip() and not getattr(getattr(frappe, "request", None), "files", None):
         frappe.throw(_("Write a message first."))
     existing = frappe.db.get_value(MSG, {"conversation": doc.name, "client_message_id": cid}, MSG_FIELDS, as_dict=True)
     if existing:
         return {"message": _message(existing), "duplicate": True}
     internal = cint(internal)
+    from thinknxg_support.utils import uploaded_files
+
+    files = uploaded_files()[:1]
+    if files and doc.channel == "WhatsApp" and not internal:
+        raise ChannelActionRequired(_("Files cannot be sent over WhatsApp from the app yet. Share a link instead, or "
+                                      "attach the file to an internal note."), "attachments_unsupported", [])
     if not internal and doc.status == "Closed":
         raise ChannelActionRequired(_("This conversation is closed."), "conversation_closed", [])
     if not internal and doc.channel == "WhatsApp":
@@ -442,8 +449,8 @@ def reply(name: str, text: str, client_request_id: str, internal: int = 0):
                 "whatsapp_window_closed", [{"action": "open_web_console", "label": _("Open in the web console")}])
     from thinknxg_support.integrations import conversations
 
-    out = conversations.post_agent_message(doc, _text_html(text), internal=internal, source="app",
-                                           client_message_id=cid)
+    out = conversations.post_agent_message(doc, _text_html(text) if (text or "").strip() else "", internal=internal,
+                                           source="app", client_message_id=cid, files=files)
     msg = frappe.db.get_value(MSG, out.get("name") or {"conversation": doc.name, "client_message_id": cid}, MSG_FIELDS,
                               as_dict=True)
     return {"message": _message(msg), "duplicate": bool(out.get("duplicate"))}
@@ -506,9 +513,12 @@ def _once(request_id: str, action: str, reference: str, fn):
 @frappe.whitelist(methods=["POST"])
 def ticket_reply(name: str, text: str, client_request_id: str):
     hd = _hd()
+    from thinknxg_support.utils import uploaded_files
+
+    files = uploaded_files()
     if not (text or "").strip():
         frappe.throw(_("Write a message first."))
-    return _once(client_request_id, "ticket_reply", name, lambda: hd.reply(name, _text_html(text)))
+    return _once(client_request_id, "ticket_reply", name, lambda: hd.reply(name, _text_html(text), files=files))
 
 
 @frappe.whitelist(methods=["POST"])
@@ -599,3 +609,178 @@ def sign_out(push_token: str | None = None):
         h = hashlib.sha256(push_token.strip().encode()).hexdigest()
         frappe.db.delete("Support Agent Device", {"token_hash": h, "user": frappe.session.user})
     return {"ok": True}
+
+
+# ------------------------------------------------------------------ workspace: canned, files, transfer, history, live
+@frappe.whitelist(methods=["POST"])
+def canned_render(name: str, conversation: str):
+    """A canned response with its placeholders filled for this conversation. Counts as used."""
+    doc = _conv(conversation)
+    from thinknxg_support.integrations import agent_tools
+
+    if name.startswith("hd:"):
+        hd = frappe.get_doc("HD Canned Response", name[3:])
+        hd.check_permission("read")
+        html = hd.message or ""
+    else:
+        c = frappe.get_doc("Support Canned Response", name)
+        c.check_permission("read")
+        if not cint(c.enabled):
+            frappe.throw(_("This canned response is switched off."))
+        html = c.content or ""
+    customer = _display_name(frappe._dict(doc.as_dict())) or ""
+    agent = frappe.utils.get_fullname(frappe.session.user) or ""
+    company = frappe.db.get_value("Customer", doc.customer, "customer_name") if doc.customer else ""
+    values = {"customer_name": customer, "customer_first_name": customer.split(" ")[0] if customer else "",
+              "agent_name": agent, "agent_first_name": agent.split(" ")[0] if agent else "", "company": company or ""}
+    for k, v in values.items():
+        html = html.replace("{" + k + "}", frappe.utils.escape_html(v))
+    agent_tools.canned_used(name)
+    return {"html": html, "text": plain_text(html)}
+
+
+def plain_text(html: str) -> str:
+    import re
+    from html import unescape
+
+    t = re.sub(r"(?i)<br\s*/?>", "\n", html or "")
+    t = re.sub(r"(?i)</(p|div|li|h[1-6])>", "\n", t)
+    t = unescape(re.sub(r"<[^>]+>", "", t))
+    return re.sub(r"\n{3,}", "\n\n", t).strip()
+
+
+@frappe.whitelist(methods=["GET"])
+def attachment(message: str):
+    """Download one message's file after checking access to its conversation. Files never travel inside lists."""
+    staff_auth.require_staff()
+    row = frappe.db.get_value(MSG, message, ["conversation", "attachment"], as_dict=True)
+    if not row or not row.attachment:
+        raise frappe.DoesNotExistError(_("Attachment not found."))
+    _conv(row.conversation)
+    file_name = frappe.db.get_value("File", {"file_url": row.attachment, "attached_to_doctype": MSG,
+                                             "attached_to_name": message}) or \
+        frappe.db.get_value("File", {"file_url": row.attachment, "attached_to_doctype": CONV,
+                                     "attached_to_name": row.conversation})
+    if not file_name:
+        raise frappe.DoesNotExistError(_("Attachment not found."))
+    from thinknxg_support.audit import log_event
+    from thinknxg_support.utils import stream_file
+
+    log_event("Download", reference_doctype=CONV, reference_name=row.conversation, details={"message": message}, commit=True)
+    stream_file(file_name)
+
+
+@frappe.whitelist(methods=["GET"])
+def ticket_attachment(name: str, file: str):
+    hd = _hd()
+    hd.get_ticket(name)
+    if not hd.file_on_ticket(name, file):
+        raise frappe.DoesNotExistError(_("Attachment not found."))
+    from thinknxg_support.utils import stream_file
+
+    stream_file(file)
+
+
+@frappe.whitelist(methods=["GET"])
+def transfer_targets(name: str):
+    """Who and where this conversation can go: agents (online first, with their open chats) and queues."""
+    doc = _conv(name)
+    from thinknxg_support.integrations import alerts as al, realtime
+
+    in_queue = set(al.queue_members(doc.queue)) if doc.queue else set()
+    users = (in_queue | set(al.all_agents())) - {frappe.session.user}
+    load = {}
+    if users:
+        load = {r.assigned_agent: r.n for r in frappe.db.sql(
+            f"select assigned_agent, count(*) n from `tab{CONV}` where status != 'Closed' and assigned_agent in %s "
+            "group by assigned_agent", (tuple(users),), as_dict=True)}
+    agents = [{"user": u, "name": frappe.utils.get_fullname(u), "online": bool(realtime.is_online(u)),
+               "open_chats": int(load.get(u, 0)), "in_queue": u in in_queue} for u in users]
+    agents.sort(key=lambda a: (not a["online"], not a["in_queue"], a["open_chats"], (a["name"] or "").lower()))
+    queues = frappe.get_all("Support Chat Queue", filters={"enabled": 1}, pluck="name", order_by="priority desc")
+    return {"agents": agents[:200], "queues": queues, "current": {"user": doc.assigned_agent, "queue": doc.queue}}
+
+
+@frappe.whitelist(methods=["GET"])
+def customer_history(name: str):
+    """Earlier conversations and tickets of the same customer (same account, e-mail or WhatsApp number), limited to
+    what this agent may open."""
+    doc = _conv(name)
+    conds, args = [], []
+    for field, value in (("customer", doc.customer), ("started_by", doc.started_by), ("guest_email", doc.get("guest_email")),
+                         ("whatsapp_number", doc.get("whatsapp_number"))):
+        if value and value != "Guest":
+            conds.append(f"c.{field} = %s")
+            args.append(value)
+    convs = []
+    if conds:
+        scope, sargs = _scope_sql(frappe.session.user)
+        rows = frappe.db.sql(f"""select {CONV_FIELDS}, coalesce(c.last_activity_at, c.modified) as sort_at
+            from `tab{CONV}` c where ({' or '.join(conds)}) and c.name != %s and {scope}
+            order by sort_at desc limit 20""", (*args, doc.name, *sargs), as_dict=True)
+        convs = [_summary(r, 0) for r in rows]
+    tickets_out = []
+    from thinknxg_support.integrations import helpdesk_agent
+
+    email = doc.get("guest_email") or (frappe.db.get_value("User", doc.started_by, "email") if doc.started_by else None)
+    if helpdesk_agent.available() and (email or doc.customer):
+        T = "HD Ticket"
+        or_filters = [[T, "raised_by", "=", email]] if email else []
+        if doc.customer and frappe.get_meta(T).has_field("customer"):
+            or_filters.append([T, "customer", "=", doc.customer])
+        try:
+            rows = frappe.get_list(T, or_filters=or_filters, fields=helpdesk_agent._fields(), order_by="modified desc",
+                                   limit_page_length=10)
+            tickets_out = [helpdesk_agent.ticket_summary(r) for r in rows]
+        except frappe.PermissionError:
+            tickets_out = []
+    return {"conversations": convs, "tickets": tickets_out}
+
+
+@frappe.whitelist(methods=["GET"])
+def live(name: str):
+    """Cheap state for the open conversation: customer typing, visitor online, assistant drafting."""
+    _conv(name)
+    from thinknxg_support.api.v1.agent import _live_state
+
+    return _live_state(name)
+
+
+@frappe.whitelist(methods=["POST"])
+def typing(name: str):
+    _conv(name)
+    from thinknxg_support.integrations import realtime
+
+    first = (frappe.db.get_value("User", frappe.session.user, "first_name") or "").strip()
+    realtime.set_typing(name, "agent", first or "1")
+    realtime.heartbeat(frappe.session.user)
+    return {"ok": True}
+
+
+@frappe.whitelist(methods=["POST"])
+def heartbeat():
+    """The app is open: count the agent as online for routing and the transfer list."""
+    staff_auth.require_staff()
+    from thinknxg_support.integrations import realtime
+
+    realtime.heartbeat(frappe.session.user)
+    return {"ok": True}
+
+
+# ------------------------------------------------------------------ alerts and push for the apps
+@frappe.whitelist(methods=["GET"])
+def alert_config():
+    """Team alert rules merged with this agent's preferences (sound, repeat until acknowledged, volume, mute)."""
+    staff_auth.require_staff()
+    from thinknxg_support.integrations import alerts as al
+
+    return al.config()
+
+
+@frappe.whitelist(methods=["POST"])
+def send_test_push():
+    """Send this agent a test push to each registered device (generic text, like every push)."""
+    staff_auth.require_staff()
+    from thinknxg_support.integrations import push
+
+    return push.send_to_users([frappe.session.user], {"kind": "Test"}, now=True)

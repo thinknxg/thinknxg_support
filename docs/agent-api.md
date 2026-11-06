@@ -73,6 +73,20 @@ index on (conversation, client_message_id). Tickets: *Support Agent Request* log
 | `acknowledge_alerts` | POST | `ids` | `acknowledged` (clears them in every tab and device) |
 | `open_target` | GET | `doctype`, `name` | `{kind: conversation\|ticket\|web, id\|url}` after checking access again |
 | `register_device` | POST | `push_token`, `platform` Android\|iOS\|Windows, `device_name`, `app_version` | `{device}` |
+| `canned_render` | POST | `name` (canned response, or `hd:<HD Canned Response>`), `conversation` | `{text, html}` with placeholders filled; counts as used |
+| `attachment` | GET | `message` | the file (download), after checking access to its conversation; logged |
+| `ticket_attachment` | GET | `name`, `file` | the file, when it belongs to the ticket or one of its e-mails |
+| `transfer_targets` | GET | `name` | `agents[{user,name,online,open_chats,in_queue}]` (online first), `queues`, `current` |
+| `customer_history` | GET | `name` | `conversations` (same account, e-mail or WhatsApp number, only ones this agent may open), `tickets` (Helpdesk permissions) |
+| `live` | GET | `name` | `customer_typing, visitor_online, ai_drafting` |
+| `typing` | POST | `name` | shows "agent is typing" to the customer; also marks the agent online |
+| `heartbeat` | POST | | marks the agent online (routing, transfer list); the app sends it every 45 s |
+| `alert_config` | GET | | team alert rules merged with this agent's preferences (sound, popup, repeat, volume, mute) |
+| `send_test_push` | POST | | a test push to this agent's devices |
+
+`reply` and `ticket_reply` also accept one file (multipart/form-data, field `file`, same size and type rules as the
+portal). Files are private, attached to the message (or ticket) and never included in lists. WhatsApp: files are
+refused with **422** `attachments_unsupported` (outbound WhatsApp media is not sent yet); attach them to a note.
 | `sign_out` | POST | `push_token` | stops push to this device (the app then revokes its token and clears local data) |
 
 **ConversationSummary**: `id, subject, display_name, channel, status, handling, queue, assignee{user,name}, customer,
@@ -98,9 +112,35 @@ Settings*), plus a refresh on reconnect and on resume. Realtime (Socket.IO) foll
 authorization for bearer-token clients is verified. Push (next increment): FCM (Android, and iOS through APNs in
 Firebase) with generic lock-screen text ("New support activity"); opening a push calls `open_target` after sign-in.
 
+## Push notifications
+
+* Server: *Support Agent App Settings → Send Push Notifications*, Firebase project ID and service account JSON
+  (kept on the server, Password field). Every agent alert (new chat, ticket assigned, escalation, …) also queues a
+  push to that agent's Android / iOS devices — at most one per agent and record every 30 s.
+* Content: always `thinkNXG Support` / `New support activity`; data carries only `kind`, `doctype` and `name`.
+  Tapping it opens the app, which signs in if needed, calls `open_target` and opens the record only if allowed.
+* Devices whose token Firebase reports as unregistered are switched off automatically; `sign_out` removes the
+  device. iOS goes through APNs: upload the APNs key to the same Firebase project.
+* App builds read the Firebase app settings from `--dart-define` (CI secrets `FCM_PROJECT_ID`, `FCM_API_KEY`,
+  `FCM_SENDER_ID`, `FCM_ANDROID_APP_ID`, `FCM_IOS_APP_ID`); without them the app is built without push.
+
+## Alerts in the apps
+
+The apps use the same rules as the web alert centre (`alert_config`): the sound per activity (Chime, Bell, Ping,
+Pop, Ring, Double Beep, Knock, Siren, Alarm — synthesised on the device), repeat until acknowledged, volume, mute.
+When the app is not in front, a device notification with generic text appears. Acknowledging in the app clears the
+alert everywhere; alerts acknowledged elsewhere stop ringing on the next poll.
+
+## Packaging (CI secrets)
+
+| Platform | Output | Secrets (all optional) |
+|---|---|---|
+| Windows | Inno Setup installer `thinkNXG-Support-Agent-Setup-<version>.exe` | `WINDOWS_CERT_BASE64`, `WINDOWS_CERT_PASSWORD` (signs app and installer) |
+| Android | `app-release.apk` and `app-release.aab` | `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `ANDROID_STORE_PASSWORD` (else debug-signed test builds) |
+| iOS | `.ipa`, uploaded to TestFlight | `IOS_P12_BASE64`, `IOS_P12_PASSWORD`, `IOS_PROFILE_BASE64`, `IOS_TEAM_ID`; TestFlight: `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`, `APP_STORE_CONNECT_KEY_BASE64` (else an unsigned build) |
+
 ## Roadmap
 
-* Increment 2 — full workspace: canned responses picker, attachments (authorised download per file), transfer
-  picker with agents and queues, customer history, ticket team change, typing indicators.
-* Increment 3 — packaging: alert sounds, push notifications, Windows installer (MSIX / Inno Setup, signed),
-  Android App Bundle and iOS TestFlight builds (macOS runner), auto-update channel.
+* Realtime updates (Socket.IO) once per-room event authorisation for bearer-token clients is verified.
+* Sending files over WhatsApp; WhatsApp templates from the app.
+* Auto-update channel for the Windows app.

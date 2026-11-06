@@ -81,6 +81,14 @@ class Session extends ChangeNotifier implements TokenProvider {
     }
   }
 
+  /// Secure storage could not be read on this device: start signed out rather than hang on the spinner.
+  void restoreFailed() {
+    if (phase == SessionPhase.starting) {
+      error = 'Saved sign-in could not be read on this device. Sign in again.';
+      _set(SessionPhase.signedOut);
+    }
+  }
+
   /// Called by any screen that gets [SessionExpired]: show the sign-in prompt, keep the site.
   void markExpired() {
     if (phase == SessionPhase.signedIn) _set(SessionPhase.expired);

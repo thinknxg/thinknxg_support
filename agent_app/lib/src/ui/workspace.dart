@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../alerts/alert_center.dart';
 import '../api/api_client.dart';
 import '../api/models.dart';
+import '../platform/files.dart';
+import '../platform/services.dart';
 import '../state/controllers.dart';
 import '../state/session.dart';
 import 'alerts_view.dart';
@@ -35,7 +38,9 @@ class WorkspaceState extends State<Workspace> {
   final searchFocus = FocusNode(debugLabel: 'search');
   final composerFocus = FocusNode(debugLabel: 'composer');
   late final AppLifecycleListener _life;
+  late final AlertCenter alertCenter;
   final List<Timer> _timers = [];
+  bool _foreground = true;
 
   Bootstrap get me => widget.session.me!;
 
@@ -44,15 +49,47 @@ class WorkspaceState extends State<Workspace> {
     super.initState();
     final api = widget.session.api!;
     void expired() => widget.session.markExpired();
-    inbox = InboxController(api, onExpired: expired);
+    inbox = InboxController(api, onExpired: expired)..onReconnect = _refreshAll;
     tickets = TicketsController(api, onExpired: expired);
-    alerts = AlertsController(api, onExpired: expired);
+    alertCenter = AlertCenter(AppServices.alertSink, appInForeground: () => _foreground)..start();
+    alerts = AlertsController(api, onExpired: expired, center: alertCenter);
+    alerts.loadConfig().then((_) => alerts.refresh());
     _startPolling();
     _refreshAll();
-    _life = AppLifecycleListener(onResume: () {
-      _startPolling();
-      _refreshAll();
-    }, onHide: _stopPolling);
+    api.heartbeat().catchError((_) {});
+    // Polling keeps running while the window is hidden or minimised so alerts still ring (desktop) and show a
+    // notification; a resume refreshes everything at once.
+    _life = AppLifecycleListener(
+      onResume: () {
+        _foreground = true;
+        _startPolling();
+        _refreshAll();
+      },
+      onInactive: () => _foreground = false,
+      onHide: () => _foreground = false,
+      onShow: () => _foreground = true,
+    );
+    AppServices.pendingLink.addListener(_openPending);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openPending());
+    _startPush();
+  }
+
+  void _openPending() {
+    final l = AppServices.pendingLink.value;
+    if (l == null || !mounted) return;
+    AppServices.pendingLink.value = null;
+    openLink(l.doctype, l.name); // access is checked by the server before anything opens
+  }
+
+  Future<void> _startPush() async {
+    final start = AppServices.startPush;
+    if (start == null) return;
+    await start(
+      onToken: (t) => widget.session.api
+          ?.registerDevice(t, AppServices.platform, deviceName: AppServices.platform, appVersion: AppServices.appVersion)
+          .catchError((_) {}),
+      onForeground: () => alerts.refresh(),
+    );
   }
 
   void _refreshAll() {
@@ -70,6 +107,7 @@ class WorkspaceState extends State<Workspace> {
     }));
     _timers.add(Timer.periodic(Duration(seconds: me.threadPollSeconds), (_) => conversation?.poll()));
     _timers.add(Timer.periodic(Duration(seconds: me.alertsPollSeconds), (_) => alerts.refresh()));
+    _timers.add(Timer.periodic(const Duration(seconds: 45), (_) => widget.session.api?.heartbeat().catchError((_) {})));
   }
 
   void _stopPolling() {
@@ -83,6 +121,8 @@ class WorkspaceState extends State<Workspace> {
   void dispose() {
     _stopPolling();
     _life.dispose();
+    AppServices.pendingLink.removeListener(_openPending);
+    alertCenter.dispose();
     inbox.dispose();
     tickets.dispose();
     alerts.dispose();
@@ -103,7 +143,10 @@ class WorkspaceState extends State<Workspace> {
         ..load();
     }
     setState(() => section = Section.inbox);
-    if (!_wide) _push(ConversationView(controller: conversation!, me: me.user, onOpenTicket: openTicket), 'Conversation');
+    if (!_wide) {
+      _push(ConversationView(controller: conversation!, me: me.user, onOpenTicket: openTicket, onOpenConversation: openConversation),
+          'Conversation');
+    }
   }
 
   void openTicket(String id) {
@@ -190,6 +233,7 @@ class WorkspaceState extends State<Workspace> {
           controller: conversation!,
           me: me.user,
           onOpenTicket: openTicket,
+          onOpenConversation: openConversation,
           showDetailsPanel: extraWide,
           composerFocus: composerFocus);
     }
@@ -220,7 +264,7 @@ class WorkspaceState extends State<Workspace> {
             if (!wide) {
               return Scaffold(
                 appBar: AppBar(title: Text(destinations[section.index].$4), actions: [account]),
-                body: _list(),
+                body: Column(children: [if (inbox.offline) const _OfflineBanner(), Expanded(child: _list())]),
                 bottomNavigationBar: NavigationBar(
                   selectedIndex: section.index,
                   onDestinationSelected: (i) => setState(() => section = Section.values[i]),
@@ -232,7 +276,9 @@ class WorkspaceState extends State<Workspace> {
               );
             }
             return Scaffold(
-              body: Row(children: [
+              body: Column(children: [
+                if (inbox.offline) const _OfflineBanner(),
+                Expanded(child: Row(children: [
                 NavigationRail(
                   selectedIndex: section.index,
                   onDestinationSelected: (i) => setState(() => section = Section.values[i]),
@@ -251,6 +297,7 @@ class WorkspaceState extends State<Workspace> {
                 SizedBox(width: listWidth, child: _list()),
                 _Splitter(onDrag: (dx) => setState(() => listWidth = (listWidth + dx).clamp(280.0, (width * .45).clamp(300.0, 640.0)))),
                 Expanded(child: _detail(width >= extraWideBreakpoint)),
+                ])),
               ]),
             );
           },
@@ -287,7 +334,12 @@ class _AccountButton extends StatelessWidget {
       tooltip: 'Account',
       icon: CircleAvatar(radius: 16, child: Text(me.fullName.isEmpty ? '?' : me.fullName[0].toUpperCase())),
       onSelected: (v) async {
-        if (v == 'signout') await session.signOut();
+        if (v == 'signout') {
+          final token = AppServices.pushToken();
+          await session.signOut(pushToken: token); // server stops push to this device first
+          await AppServices.stopPush?.call();
+          await clearDownloadedFiles();
+        }
       },
       itemBuilder: (_) => [
         PopupMenuItem(
@@ -302,6 +354,25 @@ class _AccountButton extends StatelessWidget {
         const PopupMenuDivider(),
         const PopupMenuItem(value: 'signout', child: Text('Sign out')),
       ],
+    );
+  }
+}
+
+class _OfflineBanner extends StatelessWidget {
+  const _OfflineBanner();
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        key: const Key('offline'),
+        width: double.infinity,
+        color: c.tertiaryContainer,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Text('Offline: reconnecting… Messages you send now will fail and stay in the composer to retry.',
+            style: TextStyle(color: c.onTertiaryContainer)),
+      ),
     );
   }
 }
