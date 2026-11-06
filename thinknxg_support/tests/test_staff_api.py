@@ -174,6 +174,20 @@ class TestStaffApi(BaseTestCase):
         if closed:
             self.assertEqual(v1.ticket_update(t.name, status=closed)["status"], closed)
 
+    def test_oauth_client_redirects_pass_frappes_own_check(self):
+        from frappe.oauth import OAuthWebRequestValidator
+
+        from thinknxg_support.integrations import staff_auth
+
+        as_user("Administrator")
+        client_id = staff_auth.ensure_oauth_client(force=True)["client_id"]
+        v = OAuthWebRequestValidator()
+        for uri in staff_auth.redirect_uris():
+            self.assertTrue(v.validate_redirect_uri(client_id, uri, None), uri)
+        self.assertFalse(v.validate_redirect_uri(client_id, "http://127.0.0.1:9999/evil", None))
+        cfg = v1.auth_config()
+        self.assertEqual(cfg["client_id"], client_id)
+
     # ------------------------------------------------------------------ increment 2: workspace
     def test_canned_response_placeholders_are_filled(self):
         r, name = self._chat()
