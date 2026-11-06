@@ -140,6 +140,7 @@ jobs:
                 continue
               }
               if ($d -match '^api-ms-|^ext-ms-') { continue }
+              if ($bin.Name -eq 'dartjni.dll' -and $d -eq 'jvm.dll') { continue }  # Java bridge: loaded on demand on Android only
               $missing += "$($bin.Name) -> $d"
             }
           }
