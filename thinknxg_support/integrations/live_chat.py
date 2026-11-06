@@ -22,6 +22,20 @@ from thinknxg_support.integrations import conversations, realtime
 from thinknxg_support.security import PortalAccessError, get_portal_user
 from thinknxg_support.utils import clean_text, settings
 
+
+def guest_text(message: str | None) -> str:
+    """Visitors' messages are stored as plain text (escaped on save). The chat widget sends simple HTML
+    (<p>, <br>), so turn it back into text first; otherwise the tags show up literally ("<p>Hello</p>")."""
+    import html as _html
+    import re as _re
+
+    text = str(message or "")
+    if "<" in text and _re.search(r"</?(p|br|div)\b", text, _re.I):
+        text = _re.sub(r"<br\s*/?>", "\n", text, flags=_re.I)
+        text = _re.sub(r"</(p|div)\s*>", "\n\n", text, flags=_re.I)
+        text = _html.unescape(_re.sub(r"<[^>]+>", "", text))
+    return _re.sub(r"\n{3,}", "\n\n", text).strip()
+
 CONV = "Support Conversation Link"
 MSG = "Support Portal Message"
 DAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
@@ -209,7 +223,7 @@ def start_guest(message: str, name: str | None = None, email: str | None = None,
         "last_activity_at": now_datetime(),
     })
     conv.insert(ignore_permissions=True)
-    conversations.add_inbound_message(conv, message, sender=user, sender_name=name,
+    conversations.add_inbound_message(conv, guest_text(message), sender=user, sender_name=name,
                                       client_message_id=client_message_id, allow_html=False)
     log_event("Guest Chat", reference_doctype=CONV, reference_name=conv.name, details="guest chat started")
     return {"conversation": conv.name, "token": token}
@@ -247,8 +261,8 @@ def guest_send(conversation: str, token: str, message: str, client_message_id: s
     if len(message or "") > 4000:
         frappe.throw(_("Message is too long."))
     frappe.db.set_value(CONV, conv.name, "guest_last_seen", now_datetime(), update_modified=False)
-    return conversations.add_inbound_message(conv, message, sender=frappe.session.user, sender_name=conv.guest_name,
-                                             client_message_id=client_message_id, allow_html=False,
+    return conversations.add_inbound_message(conv, guest_text(message), sender=frappe.session.user,
+                                             sender_name=conv.guest_name, client_message_id=client_message_id, allow_html=False,
                                              button_payload=payload)
 
 

@@ -175,6 +175,19 @@ class TestAgentTools(BaseTestCase):
         alerts.expire_and_purge()
         self.assertEqual(frappe.db.get_value(ALERT, {"user": self.a1, "group_key": f"chat:{conv.name}"}, "status"), "Expired")
 
+    def test_guest_message_html_is_not_shown_as_text(self):
+        r, conv = self._chat()
+        first = frappe.get_all("Support Portal Message", filters={"conversation": conv.name}, pluck="content", order_by="creation asc")[0]
+        self.assertEqual(first, "<p>Where is my order?</p>")
+        as_user("Guest")
+        live_chat.guest_send(r["conversation"], r["token"], "<p>When will you be available? 5 &lt; 6 &amp; ok</p><p>Line<br>two</p>")
+        as_user("Administrator")
+        last = frappe.get_all("Support Portal Message", filters={"conversation": conv.name, "direction": "Inbound"},
+                              pluck="content", order_by="creation desc")[0]
+        self.assertEqual(last, "<p>When will you be available? 5 &lt; 6 &amp; ok</p><p>Line<br>two</p>")
+        self.assertNotIn("&lt;p&gt;", last)
+        self.assertEqual(live_chat.guest_text("<script>alert(1)</script><p>hi</p>"), "alert(1)hi")
+
     def test_portal_users_get_no_alert_config(self):
         as_user("Guest")
         self.assertEqual(alerts.config(), {"enabled": False})
