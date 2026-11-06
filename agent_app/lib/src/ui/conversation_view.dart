@@ -284,7 +284,7 @@ class _CloseDialogState extends State<_CloseDialog> {
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               if (_reasons.isNotEmpty)
                 DropdownButtonFormField<String>(
-                  value: _reason,
+                  initialValue: _reason,
                   decoration: const InputDecoration(labelText: 'Closing reason'),
                   items: [for (final r in _reasons) DropdownMenuItem(value: r, child: Text(r))],
                   onChanged: (v) => setState(() => _reason = v),
@@ -313,7 +313,7 @@ class _CloseDialogState extends State<_CloseDialog> {
     final options = [for (final o in (q['options'] as List? ?? const [])) '$o'];
     if (options.isNotEmpty) {
       return DropdownButtonFormField<String>(
-        value: _answers[key] as String?,
+        initialValue: _answers[key] as String?,
         decoration: InputDecoration(labelText: label),
         items: [for (final o in options) DropdownMenuItem(value: o, child: Text(o))],
         onChanged: (v) => setState(() => _answers[key] = v),

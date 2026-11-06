@@ -41,7 +41,7 @@ Inbox / Thread / Alerts : 10 / 4 / 15 seconds
 
 ## Build and run
 
-Requires Flutter 3.27+ (stable). Windows builds need Visual Studio 2022 with *Desktop development with C++*;
+Requires Flutter 3.35+ (stable). Windows builds need Visual Studio 2022 with *Desktop development with C++*;
 iOS builds need macOS with Xcode.
 
 ```bash

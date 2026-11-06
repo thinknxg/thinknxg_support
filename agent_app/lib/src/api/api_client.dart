@@ -88,9 +88,9 @@ class ApiClient {
 
   Future<dynamic> get(String method, [Map<String, String?>? query]) => _send('GET', _uri(method, query));
 
-  Future<dynamic> post(String method, Map<String, Object?> body) => _send('POST', _uri(method), body);
+  Future<dynamic> post(String method, Map<String, Object?> body) => _send('POST', _uri(method), body: body);
 
-  Future<dynamic> _send(String verb, Uri uri, [Map<String, Object?>? body], {bool retried = false}) async {
+  Future<dynamic> _send(String verb, Uri uri, {Map<String, Object?>? body, bool retried = false}) async {
     final token = await tokens.accessToken();
     if (token == null) throw const SessionExpired();
     final req = http.Request(verb, uri)
@@ -112,7 +112,7 @@ class ApiClient {
       throw const NetworkError();
     }
     if (res.statusCode == 401 && !retried) {
-      if (await tokens.refresh()) return _send(verb, uri, body, retried: true);
+      if (await tokens.refresh()) return _send(verb, uri, body: body, retried: true);
       throw const SessionExpired();
     }
     return decode(res);
