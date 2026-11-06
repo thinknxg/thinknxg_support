@@ -7,7 +7,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-flutter create --project-name thinknxg_agent --org com.thinknxg --platforms=windows,android,ios . >/dev/null
+flutter create --project-name thinknxg_agent --org com.thinknxg --platforms=windows,android,ios .
 
 MANIFEST=android/app/src/main/AndroidManifest.xml
 if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
@@ -19,8 +19,9 @@ fi
 perl -pi -e 's#android:label="thinknxg_agent"#android:label="thinkNXG Agent"#' "$MANIFEST"
 
 # flutter_secure_storage needs API 23+ for its encrypted preferences
-GRADLE=$(ls android/app/build.gradle.kts android/app/build.gradle 2>/dev/null | head -1)
-perl -pi -e 's/minSdk( =|) flutter\.minSdkVersion/minSdk$1 23/' "$GRADLE"
+for GRADLE in android/app/build.gradle.kts android/app/build.gradle; do
+  if [ -f "$GRADLE" ]; then perl -pi -e 's/minSdk( =|) flutter\.minSdkVersion/minSdk$1 23/' "$GRADLE"; fi
+done
 
 PLIST=ios/Runner/Info.plist
 if [ -f "$PLIST" ]; then
