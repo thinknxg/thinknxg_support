@@ -236,6 +236,11 @@ class TestStaffApi(BaseTestCase):
         if not frappe.db.exists("DocType", "HD Ticket"):
             self.skipTest("Helpdesk is not installed")
         self._ensure_outgoing_email()
+        frappe.db.set_single_value("Support Portal Settings", "enable_helpdesk", 1)
+        from thinknxg_support.integrations import capabilities
+
+        if hasattr(capabilities, "refresh"):
+            capabilities.refresh()
         r, name = self._chat()
         as_user("Administrator")  # a Helpdesk agent
         frappe.db.set_value(CONV, name, "assigned_agent", "Administrator", update_modified=False)
