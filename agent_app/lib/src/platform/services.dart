@@ -12,6 +12,9 @@ class AppServices {
   static Future<void> Function()? stopPush;
   static String? Function() pushToken = () => null;
 
+  /// One line for the Alerts tab: is push working on this device, and if not, why.
+  static String Function() pushStatus = () => 'Push notifications: not available here';
+
   /// Notification taps waiting for the signed-in workspace: (doctype, name).
   static final ValueNotifier<({String doctype, String name})?> pendingLink = ValueNotifier(null);
 
