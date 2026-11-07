@@ -85,6 +85,21 @@ void main() {
       await expectLater(api.get('bootstrap'), throwsA(isA<AccessDenied>().having((e) => e.message, 'message', 'Not allowed')));
     });
 
+    test('an endpoint missing on an older site says to update the site', () async {
+      final api = ApiClient(
+        site: Uri.parse('https://x.example.com'),
+        tokens: Tokens('t'),
+        httpClient: MockClient((_) async => http.Response(
+            jsonEncode({
+              'exc_type': 'AttributeError',
+              'exception': "Failed to get method for command thinknxg_support.api.staff.v1.send_test_alert with module "
+                  "'thinknxg_support.api.staff.v1' has no attribute 'send_test_alert'",
+            }),
+            404)),
+      );
+      await expectLater(api.post('send_test_alert', {}), throwsA(isA<NotFound>().having((e) => e.message, 'message', contains('newer thinkNXG Support'))));
+    });
+
     test('a lost response is a NetworkError', () async {
       final s = FakeServer()..failNextWithTimeout = 1;
       expect(apiFor(s, Tokens('token-1')).bootstrap(), throwsA(isA<NetworkError>()));
