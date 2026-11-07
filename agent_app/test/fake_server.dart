@@ -32,6 +32,9 @@ class FakeServer {
       });
   final List<String> acknowledged = [];
   int typingCalls = 0;
+  final Map<String, Map<String, dynamic>> closed = {};
+  final Map<String, Map<String, dynamic>> linked = {};
+  final List<Map<String, dynamic>> createdTickets = [];
   int heartbeats = 0;
   bool customerTyping = false;
   int _seq = 0;
@@ -105,8 +108,11 @@ class FakeServer {
         'close': open,
         'take_over': open && c['handling'] == 'Bot',
         'return_to_assistant': false,
+        'link_customer': true,
+        'create_ticket': c['ticket'] == null,
         'whatsapp_window_open': c['whatsapp_window_open'],
       },
+      'customer_name': c['customer_name'],
       'contact': {'name': c['display_name'], 'email': 'asha@example.com'},
     };
   }
@@ -173,7 +179,7 @@ class FakeServer {
           'queues': [
             {'name': 'Billing', 'member': true},
           ],
-          'poll': {'inbox_seconds': 10, 'thread_seconds': 4, 'alerts_seconds': 15},
+          'poll': {'inbox_seconds': 10, 'thread_seconds': 4, 'alerts_seconds': 5},
         });
       case 'conversations':
         var list = conversations.where((c) => c['status'] != 'Closed').toList();
@@ -224,7 +230,53 @@ class FakeServer {
         messages[id]!.add(m);
         return _ok({'message': m, 'duplicate': false});
       case 'closing_form':
-        return _ok({'reasons': ['Resolved'], 'require_reason': 0, 'questions': [], 'closing_message': ''});
+        return _ok({
+          'reasons': ['Resolved'],
+          'require_reason': 0,
+          'questions': [
+            {'idx': 1, 'question': "Was the customer's issue resolved?", 'answer_type': 'Yes/No', 'required': 1,
+             'report_as': 'Issue Resolved', 'options': ['Yes', 'No']},
+            {'idx': 2, 'question': 'Does the customer need a follow-up?', 'answer_type': 'Yes/No', 'required': 1,
+             'report_as': 'Follow-up Needed', 'options': []}, // an older server sends no options for Yes/No
+          ],
+          'closing_message': '',
+        });
+      case 'close':
+        final c = _conv(b['name']);
+        final ans = Map<String, dynamic>.from(b['answers'] as Map? ?? {});
+        if (ans['1'] == null || ans['2'] == null) return _err(417, 'Answer: Does the customer need a follow-up?');
+        closed[b['name'] as String] = ans;
+        c['status'] = 'Closed';
+        return _ok(_detail(b['name']));
+      case 'customer_search':
+        return _ok([
+          {'name': 'CUST-ASHA', 'customer_name': 'Asha Trading LLC', 'email_id': 'asha@example.com', 'suggested': true},
+          {'name': 'CUST-002', 'customer_name': 'Muscat Motors', 'suggested': false},
+        ].where((x) => (q['q'] ?? '').isEmpty || '${x['customer_name']}'.toLowerCase().contains(q['q']!.toLowerCase())).toList());
+      case 'customer_contacts':
+        return _ok([
+          {'name': 'CONT-1', 'full_name': 'Asha', 'email': 'asha@example.com'},
+        ]);
+      case 'link_customer':
+        final c = _conv(b['name']);
+        c['customer_name'] = b['customer'] == 'CUST-ASHA' ? 'Asha Trading LLC' : b['customer'];
+        linked[b['name'] as String] = {'customer': b['customer'], 'contact': b['contact'], 'create_contact': b['create_contact']};
+        return _ok(_detail(b['name']));
+      case 'ticket_options':
+        return _ok({'priorities': ['High', 'Medium'], 'teams': ['Billing'], 'ticket_types': ['Question']});
+      case 'create_ticket':
+        final c = _conv(b['name']);
+        c['ticket'] = '77';
+        tickets['77'] = {...tickets['42']!, 'id': '77', 'subject': b['subject'], 'priority': b['priority'], 'linked_conversation': b['name']};
+        ticketTimeline['77'] = [];
+        createdTickets.add(Map<String, dynamic>.from(b));
+        return _ok({'ticket': '77', 'duplicate': false});
+      case 'saved_replies':
+        return _ok([
+          {'name': 'SR-1', 'title': 'Invoice corrected', 'scope': 'Global', 'preview': 'We have corrected your invoice'},
+        ]);
+      case 'saved_reply_render':
+        return _ok({'text': b['ticket'] != null ? 'Ticket #${b['ticket']}: we have corrected your invoice' : 'We have corrected your invoice', 'html': ''});
       case 'tickets':
         return _ok({'items': tickets.values.toList(), 'next_cursor': null});
       case 'ticket':

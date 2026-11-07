@@ -373,6 +373,32 @@ class ConversationController extends ChangeNotifier with _Polling {
     return null;
   }
 
+  Future<bool> linkCustomer(String customer, {String? contact, bool createContact = false}) =>
+      _act(() => api.linkCustomer(id, customer, contact: contact, createContact: createContact));
+
+  /// Create a Helpdesk ticket from this chat; returns its id (null on error, shown in [actionError]).
+  Future<String?> createTicket({String? subject, String? priority, String? team, String? ticketType, String? reply}) async {
+    busy = true;
+    actionError = null;
+    safeNotify();
+    final rid = requestIdFactory();
+    try {
+      final t = await api.createTicket(id,
+          clientRequestId: rid, subject: subject, priority: priority, team: team, ticketType: ticketType, reply: reply);
+      detail = await api.conversation(id);
+      onChanged?.call(detail!);
+      return t;
+    } on SessionExpired {
+      onExpired();
+    } on ApiException catch (e) {
+      actionError = e.message;
+    } finally {
+      busy = false;
+      safeNotify();
+    }
+    return null;
+  }
+
   /// Insert a canned response (placeholders filled by the server) at the end of the draft.
   Future<void> insertCanned(CannedResponse c) async {
     try {
@@ -545,6 +571,21 @@ class TicketController extends ChangeNotifier with _Polling {
   void attach(UploadFile? f) {
     draft.file = f;
     safeNotify();
+  }
+
+  /// Insert a Helpdesk saved reply, rendered for this ticket by the server.
+  Future<void> insertSavedReply(CannedResponse r) async {
+    try {
+      final text = await api.savedReplyRender(r.id, ticket: id);
+      draft.text = draft.text.trim().isEmpty ? text : '${draft.text.trimRight()}\n$text';
+      if (draft.state == SendState.sent) draft.state = SendState.idle;
+      safeNotify();
+    } on SessionExpired {
+      onExpired();
+    } on ApiException catch (e) {
+      actionError = e.message;
+      safeNotify();
+    }
   }
 
   Future<void> send() async {

@@ -196,6 +196,99 @@ class TestStaffApi(BaseTestCase):
         # what the app checks is exactly what Frappe accepts
         self.assertEqual(set(cfg["redirect_uris"]), {"http://127.0.0.1:43823/callback", "com.thinknxg.agent://oauth2redirect"})
 
+    # ------------------------------------------------------------------ helpdesk enhancements (1.9)
+    def test_live_chat_message_without_queue_rings_every_agent(self):
+        from thinknxg_support.integrations import alerts
+
+        r, name = self._chat(queue=None)
+        frappe.db.set_value(CONV, name, "handling", "Agent", update_modified=False)
+        as_user(self.a1)
+        cursor = v1.alerts()["cursor"]
+        as_user("Administrator")
+        rules = {"Chat Message": {**alerts.DEFAULTS["Chat Message"], "enabled": 1}}
+        with patch.object(alerts, "rules", return_value=rules):
+            alerts.on_customer_message(frappe.get_doc(CONV, name))
+        as_user(self.a1)
+        self.assertIn(name, [e["reference_name"] for e in v1.alerts(since=cursor)["events"]])
+
+    def test_link_customer_registers_hd_customer_with_the_visitor_contact(self):
+        if not frappe.db.exists("DocType", "HD Customer"):
+            self.skipTest("Helpdesk is not installed")
+        from thinknxg_support.tests.utils import make_customer
+
+        customer = make_customer("App Link Customer")
+        hd = frappe.db.get_value("HD Customer", {"erpnext_customer": customer}) if frappe.get_meta("HD Customer").has_field(
+            "erpnext_customer") else frappe.db.exists("HD Customer", "App Link Customer")
+        self.assertTrue(hd, "a new Customer is registered as an HD Customer")
+        r, name = self._chat()
+        as_user(self.a1)
+        self.assertTrue(any(c["name"] == customer for c in v1.customer_search("App Link")))
+        out = v1.link_customer(name, customer, create_contact=1)
+        self.assertEqual(out["customer"], customer)
+        contact = frappe.db.get_value(CONV, name, "contact")
+        self.assertTrue(contact)
+        self.assertEqual(frappe.db.get_value("Contact", contact, "email_id"), "app-visitor@example.com")
+        self.assertTrue(frappe.db.exists("Dynamic Link", {"parenttype": "Contact", "parent": contact,
+                                                          "link_doctype": "HD Customer", "link_name": hd}))
+        self.assertIn(contact, [c["name"] for c in v1.customer_contacts(customer)])
+
+    def test_create_ticket_from_chat_with_a_saved_reply(self):
+        if not frappe.db.exists("DocType", "HD Ticket"):
+            self.skipTest("Helpdesk is not installed")
+        self._ensure_outgoing_email()
+        frappe.db.set_single_value("Support Portal Settings", "enable_helpdesk", 1)
+        from thinknxg_support.integrations import capabilities
+
+        if hasattr(capabilities, "refresh"):
+            capabilities.refresh()
+        r, name = self._chat()
+        as_user("Administrator")  # a Helpdesk agent
+        frappe.db.set_value(CONV, name, "assigned_agent", "Administrator", update_modified=False)
+        sr_dt = "HD Saved Reply" if frappe.db.exists("DocType", "HD Saved Reply") else None
+        reply = "We are on it"
+        if sr_dt:
+            sr = frappe.get_doc({"doctype": sr_dt, "title": "App on it", "message": "<p>Hello, {{ full_name }} is on it</p>"})
+            if sr.meta.has_field("scope"):
+                sr.scope = "Global"
+            sr.insert(ignore_permissions=True)
+            self.assertIn(sr.name, [x["name"] for x in v1.saved_replies("App on")])
+            reply = v1.saved_reply_render(sr.name, conversation=name)["text"]
+            self.assertIn("Administrator is on it", reply)
+        opts = v1.ticket_options()
+        out = v1.create_ticket(name, client_request_id="44444444-aaaa-bbbb-cccc-000000000001", subject="Invoice wrong",
+                               priority=(opts["priorities"] or [None])[0], reply=reply)
+        again = v1.create_ticket(name, client_request_id="44444444-aaaa-bbbb-cccc-000000000001")
+        self.assertEqual(out["ticket"], again["ticket"])
+        self.assertEqual(frappe.db.get_value(CONV, name, "helpdesk_ticket"), out["ticket"])
+        self.assertEqual(frappe.db.get_value("HD Ticket", out["ticket"], "subject"), "Invoice wrong")
+        self.assertEqual(frappe.db.get_value("HD Ticket", out["ticket"], "raised_by"), "app-visitor@example.com")
+        if sr_dt:
+            rendered = v1.saved_reply_render(sr.name, ticket=out["ticket"])["text"]
+            self.assertIn("is on it", rendered)
+
+    def test_end_chat_asks_resolution_and_follow_up(self):
+        r, name = self._chat()
+        as_user(self.a1)
+        v1.claim(name)
+        form = v1.closing_form()
+        keys = {q.get("report_as"): q for q in form["questions"]}
+        self.assertEqual(keys["Issue Resolved"]["options"], ["Yes", "No"])
+        self.assertTrue(keys["Follow-up Needed"]["required"])
+        answers = {str(q["idx"]): (q["options"] or ["x"])[0] for q in form["questions"] if q["required"]}
+        answers[str(keys["Issue Resolved"]["idx"])] = "No"
+        answers[str(keys["Follow-up Needed"]["idx"])] = "Yes"
+        v1.close(name, reason=(form["reasons"] or [None])[0], answers=answers)
+        self.assertEqual(frappe.db.get_value(CONV, name, ["issue_resolved", "needs_follow_up"]), ("No", "Yes"))
+
+    def _ensure_outgoing_email(self):
+        if not frappe.db.exists("Email Account", {"default_outgoing": 1, "enable_outgoing": 1}):
+            ea = frappe.get_doc({"doctype": "Email Account", "email_account_name": "App Test Outgoing",
+                                 "email_id": "support@example.com", "enable_outgoing": 1, "default_outgoing": 1,
+                                 "smtp_server": "localhost", "awaiting_password": 1})
+            ea.flags.ignore_validate = True
+            ea.flags.ignore_mandatory = True
+            ea.insert(ignore_permissions=True)
+
     # ------------------------------------------------------------------ increment 2: workspace
     def test_canned_response_placeholders_are_filled(self):
         r, name = self._chat()

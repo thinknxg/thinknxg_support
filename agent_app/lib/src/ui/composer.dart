@@ -18,6 +18,7 @@ class Composer extends StatefulWidget {
   final VoidCallback? onAttach;
   final VoidCallback? onRemoveFile;
   final VoidCallback? onCanned;
+  final String cannedTooltip;
 
   const Composer({
     super.key,
@@ -33,6 +34,7 @@ class Composer extends StatefulWidget {
     this.onAttach,
     this.onRemoveFile,
     this.onCanned,
+    this.cannedTooltip = 'Canned responses (Ctrl+/)',
   });
 
   @override
@@ -131,7 +133,7 @@ class _ComposerState extends State<Composer> {
               if (widget.onCanned != null)
                 IconButton(
                   key: const Key('composer-canned'),
-                  tooltip: 'Canned responses (Ctrl+/)',
+                  tooltip: widget.cannedTooltip,
                   onPressed: sending || replyBlocked ? null : widget.onCanned,
                   icon: const Icon(Icons.bolt_outlined),
                 ),

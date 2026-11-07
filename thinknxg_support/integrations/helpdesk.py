@@ -38,18 +38,112 @@ def _existing(fields: list[str]) -> list[str]:
 
 
 # ------------------------------------------------------------------ mapping
+def _hd_customer_ready() -> bool:
+    return bool(frappe.db.exists("DocType", "HD Customer"))
+
+
 def hd_customer_for(customer: str, create: bool = False) -> str | None:
-    if not capabilities.get().get("helpdesk", {}).get("customer_doctype"):
+    """The HD Customer that stands for an ERPNext Customer: linked by erpnext_customer, else the same name."""
+    if not customer or not _hd_customer_ready():
         return None
+    meta = frappe.get_meta("HD Customer")
+    if meta.has_field("erpnext_customer"):
+        linked = frappe.db.get_value("HD Customer", {"erpnext_customer": customer})
+        if linked:
+            return linked
     name = frappe.db.get_value("Customer", customer, "customer_name") or customer
     for candidate in (customer, name):
         if frappe.db.exists("HD Customer", candidate):
             return candidate
     if create and settings().auto_create_helpdesk_customer:
-        doc = frappe.get_doc({"doctype": "HD Customer", "customer_name": name})
-        doc.insert(ignore_permissions=True)
-        return doc.name
+        return sync_hd_customer(customer)
     return None
+
+
+def sync_hd_customer(customer: str) -> str | None:
+    """Create or update the HD Customer for an ERPNext Customer, and register its contacts with it, so Helpdesk
+    shows the customer's tickets and contacts. Safe to call repeatedly."""
+    if not customer or not _hd_customer_ready() or not frappe.db.exists("Customer", customer):
+        return None
+    if frappe.flags.get("thinknxg_hd_sync"):  # Helpdesk's own ERPNext sync can save the Customer again: no loop
+        return hd_customer_for(customer)
+    frappe.flags.thinknxg_hd_sync = True
+    try:
+        return _sync_hd_customer(customer)
+    finally:
+        frappe.flags.thinknxg_hd_sync = False
+
+
+def _sync_hd_customer(customer: str) -> str:
+    c = frappe.db.get_value("Customer", customer, ["name", "customer_name", "customer_type", "email_id", "mobile_no",
+                                                  "image", "disabled"], as_dict=True)
+    meta = frappe.get_meta("HD Customer")
+    name = None
+    if meta.has_field("erpnext_customer"):
+        name = frappe.db.get_value("HD Customer", {"erpnext_customer": customer})
+    name = name or next((x for x in (c.customer_name, customer) if x and frappe.db.exists("HD Customer", x)), None)
+    title = (c.customer_name or customer)[:140]
+    if name and meta.has_field("erpnext_customer"):
+        owner = frappe.db.get_value("HD Customer", name, "erpnext_customer")
+        if owner and owner != customer:  # same display name, different ERPNext customer: keep them apart
+            name, title = None, f"{title} ({customer})"[:140]
+            if frappe.db.exists("HD Customer", title):
+                name = title
+    if name:
+        doc = frappe.get_doc("HD Customer", name)
+    else:
+        doc = frappe.get_doc({"doctype": "HD Customer", "customer_name": title})
+    values = {"erpnext_customer": customer, "customer_type": c.customer_type, "email_id": c.email_id,
+              "mobile_no": c.mobile_no, "image": c.image}
+    for k, v in values.items():
+        if v and meta.has_field(k) and not doc.get(k):
+            if k == "customer_type" and v not in (meta.get_field(k).options or "").split("\n"):
+                continue
+            doc.set(k, v)
+    contacts = frappe.get_all("Dynamic Link", filters={"parenttype": "Contact", "link_doctype": "Customer",
+                                                       "link_name": customer}, pluck="parent")
+    if meta.has_field("contacts"):
+        have = {r.contact_name for r in doc.get("contacts") or []}
+        for ct in contacts:
+            if ct not in have:
+                doc.append("contacts", {"contact_name": ct})
+    doc.flags.ignore_permissions = True
+    doc.flags.thinknxg_support_sync = True
+    doc.save() if not doc.is_new() else doc.insert()
+    for ct in contacts:  # Helpdesk finds a contact's customer through the contact's links
+        if not frappe.db.exists("Dynamic Link", {"parenttype": "Contact", "parent": ct, "link_doctype": "HD Customer",
+                                                 "link_name": doc.name}):
+            contact = frappe.get_doc("Contact", ct)
+            contact.append("links", {"link_doctype": "HD Customer", "link_name": doc.name})
+            contact.flags.ignore_permissions = True
+            contact.flags.thinknxg_support_sync = True
+            contact.save()
+    return doc.name
+
+
+def on_customer_change(doc, method=None):
+    """Customer created or changed (portal approval, agent linking, ERPNext): register it as an HD Customer."""
+    if doc.get("disabled") or not _hd_customer_ready() or not settings().auto_create_helpdesk_customer:
+        return
+    try:
+        sync_hd_customer(doc.name)
+    except Exception:
+        frappe.log_error(title=f"thinkNXG Support: HD Customer sync failed for {doc.name}")
+
+
+def on_contact_change(doc, method=None):
+    """A contact linked to a Customer joins that customer's HD Customer."""
+    if doc.flags.get("thinknxg_support_sync") or not _hd_customer_ready() or not settings().auto_create_helpdesk_customer:
+        return
+    customers = {l.link_name for l in doc.get("links") or [] if l.link_doctype == "Customer"}
+    have = {l.link_name for l in doc.get("links") or [] if l.link_doctype == "HD Customer"}
+    for customer in customers:
+        try:
+            hd = hd_customer_for(customer, create=True)
+            if hd and hd not in have:
+                sync_hd_customer(customer)
+        except Exception:
+            frappe.log_error(title=f"thinkNXG Support: HD Customer contact sync failed for {doc.name}")
 
 
 def status_categories() -> dict:

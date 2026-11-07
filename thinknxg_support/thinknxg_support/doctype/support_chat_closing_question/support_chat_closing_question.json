@@ -11,7 +11,8 @@
   "answer_type",
   "options",
   "required",
-  "enabled"
+  "enabled",
+  "report_as"
  ],
  "fields": [
   {
@@ -58,6 +59,14 @@
    "in_list_view": 1,
    "columns": 1,
    "idx": 5
+  },
+  {
+   "fieldname": "report_as",
+   "fieldtype": "Select",
+   "label": "Saved As",
+   "options": "\nIssue Resolved\nFollow-up Needed",
+   "description": "Yes/No answer is also stored on the conversation (filters and reports)",
+   "idx": 6
   }
  ],
  "index_web_pages_for_search": 0,

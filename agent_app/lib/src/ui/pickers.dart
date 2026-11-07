@@ -5,10 +5,12 @@ import '../api/models.dart';
 /// Canned responses: type to filter by title, shortcut or text; Enter picks the first match.
 class CannedPicker extends StatefulWidget {
   final Future<List<CannedResponse>> Function() load;
-  const CannedPicker({super.key, required this.load});
+  final String title;
+  const CannedPicker({super.key, required this.load, this.title = 'Canned responses'});
 
-  static Future<CannedResponse?> show(BuildContext context, Future<List<CannedResponse>> Function() load) =>
-      showDialog<CannedResponse>(context: context, builder: (_) => CannedPicker(load: load));
+  static Future<CannedResponse?> show(BuildContext context, Future<List<CannedResponse>> Function() load,
+          {String title = 'Canned responses'}) =>
+      showDialog<CannedResponse>(context: context, builder: (_) => CannedPicker(load: load, title: title));
 
   @override
   State<CannedPicker> createState() => _CannedPickerState();
@@ -31,7 +33,7 @@ class _CannedPickerState extends State<CannedPicker> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        title: const Text('Canned responses'),
+        title: Text(widget.title),
         content: SizedBox(
           width: 480,
           height: 420,
@@ -41,6 +43,7 @@ class _CannedPickerState extends State<CannedPicker> {
               if (snap.hasError) return Center(child: Text('${snap.error}'));
               if (!snap.hasData) return const Center(child: CircularProgressIndicator());
               final list = _filter(snap.data!);
+              final empty = snap.data!.isEmpty ? 'None set up yet.' : 'Nothing matches.';
               return Column(children: [
                 TextField(
                   key: const Key('canned-search'),
@@ -54,7 +57,7 @@ class _CannedPickerState extends State<CannedPicker> {
                 const SizedBox(height: 8),
                 Expanded(
                   child: list.isEmpty
-                      ? const Center(child: Text('No canned responses match.'))
+                      ? Center(child: Text(empty))
                       : ListView.separated(
                           itemCount: list.length,
                           separatorBuilder: (_, __) => const Divider(height: 1),
@@ -64,7 +67,9 @@ class _CannedPickerState extends State<CannedPicker> {
                               key: Key('canned-${c.id}'),
                               title: Text(c.title),
                               subtitle: Text(c.preview, maxLines: 2, overflow: TextOverflow.ellipsis),
-                              trailing: c.shortcut == null || c.shortcut!.isEmpty ? null : Text('/${c.shortcut}'),
+                              trailing: c.shortcut == null || c.shortcut!.isEmpty
+                                  ? (c.category == null ? null : Text(c.category!, style: Theme.of(context).textTheme.bodySmall))
+                                  : Text('/${c.shortcut}'),
                               onTap: () => Navigator.pop(context, c),
                             );
                           },

@@ -69,7 +69,7 @@ index on (conversation, client_message_id). Tickets: *Support Agent Request* log
 | `ticket_note` | POST | `name`, `text`, `client_request_id` | `{id, kind, duplicate}` — Helpdesk `new_comment` (staff only) |
 | `ticket_update` | POST | `name`, `status`, `priority`, `team`, `expected_modified` | Ticket · 409 if changed since `expected_modified` |
 | `ticket_assign` | POST | `name`, `agent` (default: me), `expected_assignees` | Ticket · 409 if the owners changed |
-| `alerts` | GET | | `items` (open alerts for this agent) |
+| `alerts` | GET | `since` (cursor) | `items` (open alerts), `events` (unstored alerts such as new messages since the cursor), `cursor` |
 | `acknowledge_alerts` | POST | `ids` | `acknowledged` (clears them in every tab and device) |
 | `open_target` | GET | `doctype`, `name` | `{kind: conversation\|ticket\|web, id\|url}` after checking access again |
 | `register_device` | POST | `push_token`, `platform` Android\|iOS\|Windows, `device_name`, `app_version` | `{device}` |
@@ -83,6 +83,14 @@ index on (conversation, client_message_id). Tickets: *Support Agent Request* log
 | `heartbeat` | POST | | marks the agent online (routing, transfer list); the app sends it every 45 s |
 | `alert_config` | GET | | team alert rules merged with this agent's preferences (sound, popup, repeat, volume, mute) |
 | `send_test_push` | POST | | a test push to this agent's devices |
+| `send_test_alert` | POST | | a real test alert through the server |
+| `customer_search` | GET | `q`, `conversation` | customers (`name, customer_name, email_id, mobile_no, suggested`); matches for the visitor's e-mail / phone first |
+| `customer_contacts` | GET | `customer` | the customer's contacts |
+| `link_customer` | POST | `name`, `customer`, `contact` \| `create_contact` 1 | ConversationDetail; the customer is registered as an HD Customer |
+| `ticket_options` | GET | | `priorities, teams, ticket_types` |
+| `create_ticket` | POST | `name`, `client_request_id`, `subject`, `priority`, `team`, `ticket_type`, `reply` | `{ticket, duplicate}` — transcript in the description, chat linked, assigned to the agent, optional first reply by e-mail |
+| `saved_replies` | GET | `q`, `ticket` | Helpdesk saved replies this agent may use (scope: global, my teams, mine) |
+| `saved_reply_render` | POST | `name`, `ticket` \| `conversation` | `{text, html}` rendered like Helpdesk does |
 
 `reply` and `ticket_reply` also accept one file (multipart/form-data, field `file`, same size and type rules as the
 portal). Files are private, attached to the message (or ticket) and never included in lists. WhatsApp: files are

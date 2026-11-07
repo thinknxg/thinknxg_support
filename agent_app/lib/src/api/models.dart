@@ -84,7 +84,7 @@ class Bootstrap {
 }
 
 class ConversationActions {
-  final bool claim, transfer, reply, note, close, takeOver, returnToAssistant;
+  final bool claim, transfer, reply, note, close, takeOver, returnToAssistant, linkCustomer, createTicket;
   final bool? whatsappWindowOpen;
   const ConversationActions({
     this.claim = false,
@@ -94,6 +94,8 @@ class ConversationActions {
     this.close = false,
     this.takeOver = false,
     this.returnToAssistant = false,
+    this.linkCustomer = false,
+    this.createTicket = false,
     this.whatsappWindowOpen,
   });
   factory ConversationActions.fromJson(Map<String, dynamic> j) => ConversationActions(
@@ -104,6 +106,8 @@ class ConversationActions {
         close: _b(j['close']),
         takeOver: _b(j['take_over']),
         returnToAssistant: _b(j['return_to_assistant']),
+        linkCustomer: j['link_customer'] == null ? true : _b(j['link_customer']),
+        createTicket: _b(j['create_ticket']),
         whatsappWindowOpen: j['whatsapp_window_open'] == null ? null : _b(j['whatsapp_window_open']),
       );
 }
@@ -437,6 +441,31 @@ class LiveState {
       LiveState(customerTyping: _b(j['customer_typing']), visitorOnline: _b(j['visitor_online']), aiDrafting: _b(j['ai_drafting']));
 }
 
+class CustomerOption {
+  final String id, name;
+  final String? email, phone;
+  final bool suggested;
+  const CustomerOption(this.id, this.name, this.email, this.phone, this.suggested);
+  factory CustomerOption.fromJson(Map<String, dynamic> j) => CustomerOption(_s(j['name']),
+      _s(j['customer_name']).isEmpty ? _s(j['name']) : _s(j['customer_name']), j['email_id'] as String?, j['mobile_no'] as String?,
+      _b(j['suggested']));
+}
+
+class ContactOption {
+  final String id, name;
+  final String? email, phone;
+  const ContactOption(this.id, this.name, this.email, this.phone);
+  factory ContactOption.fromJson(Map<String, dynamic> j) =>
+      ContactOption(_s(j['name']), _s(j['full_name']), j['email'] as String?, j['phone'] as String?);
+}
+
+class TicketOptions {
+  final List<String> priorities, teams, ticketTypes;
+  const TicketOptions(this.priorities, this.teams, this.ticketTypes);
+  factory TicketOptions.fromJson(Map<String, dynamic> j) => TicketOptions([for (final x in _l(j['priorities'])) _s(x)],
+      [for (final x in _l(j['teams'])) _s(x)], [for (final x in _l(j['ticket_types'])) _s(x)]);
+}
+
 class CannedResponse {
   final String id, title;
   final String? shortcut, category;
@@ -444,6 +473,10 @@ class CannedResponse {
   const CannedResponse(this.id, this.title, this.shortcut, this.category, this.preview);
   factory CannedResponse.fromJson(Map<String, dynamic> j) => CannedResponse(_s(j['name']), _s(j['title']),
       j['shortcut'] as String?, j['category'] as String?, htmlToText(_s(j['content'])));
+
+  /// Helpdesk saved replies use the same picker.
+  factory CannedResponse.savedReply(Map<String, dynamic> j) =>
+      CannedResponse(_s(j['name']), _s(j['title']), null, j['scope'] as String?, _s(j['preview']));
 }
 
 /// A team alert rule merged with this agent's preferences (from `alert_config`).

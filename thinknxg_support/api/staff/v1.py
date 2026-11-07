@@ -227,7 +227,10 @@ def _actions(doc) -> dict:
         can_return = bool(open_ and doc.handling != "Bot" and automation_applies(doc))
     except Exception:
         can_return = False
+    from thinknxg_support.integrations import helpdesk_agent
+
     return {"claim": open_ and doc.assigned_agent != user, "transfer": open_, "reply": open_ and window is not False,
+            "link_customer": True, "create_ticket": bool(not doc.helpdesk_ticket and helpdesk_agent.available()),
             "note": True, "close": open_, "take_over": open_ and doc.handling == "Bot", "return_to_assistant": can_return,
             "whatsapp_window_open": window}
 
@@ -782,6 +785,211 @@ def alert_config():
     from thinknxg_support.integrations import alerts as al
 
     return al.config()
+
+
+# ------------------------------------------------------------------ link customer, create ticket, saved replies
+@frappe.whitelist(methods=["GET"])
+def customer_search(q: str = "", conversation: str | None = None):
+    """Customers to link a chat to: name, ID, e-mail or phone. Staff only; returns names, not records. With a
+    conversation, customers whose contacts match the visitor's e-mail or phone come first."""
+    staff_auth.require_staff()
+    q = strip_html(q or "").strip()[:80]
+    like = f"%{q}%"
+    rows = frappe.get_all("Customer", filters={"disabled": 0},
+                          or_filters=[["customer_name", "like", like], ["name", "like", like], ["email_id", "like", like],
+                                      ["mobile_no", "like", like]] if q else None,
+                          fields=["name", "customer_name", "email_id", "mobile_no", "customer_type"],
+                          order_by="modified desc", limit_page_length=20)
+    suggested = []
+    if conversation:
+        doc = _conv(conversation)
+        email = doc.get("guest_email")
+        phone = doc.get("guest_phone") or (doc.get("whatsapp_number") and f"%{doc.whatsapp_number[-8:]}")
+        cond, args = [], []
+        if email:
+            cond.append("c.email_id = %s")
+            args.append(email)
+        if phone:
+            cond.append("(c.mobile_no like %s or c.phone like %s)")
+            args += [phone if "%" in phone else f"%{phone[-8:]}", phone if "%" in phone else f"%{phone[-8:]}"]
+        if cond:
+            suggested = frappe.db.sql_list(f"""select distinct dl.link_name from `tabContact` c
+                join `tabDynamic Link` dl on dl.parent = c.name and dl.parenttype = 'Contact' and dl.link_doctype = 'Customer'
+                where {' or '.join(cond)} limit 5""", args)
+    seen, out = set(), []
+    for name in suggested:
+        r = frappe.db.get_value("Customer", name, ["name", "customer_name", "email_id", "mobile_no", "customer_type"], as_dict=True)
+        if r and r.name not in seen:
+            seen.add(r.name)
+            out.append({**r, "suggested": True})
+    for r in rows:
+        if r.name not in seen:
+            seen.add(r.name)
+            out.append({**r, "suggested": False})
+    return out
+
+
+@frappe.whitelist(methods=["GET"])
+def customer_contacts(customer: str):
+    staff_auth.require_staff()
+    if not frappe.db.exists("Customer", customer):
+        raise frappe.DoesNotExistError(_("Customer not found."))
+    names = frappe.get_all("Dynamic Link", filters={"parenttype": "Contact", "link_doctype": "Customer", "link_name": customer},
+                           pluck="parent")
+    return [{"name": c.name, "full_name": " ".join(x for x in (c.first_name, c.last_name) if x) or c.name,
+             "email": c.email_id, "phone": c.mobile_no or c.phone}
+            for c in frappe.get_all("Contact", filters={"name": ["in", names or [""]]},
+                                    fields=["name", "first_name", "last_name", "email_id", "mobile_no", "phone"])]
+
+
+@frappe.whitelist(methods=["POST"])
+def link_customer(name: str, customer: str, contact: str | None = None, create_contact: int = 0):
+    """Attach the chat to an existing customer (and contact). With create_contact, the visitor's name, e-mail and
+    phone become a new contact of that customer. The customer is registered as an HD Customer."""
+    doc = _conv(name, "write")
+    if create_contact and not contact:
+        contact = _contact_from_visitor(doc, customer)
+    from thinknxg_support.thinknxg_support.doctype.support_conversation_link.support_conversation_link import (
+        link_customer as _link,
+    )
+
+    _link(name, customer, contact)
+    from thinknxg_support.integrations import helpdesk
+
+    try:
+        helpdesk.sync_hd_customer(customer)
+    except Exception:
+        frappe.log_error(title="thinkNXG Support: HD Customer sync on link failed")
+    return conversation_detail(frappe.get_doc(CONV, name))
+
+
+def _contact_from_visitor(doc, customer: str) -> str:
+    email = (doc.get("guest_email") or "").strip()
+    phone = (doc.get("guest_phone") or (f"+{doc.whatsapp_number}" if doc.get("whatsapp_number") else "")).strip()
+    if email:
+        existing = frappe.db.get_value("Contact", {"email_id": email})
+        if existing:
+            if not frappe.db.exists("Dynamic Link", {"parenttype": "Contact", "parent": existing,
+                                                     "link_doctype": "Customer", "link_name": customer}):
+                c = frappe.get_doc("Contact", existing)
+                c.append("links", {"link_doctype": "Customer", "link_name": customer})
+                c.save(ignore_permissions=True)
+            return existing
+    full = (doc.get("guest_name") or doc.get("whatsapp_profile_name") or email or phone or _("Visitor")).strip()
+    first, _sp, last = full.partition(" ")
+    c = frappe.get_doc({"doctype": "Contact", "first_name": first[:140], "last_name": last[:140] or None,
+                        "links": [{"link_doctype": "Customer", "link_name": customer}]})
+    if email:
+        c.append("email_ids", {"email_id": email, "is_primary": 1})
+    if phone:
+        c.append("phone_nos", {"phone": phone, "is_primary_mobile_no": 1})
+    c.insert(ignore_permissions=True)
+    return c.name
+
+
+@frappe.whitelist(methods=["GET"])
+def ticket_options():
+    """Values for the Create ticket form (Helpdesk's own lists)."""
+    hd = _hd()
+    types = frappe.get_all("HD Ticket Type", pluck="name") if frappe.db.exists("DocType", "HD Ticket Type") else []
+    return {"priorities": hd.priorities(), "teams": hd.teams(), "ticket_types": types}
+
+
+@frappe.whitelist(methods=["POST"])
+def create_ticket(name: str, client_request_id: str, subject: str | None = None, priority: str | None = None,
+                  team: str | None = None, ticket_type: str | None = None, reply: str | None = None):
+    """Create a Helpdesk ticket from this chat (the transcript goes in the description, the chat is linked to it).
+    Optional first reply to the customer through Helpdesk's e-mail workflow. Retry-safe."""
+    doc = _conv(name, "write")
+    hd = _hd()
+    if doc.helpdesk_ticket:
+        return {"ticket": doc.helpdesk_ticket, "duplicate": True}
+
+    def run():
+        from thinknxg_support.integrations import conversations
+
+        if subject and subject.strip() and subject.strip() != doc.subject:
+            doc.db_set("subject", strip_html(subject).strip()[:140], update_modified=False)
+            doc.reload()
+        ticket = conversations.escalate_to_ticket(doc, actor="agent")
+        values = {k: v for k, v in (("priority", priority), ("agent_group", team), ("ticket_type", ticket_type)) if v}
+        t = frappe.get_doc("HD Ticket", ticket)
+        meta = t.meta
+        values = {k: v for k, v in values.items() if meta.has_field(k)}
+        if values:
+            t.update(values)
+            t.flags.ignore_permissions = True
+            t.save()
+        try:
+            hd.assign(ticket, frappe.session.user)
+        except Exception:
+            pass  # assignment is a convenience; the ticket exists
+        if reply and reply.strip():
+            hd.reply(ticket, _text_html(reply))
+        return {"ticket": str(ticket)}
+
+    return _once(client_request_id, "create_ticket", name, run)
+
+
+@frappe.whitelist(methods=["GET"])
+def saved_replies(q: str = "", ticket: str | None = None):
+    """Helpdesk saved replies this agent may use (Helpdesk permissions and scope: global, my teams, my own)."""
+    _hd()
+    dt = "HD Saved Reply" if frappe.db.exists("DocType", "HD Saved Reply") else (
+        "HD Canned Response" if frappe.db.exists("DocType", "HD Canned Response") else None)
+    if not dt:
+        return []
+    meta = frappe.get_meta(dt)
+    body = "message" if meta.has_field("message") else "content"
+    fields = ["name", "title", body, "owner"] + (["scope"] if meta.has_field("scope") else [])
+    q = strip_html(q or "").strip()[:80]
+    rows = frappe.get_list(dt, fields=fields, or_filters=[[dt, "title", "like", f"%{q}%"], [dt, body, "like", f"%{q}%"]] if q else None,
+                           order_by="title asc", limit_page_length=200)
+    user = frappe.session.user
+    my_teams = set()
+    if meta.has_field("scope"):
+        for child in ("HD Team Item", "HD Team Member"):
+            if frappe.db.exists("DocType", child):
+                my_teams = set(frappe.get_all(child, filters={"user": user, "parenttype": "HD Team"}, pluck="parent"))
+                break
+    out = []
+    for r in rows:
+        scope = r.get("scope") or "Global"
+        if scope == "Personal" and r.owner != user:
+            continue
+        if scope == "Team" and frappe.db.exists("DocType", "HD Saved Reply Team"):
+            teams = set(frappe.get_all("HD Saved Reply Team", filters={"parent": r.name}, pluck="team"))
+            if teams and not teams & my_teams and not staff_auth.is_manager():
+                continue
+        out.append({"name": r.name, "title": r.title, "scope": scope, "preview": plain_text(r.get(body) or "")[:200]})
+    return out
+
+
+@frappe.whitelist(methods=["POST"])
+def saved_reply_render(name: str, ticket: str | None = None, conversation: str | None = None):
+    """A saved reply rendered the way Helpdesk renders it (ticket and agent fields filled in)."""
+    hd = _hd()
+    if ticket:
+        hd.get_ticket(ticket)
+        try:
+            from helpdesk.api.saved_replies import get_rendered_saved_reply
+
+            html = get_rendered_saved_reply(ticket, name).get("message") or ""
+            return {"html": html, "text": plain_text(html)}
+        except ImportError:
+            pass
+    dt = "HD Saved Reply" if frappe.db.exists("DocType", "HD Saved Reply") else "HD Canned Response"
+    r = frappe.get_doc(dt, name)
+    r.check_permission("read")
+    context = frappe.get_doc("User", frappe.session.user).as_dict()
+    if ticket:
+        context = {**frappe.get_doc("HD Ticket", ticket).as_dict(), **context}
+    elif conversation:
+        c = _conv(conversation)
+        context = {"subject": c.subject, "raised_by": c.get("guest_email"), "customer": c.customer, **context}
+    # templates are written by agents, as in Helpdesk
+    html = frappe.render_template(r.get("message") or r.get("content") or "", context)  # nosemgrep
+    return {"html": html, "text": plain_text(html)}
 
 
 @frappe.whitelist(methods=["POST"])

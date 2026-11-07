@@ -227,6 +227,93 @@ void main() {
       expect(server.conversations.first['assignee']['user'], 'agent2@example.com');
     });
 
+    testWidgets('link customer: suggested customer, visitor added as a contact', (tester) async {
+      final (_, server) = await signedIn(tester, const Size(1440, 900));
+      await tester.tap(find.byKey(const Key('conv-CONV-100')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('link-customer')));
+      await tester.pumpAndSettle();
+      expect(find.text('Matches the visitor · CUST-ASHA · asha@example.com'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('customer-CUST-ASHA')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('contact-new')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('link-customer-save')));
+      await tester.pumpAndSettle();
+      expect(server.linked['CONV-100'], {'customer': 'CUST-ASHA', 'contact': null, 'create_contact': 1});
+      expect(find.text('Asha Trading LLC'), findsWidgets);
+      expect(find.byKey(const Key('link-customer')), findsNothing);
+    });
+
+    testWidgets('create ticket from a chat with a saved reply, then the ticket opens', (tester) async {
+      final (_, server) = await signedIn(tester, const Size(1440, 900));
+      await tester.tap(find.byKey(const Key('conv-CONV-099')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('create-ticket')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('ticket-subject')), 'Invoice is wrong');
+      await tester.tap(find.byKey(const Key('ticket-saved-reply')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('canned-SR-1')));
+      await tester.pumpAndSettle();
+      expect(find.text('We have corrected your invoice'), findsWidgets);
+      await tester.tap(find.byKey(const Key('create-ticket-save')));
+      await tester.pumpAndSettle();
+      expect(server.createdTickets.single['subject'], 'Invoice is wrong');
+      expect(server.createdTickets.single['reply'], 'We have corrected your invoice');
+      expect(server.createdTickets.single['client_request_id'], isNotEmpty);
+      expect(find.textContaining('#77 Invoice is wrong'), findsWidgets); // the ticket view
+    });
+
+    testWidgets('ticket reply: insert a Helpdesk saved reply', (tester) async {
+      await signedIn(tester, const Size(1440, 900));
+      await tester.tap(find.text('Tickets'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('ticket-42')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('composer-canned')));
+      await tester.pumpAndSettle();
+      expect(find.text('Saved replies'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('canned-SR-1')));
+      await tester.pumpAndSettle();
+      expect(find.text('Ticket #42: we have corrected your invoice'), findsWidgets);
+    });
+
+    testWidgets('end chat asks: issue resolved? follow-up needed? (Yes/No, both required)', (tester) async {
+      final (_, server) = await signedIn(tester, const Size(1440, 900));
+      await tester.tap(find.byKey(const Key('conv-CONV-100')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('End chat'));
+      await tester.pumpAndSettle();
+      expect(find.text("Was the customer's issue resolved? *"), findsOneWidget);
+      expect(find.text('Does the customer need a follow-up? *'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'End chat'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Answer "Was the customer'), findsOneWidget); // required
+      await tester.tap(find.text("Was the customer's issue resolved? *"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Yes').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Does the customer need a follow-up? *'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('No').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'End chat'));
+      await tester.pumpAndSettle();
+      expect(server.closed['CONV-100'], {'1': 'Yes', '2': 'No'});
+    });
+
+    testWidgets('live chat messages ring while the agent is in another section', (tester) async {
+      final (_, server) = await signedIn(tester, const Size(1440, 900));
+      await tester.tap(find.text('Tickets'));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 6)); // cursor
+      server.message('CONV-097');
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pumpAndSettle();
+      expect(sink.played, ['Ping']);
+    });
+
     testWidgets('offline banner, then everything refreshes on reconnect', (tester) async {
       final (_, server) = await signedIn(tester, const Size(1440, 900));
       server.offline = true;

@@ -104,6 +104,29 @@ def ensure_feedback_defaults():
     ps.save()
 
 
+RESOLUTION_QUESTIONS = (("Issue Resolved", "Was the customer's issue resolved?"),
+                        ("Follow-up Needed", "Does the customer need a follow-up?"))
+
+
+def ensure_resolution_questions(ps) -> bool:
+    """End chat always asks (Yes/No, required): was the issue resolved, does the customer need a follow-up.
+    Existing questions with the same wording are reused; nothing else is changed."""
+    if not frappe.get_meta("Support Chat Closing Question").has_field("report_as"):
+        return False
+    changed = False
+    for key, text in RESOLUTION_QUESTIONS:
+        row = next((q for q in ps.wrap_up_questions if q.get("report_as") == key), None) or next(
+            (q for q in ps.wrap_up_questions if (q.question or "").strip().lower() == text.lower()), None)
+        if row is None:
+            ps.append("wrap_up_questions", {"question": text, "answer_type": "Yes/No", "required": 1, "enabled": 1,
+                                            "report_as": key})
+            changed = True
+        elif (row.get("report_as"), row.answer_type, int(row.required or 0), int(row.enabled or 0)) != (key, "Yes/No", 1, 1):
+            row.update({"report_as": key, "answer_type": "Yes/No", "required": 1, "enabled": 1})
+            changed = True
+    return changed
+
+
 def ensure_agent_tool_defaults():
     """Alert rules per activity, chat closure reasons and wrap-up questions. Never overwrites existing values."""
     if frappe.db.exists("DocType", "Support Alert Settings"):
@@ -128,8 +151,10 @@ def ensure_agent_tool_defaults():
     if ps.meta.has_field("wrap_up_questions") and not ps.wrap_up_questions:
         for q, kind, opts, req in (("Was the customer's issue resolved?", "Yes/No", "", 1),
                                    ("Topic", "Choice", "Billing\nTechnical\nAccount and access\nOrders and delivery\nOther", 0),
-                                   ("Does the customer need a follow-up?", "Yes/No", "", 0)):
+                                   ("Does the customer need a follow-up?", "Yes/No", "", 1)):
             ps.append("wrap_up_questions", {"question": q, "answer_type": kind, "options": opts, "required": req, "enabled": 1})
+        changed = True
+    if ps.meta.has_field("wrap_up_questions") and ensure_resolution_questions(ps):
         changed = True
     if changed:
         ps.flags.ignore_permissions = True

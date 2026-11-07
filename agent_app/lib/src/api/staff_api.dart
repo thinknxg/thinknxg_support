@@ -159,6 +159,43 @@ class StaffApi {
     );
   }
 
+  Future<List<CustomerOption>> customerSearch(String q, {String? conversation}) async => [
+        for (final c in _list(await client.get('customer_search', {'q': q, 'conversation': conversation})))
+          CustomerOption.fromJson(_map(c)),
+      ];
+
+  Future<List<ContactOption>> customerContacts(String customer) async =>
+      [for (final c in _list(await client.get('customer_contacts', {'customer': customer}))) ContactOption.fromJson(_map(c))];
+
+  Future<ConversationSummary> linkCustomer(String id, String customer, {String? contact, bool createContact = false}) async =>
+      ConversationSummary.fromJson(_map(await client.post('link_customer', {
+        'name': id,
+        'customer': customer,
+        'contact': contact,
+        'create_contact': createContact ? 1 : 0,
+      })));
+
+  Future<TicketOptions> ticketOptions() async => TicketOptions.fromJson(_map(await client.get('ticket_options')));
+
+  /// Creates a Helpdesk ticket from the chat (retry-safe with [clientRequestId]); returns the ticket id.
+  Future<String> createTicket(String id,
+          {required String clientRequestId, String? subject, String? priority, String? team, String? ticketType, String? reply}) async =>
+      '${_map(await client.post('create_ticket', {
+        'name': id,
+        'client_request_id': clientRequestId,
+        'subject': subject,
+        'priority': priority,
+        'team': team,
+        'ticket_type': ticketType,
+        'reply': reply,
+      }))['ticket']}';
+
+  Future<List<CannedResponse>> savedReplies({String q = '', String? ticket}) async =>
+      [for (final r in _list(await client.get('saved_replies', {'q': q, 'ticket': ticket}))) CannedResponse.savedReply(_map(r))];
+
+  Future<String> savedReplyRender(String name, {String? ticket, String? conversation}) async =>
+      '${_map(await client.post('saved_reply_render', {'name': name, 'ticket': ticket, 'conversation': conversation}))['text'] ?? ''}';
+
   Future<String> sendTestAlert() async => '${_map(await client.post('send_test_alert', {}))['message'] ?? ''}';
 
   Future<List<String>> acknowledgeAlerts(List<String> ids) async =>
