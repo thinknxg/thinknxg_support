@@ -180,6 +180,9 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final a = d.actions;
     final mine = d.assignee?.user == me;
+    // phones: secondary actions live in the menu; while typing, only the title row stays so the composer fits
+    final compact = MediaQuery.sizeOf(context).width < wideBreakpoint;
+    final typing = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Material(
       color: Theme.of(context).colorScheme.surfaceContainerLow,
       child: Padding(
@@ -209,7 +212,8 @@ class _Header extends StatelessWidget {
               ],
             ),
           ]),
-          const SizedBox(height: 6),
+          if (!(compact && typing)) const SizedBox(height: 6),
+          if (!(compact && typing))
           Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
             StatusPill(conversationStatusLabel(d), color: conversationStatusColor(context, d)),
             if (c.live.customerTyping)
@@ -235,7 +239,7 @@ class _Header extends StatelessWidget {
                 icon: const Icon(Icons.pan_tool_alt_outlined, size: 18),
                 label: Text(d.assignee == null ? 'Claim' : 'Claim from ${d.assignee!.name}'),
               ),
-            if (a.linkCustomer && d.customerName == null)
+            if (!compact && a.linkCustomer && d.customerName == null)
               OutlinedButton.icon(
                 key: const Key('link-customer'),
                 onPressed: c.busy ? null : () => _menu(context, 'link'),
@@ -244,7 +248,7 @@ class _Header extends StatelessWidget {
               ),
             if (d.customerName != null)
               Chip(avatar: const Icon(Icons.business, size: 16), label: Text(d.customerName!)),
-            if (a.createTicket)
+            if (!compact && a.createTicket)
               OutlinedButton.icon(
                 key: const Key('create-ticket'),
                 onPressed: c.busy ? null : () => _menu(context, 'create_ticket'),
