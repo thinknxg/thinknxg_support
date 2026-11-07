@@ -644,17 +644,33 @@ class AlertsController extends ChangeNotifier with _Polling {
     }
   }
 
+  double? _cursor;
+
   Future<void> refresh() async {
     try {
-      items = await api.alerts();
+      final f = await api.alertFeed(since: _cursor);
+      final first = _cursor == null;
+      _cursor = f.cursor ?? _cursor;
+      items = f.items;
       error = null;
       await center?.update(items);
+      if (!first) await center?.events(f.events);
     } on SessionExpired {
       onExpired();
     } on ApiException catch (e) {
       error = e.message;
     }
     safeNotify();
+  }
+
+  /// Play this PC's alert sound now, then ask the server for a real test alert (arrives on the next poll).
+  Future<String> test() async {
+    await center?.testSound();
+    try {
+      return await api.sendTestAlert();
+    } on ApiException catch (e) {
+      return e.message;
+    }
   }
 
   Future<void> acknowledge(List<String> ids) async {

@@ -19,6 +19,17 @@ class FakeServer {
   bool offline = false; // no answer at all
   final Map<String, List<int>> files = {}; // message id -> bytes
   final List<Map<String, dynamic>> alertItems = [];
+  final List<Map<String, dynamic>> feed = []; // unstored alerts with 'seq'
+
+  void message(String conv) => feed.add({
+        'id': 'e:msg:$conv:${feed.length}',
+        'kind': 'Chat Message',
+        'title': 'New message',
+        'body': '',
+        'reference_doctype': 'Support Conversation Link',
+        'reference_name': conv,
+        'seq': 2.0 + feed.length,
+      });
   final List<String> acknowledged = [];
   int typingCalls = 0;
   int heartbeats = 0;
@@ -249,7 +260,15 @@ class FakeServer {
         ];
         return _ok(tickets[b['name']]);
       case 'alerts':
-        return _ok({'items': alertItems});
+        final since = double.tryParse(q['since'] ?? '');
+        final cursor = feed.isEmpty ? 1.0 : feed.map((e) => e['seq'] as double).reduce((a, b) => a > b ? a : b);
+        return _ok({
+          'items': alertItems,
+          'events': since == null ? [] : feed.where((e) => (e['seq'] as double) > since).toList(),
+          'cursor': cursor,
+        });
+      case 'send_test_alert':
+        return _ok({'message': 'Test alert sent.'});
       case 'acknowledge_alerts':
         final ids = [for (final i in b['ids'] as List) '$i'];
         acknowledged.addAll(ids);

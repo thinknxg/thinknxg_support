@@ -251,6 +251,23 @@ void main() {
       expect(find.text('Reply to customer'), findsOneWidget);
     });
 
+    testWidgets('new-message alerts (not stored on the server) ring once; Test sound plays', (tester) async {
+      final (_, server) = await signedIn(tester, const Size(1440, 900));
+      await tester.pump(const Duration(seconds: 16)); // a poll establishes the cursor
+      server.message('CONV-100');
+      await tester.pump(const Duration(seconds: 16));
+      await tester.pumpAndSettle();
+      expect(sink.played, ['Ping']);
+      await tester.pump(const Duration(seconds: 16));
+      expect(sink.played, ['Ping'], reason: 'each event once');
+      await tester.tap(find.text('Alerts'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('test-sound')));
+      await tester.pumpAndSettle();
+      expect(sink.played.last, 'Ring');
+      expect(find.text('Test alert sent.'), findsOneWidget);
+    });
+
     testWidgets('alerts ring in the app and acknowledging clears them on the server', (tester) async {
       final (_, server) = await signedIn(tester, const Size(1440, 900));
       server.alertItems.add({

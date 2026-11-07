@@ -16,6 +16,23 @@ class AlertsView extends StatelessWidget {
           final c = controller;
           return Column(children: [
             if (c.error != null) ErrorBanner(c.error!, onRetry: c.refresh),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                child: OutlinedButton.icon(
+                  key: const Key('test-sound'),
+                  icon: const Icon(Icons.volume_up_outlined),
+                  label: const Text('Test sound'),
+                  onPressed: () async {
+                    final msg = await c.test();
+                    if (context.mounted && msg.isNotEmpty) {
+                      ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(msg)));
+                    }
+                  },
+                ),
+              ),
+            ),
             if (c.items.isNotEmpty)
               Align(
                 alignment: Alignment.centerRight,

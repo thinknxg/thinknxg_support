@@ -118,9 +118,52 @@ def raise_alert(kind: str, users, title: str, body: str = "", *, reference_docty
             payload["id"] = doc.name
         else:
             payload["id"] = f"e:{group_key or kind}:{frappe.generate_hash(length=8)}"
+            _feed(u, payload)
         frappe.publish_realtime(EVENT, payload, user=u, after_commit=True)
     if not once:
         _push(users, kind, reference_doctype, reference_name)
+
+
+FEED_KEEP_SECONDS = 600
+
+
+def _feed(user: str, payload: dict):
+    """Alerts that are not stored (new messages, the assistant's new chats, positive feedback) reach the web console
+    as live events only. The Agent apps poll, so keep the last few minutes of them per agent (Redis, short-lived)."""
+    import time
+
+    item = json.dumps({**payload, "seq": time.time()}, default=str)
+
+    def write():
+        try:
+            key = f"thinknxg_support:alertfeed:{user}"
+            frappe.cache.rpush(key, item)
+            frappe.cache.ltrim(key, -50, -1)
+            frappe.cache.expire_key(key, FEED_KEEP_SECONDS)
+        except Exception:
+            frappe.log_error(title="thinkNXG Support: alert feed write failed")
+
+    if getattr(frappe.db, "after_commit", None) is not None and not frappe.flags.in_test:
+        frappe.db.after_commit.add(write)  # no sound for a message whose transaction is rolled back
+    else:
+        write()
+
+
+def recent_events(user: str, since: float | None) -> tuple[list[dict], float]:
+    """Unstored alerts for this agent newer than `since`, and the cursor for the next poll. The first poll
+    (since=None) only returns the cursor, so opening the app does not replay old sounds."""
+    import time
+
+    rows = []
+    for raw in frappe.cache.lrange(f"thinknxg_support:alertfeed:{user}", 0, -1) or []:
+        try:
+            rows.append(json.loads(raw.decode() if isinstance(raw, bytes) else raw))
+        except Exception:
+            continue
+    top = max([r.get("seq", 0) for r in rows] + [since or 0])
+    if since is None:
+        return [], top or time.time()
+    return [r for r in rows if r.get("seq", 0) > since], top
 
 
 def _push(users, kind, reference_doctype, reference_name):

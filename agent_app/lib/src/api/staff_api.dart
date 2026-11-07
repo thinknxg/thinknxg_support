@@ -146,8 +146,20 @@ class StaffApi {
       Ticket.fromJson(_map(await client.post('ticket_assign', {'name': id, 'agent': agent, 'expected_assignees': expectedAssignees})));
 
   // ---------------------------------------------------------------- alerts, links, devices
-  Future<List<AgentAlert>> alerts() async =>
-      [for (final a in _list(_map(await client.get('alerts'))['items'])) AgentAlert.fromJson(_map(a))];
+  Future<List<AgentAlert>> alerts() async => (await alertFeed()).items;
+
+  /// Open alerts, plus alerts that are not stored (new messages …) since [since] (the previous poll's cursor).
+  Future<({List<AgentAlert> items, List<AgentAlert> events, double? cursor})> alertFeed({double? since}) async {
+    final r = _map(await client.get('alerts', {'since': since?.toString()}));
+    final c = r['cursor'];
+    return (
+      items: [for (final a in _list(r['items'])) AgentAlert.fromJson(_map(a))],
+      events: [for (final a in _list(r['events'])) AgentAlert.fromJson(_map(a))],
+      cursor: c is num ? c.toDouble() : double.tryParse('${c ?? ''}'),
+    );
+  }
+
+  Future<String> sendTestAlert() async => '${_map(await client.post('send_test_alert', {}))['message'] ?? ''}';
 
   Future<List<String>> acknowledgeAlerts(List<String> ids) async =>
       [for (final i in _list(_map(await client.post('acknowledge_alerts', {'ids': ids}))['acknowledged'])) '$i'];

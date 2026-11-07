@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../platform/crash_log.dart';
 import '../platform/services.dart';
 import 'alert_center.dart';
 import 'sounds.dart';
@@ -48,8 +49,8 @@ class DeviceAlertSink implements AlertSink {
       await _notifications
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
           ?.requestNotificationsPermission();
-    } catch (e) {
-      debugPrint('notifications unavailable: $e');
+    } catch (e, st) {
+      CrashLog.write('notifications unavailable', e, st);
     }
   }
 
@@ -68,8 +69,8 @@ class DeviceAlertSink implements AlertSink {
     try {
       await _player.stop();
       await _player.play(DeviceFileSource(await _file(sound, volume)));
-    } catch (e) {
-      debugPrint('alert sound failed: $e');
+    } catch (e, st) {
+      CrashLog.write('alert sound failed ($sound)', e, st);
     }
   }
 

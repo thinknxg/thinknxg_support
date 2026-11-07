@@ -90,6 +90,24 @@ class AlertCenter extends ChangeNotifier {
     }
   }
 
+  /// Alerts that are not stored (new chat messages, customer replies, positive feedback): one sound each.
+  Future<void> events(List<AgentAlert> list) async {
+    for (final a in list) {
+      if (_known.contains(a.id)) continue;
+      _known.add(a.id);
+      final rule = config.rules[a.kind];
+      if (rule != null && !rule.enabled) continue;
+      await _ring(a, rule);
+    }
+  }
+
+  /// "Test sound": the New Chat sound (or Chime) at the agent's volume, ignoring mute so the speaker can be checked.
+  Future<void> testSound() async {
+    final rule = config.rules['New Chat'];
+    final sound = rule == null || rule.sound == 'None' ? 'Chime' : rule.sound;
+    await sink.play(sound, ((rule?.volume ?? 80) / 100).clamp(0.2, 1.0));
+  }
+
   /// Repeats for alerts that ring until acknowledged (every N seconds, up to the rule's limit or 5 minutes).
   Future<void> tick() async {
     final now = clock();

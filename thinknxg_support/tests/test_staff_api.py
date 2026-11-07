@@ -180,13 +180,21 @@ class TestStaffApi(BaseTestCase):
         from thinknxg_support.integrations import staff_auth
 
         as_user("Administrator")
+        # a site whose settings were never saved: the sign-in address fields are empty
+        frappe.db.set_single_value("Support Agent App Settings", {"desktop_redirect_uri": "", "mobile_redirect_uri": ""})
+        frappe.clear_document_cache("Support Agent App Settings", "Support Agent App Settings")
+        self.assertIn("http://127.0.0.1:43823/callback", staff_auth.redirect_uris())
         client_id = staff_auth.ensure_oauth_client(force=True)["client_id"]
+        self.assertEqual(frappe.db.get_single_value("Support Agent App Settings", "desktop_redirect_uri"),
+                         "http://127.0.0.1:43823/callback")
         v = OAuthWebRequestValidator()
         for uri in staff_auth.redirect_uris():
             self.assertTrue(v.validate_redirect_uri(client_id, uri, None), uri)
         self.assertFalse(v.validate_redirect_uri(client_id, "http://127.0.0.1:9999/evil", None))
         cfg = v1.auth_config()
         self.assertEqual(cfg["client_id"], client_id)
+        # what the app checks is exactly what Frappe accepts
+        self.assertEqual(set(cfg["redirect_uris"]), {"http://127.0.0.1:43823/callback", "com.thinknxg.agent://oauth2redirect"})
 
     # ------------------------------------------------------------------ increment 2: workspace
     def test_canned_response_placeholders_are_filled(self):
@@ -280,6 +288,25 @@ class TestStaffApi(BaseTestCase):
         self.assertEqual(frappe.db.get_value("Support Agent Device", {"user": self.a1}, "enabled"), 0)
         s.push_enabled = 0
         s.save()
+
+    def test_unstored_alerts_reach_the_apps(self):
+        from thinknxg_support.integrations import alerts
+
+        r, name = self._chat()
+        as_user(self.a1)
+        first = v1.alerts()
+        self.assertEqual(first["events"], [])  # opening the app does not replay sounds
+        as_user("Administrator")
+        rules = {"Chat Message": {**alerts.DEFAULTS["Chat Message"], "enabled": 1}}
+        with patch.object(alerts, "rules", return_value=rules):
+            alerts.raise_alert("Chat Message", [self.a1], "New message", reference_doctype=CONV, reference_name=name,
+                               group_key=f"msg:{name}")
+        as_user(self.a1)
+        nxt = v1.alerts(since=first["cursor"])
+        self.assertEqual([e["kind"] for e in nxt["events"]], ["Chat Message"])
+        self.assertEqual(v1.alerts(since=nxt["cursor"])["events"], [])  # each event once
+        as_user(self.a2)
+        self.assertFalse([e for e in v1.alerts(since=0)["events"] if e["title"] == "New message"])  # only for a1
 
     def test_alerts_trigger_a_push(self):
         from thinknxg_support.integrations import alerts, push

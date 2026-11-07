@@ -192,6 +192,12 @@ class ApiClient {
 
   /// Frappe puts user-facing messages in `_server_messages` (JSON list of JSON objects) or `exception`.
   static String? errorMessage(Map<String, dynamic> j) {
+    // The app is newer than the site: name the fix instead of showing Frappe's internal message.
+    final raw = '${j['exception'] ?? ''} ${j['_server_messages'] ?? ''} ${j['exc'] ?? ''}';
+    if (raw.contains('Failed to get method') || raw.contains('has no attribute')) {
+      return 'This needs a newer thinkNXG Support on the site. Ask your administrator to update it '
+          '(bench update, then bench restart).';
+    }
     if (j['error_message'] is String && (j['error_message'] as String).isNotEmpty) return j['error_message'];
     final sm = j['_server_messages'];
     if (sm is String) {
