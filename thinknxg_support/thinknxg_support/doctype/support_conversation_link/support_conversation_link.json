@@ -52,6 +52,8 @@
   "closed_on",
   "column_break_wrap",
   "closure_notes",
+  "issue_resolved",
+  "needs_follow_up",
   "wrap_up_answers",
   "feedback",
   "survey_token_hash",
@@ -404,12 +406,30 @@
    "idx": 45
   },
   {
+   "fieldname": "issue_resolved",
+   "fieldtype": "Select",
+   "label": "Issue Resolved",
+   "options": "\nYes\nNo",
+   "read_only": 1,
+   "in_standard_filter": 1,
+   "idx": 46
+  },
+  {
+   "fieldname": "needs_follow_up",
+   "fieldtype": "Select",
+   "label": "Needs Follow-up",
+   "options": "\nYes\nNo",
+   "read_only": 1,
+   "in_standard_filter": 1,
+   "idx": 47
+  },
+  {
    "fieldname": "wrap_up_answers",
    "fieldtype": "Table",
    "label": "Wrap Up Answers",
    "options": "Support Chat Closing Answer",
    "read_only": 1,
-   "idx": 46
+   "idx": 48
   },
   {
    "fieldname": "feedback",
@@ -417,7 +437,7 @@
    "label": "Customer Feedback",
    "options": "Support Chat Feedback",
    "read_only": 1,
-   "idx": 47
+   "idx": 49
   },
   {
    "fieldname": "survey_token_hash",
@@ -425,7 +445,7 @@
    "label": "Survey Token Hash",
    "read_only": 1,
    "hidden": 1,
-   "idx": 48
+   "idx": 50
   },
   {
    "fieldname": "survey_sent_on",
@@ -433,13 +453,13 @@
    "label": "Survey Sent On",
    "read_only": 1,
    "hidden": 1,
-   "idx": 49
+   "idx": 51
   },
   {
    "fieldname": "integration_section",
    "fieldtype": "Section Break",
    "label": "Integration",
-   "idx": 50
+   "idx": 52
   },
   {
    "fieldname": "external_provider",
@@ -447,59 +467,59 @@
    "label": "External Provider",
    "options": "Portal Native\nRaven",
    "default": "Portal Native",
-   "idx": 51
+   "idx": 53
   },
   {
    "fieldname": "external_conversation_id",
    "fieldtype": "Data",
    "label": "External Conversation Id",
    "read_only": 1,
-   "idx": 52
+   "idx": 54
   },
   {
    "fieldname": "last_activity_at",
    "fieldtype": "Datetime",
    "label": "Last Activity At",
    "read_only": 1,
-   "idx": 53
+   "idx": 55
   },
   {
    "fieldname": "last_message_reference",
    "fieldtype": "Data",
    "label": "Last Message Reference",
    "read_only": 1,
-   "idx": 54
+   "idx": 56
   },
   {
    "fieldname": "column_break_2",
    "fieldtype": "Column Break",
-   "idx": 55
+   "idx": 57
   },
   {
    "fieldname": "unread_customer",
    "fieldtype": "Int",
    "label": "Unread Customer",
    "read_only": 1,
-   "idx": 56
+   "idx": 58
   },
   {
    "fieldname": "unread_agent",
    "fieldtype": "Int",
    "label": "Unread Agent",
    "read_only": 1,
-   "idx": 57
+   "idx": 59
   },
   {
    "fieldname": "messages_section",
    "fieldtype": "Section Break",
    "label": "Messages",
-   "idx": 58
+   "idx": 60
   },
   {
    "fieldname": "messages_html",
    "fieldtype": "HTML",
    "label": "Messages Html",
-   "idx": 59
+   "idx": 61
   }
  ],
  "index_web_pages_for_search": 0,

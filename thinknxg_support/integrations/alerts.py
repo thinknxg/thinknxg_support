@@ -372,7 +372,13 @@ def on_customer_message(conv, first: bool = False):
     chat = conv.get("channel") in ("Live Chat", "WhatsApp")
     kind = "Chat Message" if chat else "Conversation Message"
     users = [conv.assigned_agent] if conv.get("assigned_agent") else queue_members(conv.get("queue"))
-    if not users and not chat:
+    if not users and chat and not conv.get("queue"):
+        # no queue (sites without queues, chats not routed yet): the channel's queue, else every agent
+        from thinknxg_support.integrations import routing
+
+        q = routing.pick_queue(conv.get("channel"))
+        users = queue_members(q.name) if q else []
+    if not users:
         users = all_agents()
     raise_alert(kind, users, (_("New message from {0}") if chat else _("Customer replied: {0}")).format(_chat_label(conv)),
                 _last_inbound(conv.name), reference_doctype=CONV, reference_name=conv.name,

@@ -4,6 +4,7 @@ import '../api/api_client.dart';
 import '../api/models.dart';
 import '../platform/files.dart';
 import '../state/controllers.dart';
+import 'chat_actions.dart';
 import 'common.dart';
 import 'composer.dart';
 import 'pickers.dart';
@@ -198,6 +199,9 @@ class _Header extends StatelessWidget {
               onSelected: (v) => _menu(context, v),
               itemBuilder: (_) => [
                 if (a.transfer) const PopupMenuItem(value: 'transfer', child: Text('Transfer…')),
+                if (a.linkCustomer)
+                  PopupMenuItem(value: 'link', child: Text(d.customerName == null ? 'Link customer…' : 'Change linked customer…')),
+                if (a.createTicket) const PopupMenuItem(value: 'create_ticket', child: Text('Create ticket…')),
                 if (a.takeOver) const PopupMenuItem(value: 'take_over', child: Text('Take over from assistant')),
                 if (a.returnToAssistant) const PopupMenuItem(value: 'return', child: Text('Return to assistant')),
                 if (d.ticket != null && onOpenTicket != null) PopupMenuItem(value: 'ticket', child: Text('Open ticket #${d.ticket}')),
@@ -231,6 +235,22 @@ class _Header extends StatelessWidget {
                 icon: const Icon(Icons.pan_tool_alt_outlined, size: 18),
                 label: Text(d.assignee == null ? 'Claim' : 'Claim from ${d.assignee!.name}'),
               ),
+            if (a.linkCustomer && d.customerName == null)
+              OutlinedButton.icon(
+                key: const Key('link-customer'),
+                onPressed: c.busy ? null : () => _menu(context, 'link'),
+                icon: const Icon(Icons.person_search_outlined, size: 18),
+                label: const Text('Link customer'),
+              ),
+            if (d.customerName != null)
+              Chip(avatar: const Icon(Icons.business, size: 16), label: Text(d.customerName!)),
+            if (a.createTicket)
+              OutlinedButton.icon(
+                key: const Key('create-ticket'),
+                onPressed: c.busy ? null : () => _menu(context, 'create_ticket'),
+                icon: const Icon(Icons.confirmation_number_outlined, size: 18),
+                label: const Text('Create ticket'),
+              ),
             if (a.close)
               OutlinedButton.icon(
                 onPressed: c.busy ? null : () => _close(context),
@@ -253,6 +273,16 @@ class _Header extends StatelessWidget {
         onOpenTicket?.call(d.ticket!);
       case 'details':
         onDetails?.call();
+      case 'link':
+        if (await LinkCustomerDialog.show(context, c) == true && context.mounted) {
+          ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(content: Text('Customer linked.')));
+        }
+      case 'create_ticket':
+        final t = await CreateTicketDialog.show(context, c);
+        if (t != null && context.mounted) {
+          ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('Ticket #$t created.')));
+          onOpenTicket?.call(t);
+        }
       case 'transfer':
         final r = await TransferPicker.show(context, c.transferTargets);
         if (r != null) await c.transfer(user: r.user, queue: r.queue);
@@ -336,7 +366,9 @@ class _CloseDialogState extends State<_CloseDialog> {
   Widget _question(Map<String, dynamic> q) {
     final key = '${q['idx'] ?? q['question']}';
     final label = '${q['question'] ?? key}${q['required'] == 1 || q['required'] == true ? ' *' : ''}';
-    final options = [for (final o in (q['options'] as List? ?? const [])) '$o'];
+    var options = [for (final o in (q['options'] as List? ?? const [])) '$o'];
+    if (options.isEmpty && q['answer_type'] == 'Yes/No') options = const ['Yes', 'No'];
+    if (options.isEmpty && q['answer_type'] == 'Rating') options = const ['1', '2', '3', '4', '5'];
     if (options.isNotEmpty) {
       return DropdownButtonFormField<String>(
         initialValue: _answers[key] as String?,

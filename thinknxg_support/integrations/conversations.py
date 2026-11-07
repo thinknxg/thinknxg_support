@@ -332,9 +332,11 @@ def escalate_to_ticket(conv, actor: str = "customer", pu: PortalUser | None = No
         for r in rows
     )
     if conv.get("is_guest"):
-        raised_by = conv.guest_email
+        # a visitor linked to a customer contact: the contact's e-mail is as good as the one they typed
+        raised_by = conv.guest_email or (frappe.db.get_value("Contact", conv.contact, "email_id") if conv.contact else None)
         if not raised_by:
-            frappe.throw(_("Add the visitor's email or link the chat to a customer before creating a ticket."))
+            frappe.throw(_("Add the visitor's email or link the chat to a customer contact with an email before "
+                           "creating a ticket."))
     elif not conv.started_by and conv.contact:
         raised_by = frappe.db.get_value("Contact", conv.contact, "email_id")
         if not raised_by:

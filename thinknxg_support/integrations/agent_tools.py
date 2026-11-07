@@ -69,7 +69,10 @@ def closing_form():
     s = _settings()
     reasons = [r.strip() for r in (s.get("closure_reasons") or "").splitlines() if r.strip()]
     questions = [{"idx": q.idx, "question": q.question, "answer_type": q.answer_type, "required": cint(q.required),
-                  "options": [o.strip() for o in (q.options or "").splitlines() if o.strip()]}
+                  "report_as": q.get("report_as") or None,
+                  "options": (["Yes", "No"] if q.answer_type == "Yes/No" else
+                              [str(i) for i in range(1, 6)] if q.answer_type == "Rating" else
+                              [o.strip() for o in (q.options or "").splitlines() if o.strip()])}
                  for q in (s.get("wrap_up_questions") or []) if q.enabled]
     return {"reasons": reasons, "require_reason": cint(s.get("require_closure_reason")), "questions": questions,
             "closing_message": s.get("chat_closing_message") or ""}
@@ -89,16 +92,18 @@ def end_chat(name: str, reason: str | None = None, notes: str | None = None, ans
     if reason and form["reasons"] and reason not in form["reasons"]:
         frappe.throw(_("Unknown reason."))
     answers = frappe.parse_json(answers) if isinstance(answers, str) else (answers or {})
-    rows = []
+    rows, reported = [], {}
     for q in form["questions"]:
         a = answers.get(str(q["idx"])) if isinstance(answers, dict) else None
         a = strip_html(str(a)).strip()[:1000] if a not in (None, "") else ""
         if q["required"] and not a:
             frappe.throw(_("Answer: {0}").format(q["question"]))
-        if q["answer_type"] == "Choice" and a and q["options"] and a not in q["options"]:
+        if q["answer_type"] in ("Choice", "Yes/No", "Rating") and a and q["options"] and a not in q["options"]:
             frappe.throw(_("Pick one of the options for: {0}").format(q["question"]))
         if a:
             rows.append({"question": q["question"], "answer": a})
+            if q.get("report_as") and q["answer_type"] == "Yes/No":
+                reported[q["report_as"]] = a
     notes = strip_html(notes or "").strip()[:4000]
 
     from thinknxg_support.integrations import conversations, realtime, routing
@@ -124,6 +129,9 @@ def end_chat(name: str, reason: str | None = None, notes: str | None = None, ans
         conv.append("wrap_up_answers", r)
     conv.closure_reason = reason or None
     conv.closure_notes = notes or None
+    if conv.meta.has_field("issue_resolved"):
+        conv.issue_resolved = reported.get("Issue Resolved") or None
+        conv.needs_follow_up = reported.get("Follow-up Needed") or None
     conv.closed_by = frappe.session.user
     conv.closed_on = now_datetime()
     was_open = conv.status != "Closed"

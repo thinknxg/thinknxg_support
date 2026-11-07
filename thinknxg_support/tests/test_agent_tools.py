@@ -107,11 +107,21 @@ class TestAgentTools(BaseTestCase):
             agent_tools.end_chat(conv.name, reason="", notes="x")  # reason required
         with self.assertRaises(frappe.ValidationError):
             agent_tools.end_chat(conv.name, reason="Resolved", answers={})  # required question unanswered
-        agent_tools.end_chat(conv.name, reason="Resolved", notes="Sent tracking link",
-                             answers={str(q_required["idx"]): "Yes"})
+        resolved = next(q for q in form["questions"] if q.get("report_as") == "Issue Resolved")
+        follow = next(q for q in form["questions"] if q.get("report_as") == "Follow-up Needed")
+        self.assertTrue(resolved["required"] and follow["required"])
+        self.assertEqual(resolved["options"], ["Yes", "No"])
+        with self.assertRaises(frappe.ValidationError):  # Yes/No only
+            agent_tools.end_chat(conv.name, reason="Resolved",
+                                 answers={str(q["idx"]): "Maybe" for q in form["questions"] if q["required"]})
+        answers = {str(q["idx"]): "Yes" for q in form["questions"] if q["required"]}
+        answers[str(follow["idx"])] = "No"
+        self.assertTrue(q_required)
+        agent_tools.end_chat(conv.name, reason="Resolved", notes="Sent tracking link", answers=answers)
         conv.reload()
         self.assertEqual((conv.status, conv.closure_reason, conv.closure_notes), ("Closed", "Resolved", "Sent tracking link"))
         self.assertEqual(conv.wrap_up_answers[0].answer, "Yes")
+        self.assertEqual((conv.issue_resolved, conv.needs_follow_up), ("Yes", "No"))
         notes = frappe.get_all("Support Portal Message", filters={"conversation": conv.name, "is_internal": 1}, pluck="content")
         self.assertTrue(any("Sent tracking link" in (n or "") for n in notes))
         as_user("Guest")

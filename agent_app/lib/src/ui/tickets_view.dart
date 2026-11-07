@@ -5,6 +5,7 @@ import '../state/controllers.dart';
 import 'common.dart';
 import 'composer.dart';
 import 'conversation_view.dart' show openDownload, pickInto;
+import 'pickers.dart';
 
 class TicketListView extends StatefulWidget {
   final TicketsController controller;
@@ -217,6 +218,11 @@ class TicketView extends StatelessWidget {
               onSend: c.send,
               onAttach: c.draft.mode == ComposerMode.reply ? () => pickInto(context, c.attach) : null,
               onRemoveFile: () => c.attach(null),
+              cannedTooltip: 'Saved replies (Ctrl+/)',
+              onCanned: () async {
+                final picked = await CannedPicker.show(context, () => c.api.savedReplies(ticket: t.id), title: 'Saved replies');
+                if (picked != null) await c.insertSavedReply(picked);
+              },
             ),
           ]);
         },

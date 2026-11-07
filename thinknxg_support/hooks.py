@@ -72,6 +72,13 @@ doc_events = {
     "Support Request": {
         "on_update": "thinknxg_support.integrations.escalations.on_support_request_update",
     },
+    # every Customer is also an HD Customer (Helpdesk), with its contacts
+    "Customer": {
+        "on_update": "thinknxg_support.integrations.helpdesk.on_customer_change",  # also runs on insert
+    },
+    "Contact": {
+        "on_update": "thinknxg_support.integrations.helpdesk.on_contact_change",
+    },
     # Raven (optional)
     "Raven Message": {
         "after_insert": "thinknxg_support.integrations.raven.on_raven_message",

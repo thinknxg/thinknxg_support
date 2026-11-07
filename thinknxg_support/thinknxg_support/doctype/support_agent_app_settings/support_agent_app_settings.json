@@ -90,7 +90,8 @@
    "fieldname": "alerts_poll_seconds",
    "fieldtype": "Int",
    "label": "Alerts (seconds)",
-   "default": "15",
+   "default": "5",
+   "description": "New chat messages ring within this time on the desktop and mobile apps",
    "idx": 10
   },
   {
