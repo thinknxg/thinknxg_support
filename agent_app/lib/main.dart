@@ -32,6 +32,13 @@ void main() {
     AppServices.startPush = PushService.start;
     AppServices.stopPush = PushService.stop;
     AppServices.pushToken = () => PushService.token;
+  AppServices.pushStatus = () => Platform.isWindows
+      ? 'Push notifications: not used on Windows (alerts come while the app is running)'
+      : !PushConfig.available
+          ? 'Push notifications: not set up in this app build (Firebase settings missing) — alerts only while the app is open'
+          : PushService.token == null
+              ? 'Push notifications: not registered yet (allow notifications, then reopen the app)'
+              : 'Push notifications: on for this device';
     final session = Session(store: SecureTokenStore(), oauth: OAuthService(browser: BrowserAuthenticator.forPlatform()));
     runApp(AgentApp(session: session));
     try {

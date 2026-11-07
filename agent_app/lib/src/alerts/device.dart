@@ -13,6 +13,9 @@ import '../platform/services.dart';
 import 'alert_center.dart';
 import 'sounds.dart';
 
+/// Android notification channel for alerts and pushes (the server sends the same id).
+const alertChannelId = 'support_alerts_v2';
+
 /// A link from a notification or push, waiting until the workspace is signed in and can check access.
 class PendingLink {
   static void fromPayload(String? payload) {
@@ -33,6 +36,15 @@ class DeviceAlertSink implements AlertSink {
     _ready = true;
     try {
       await _player.setReleaseMode(ReleaseMode.stop);
+      // Play on the notification volume (not media, which is often at zero), briefly ducking other audio.
+      await _player.setAudioContext(AudioContext(
+        android: const AudioContextAndroid(
+          contentType: AndroidContentType.sonification,
+          usageType: AndroidUsageType.notificationEvent,
+          audioFocus: AndroidAudioFocus.gainTransientMayDuck,
+        ),
+        iOS: AudioContextIOS(category: AVAudioSessionCategory.ambient),
+      ));
       await _notifications.initialize(
         const InitializationSettings(
           android: AndroidInitializationSettings('@mipmap/ic_launcher'),
@@ -46,9 +58,19 @@ class DeviceAlertSink implements AlertSink {
       );
       final launch = await _notifications.getNotificationAppLaunchDetails();
       if (launch?.didNotificationLaunchApp == true) PendingLink.fromPayload(launch!.notificationResponse?.payload);
-      await _notifications
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-          ?.requestNotificationsPermission();
+      final android = _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      await android?.requestNotificationsPermission();
+      // A channel's sound is fixed when it is created: 1.9.0 test builds made a silent one, so use a new channel
+      // (with the system notification sound) and remove the old one. Pushes from the server use the same id.
+      await android?.deleteNotificationChannel('support_alerts');
+      await android?.createNotificationChannel(const AndroidNotificationChannel(
+        alertChannelId,
+        'Support alerts',
+        description: 'New chats, messages, tickets and escalations',
+        importance: Importance.high,
+        playSound: true,
+        enableVibration: true,
+      ));
     } catch (e, st) {
       CrashLog.write('notifications unavailable', e, st);
     }
@@ -82,9 +104,9 @@ class DeviceAlertSink implements AlertSink {
         title,
         body,
         const NotificationDetails(
-          android: AndroidNotificationDetails('support_alerts', 'Support alerts',
-              importance: Importance.high, priority: Priority.high, playSound: false, visibility: NotificationVisibility.public),
-          iOS: DarwinNotificationDetails(presentSound: false),
+          android: AndroidNotificationDetails(alertChannelId, 'Support alerts',
+              importance: Importance.high, priority: Priority.high, playSound: true, visibility: NotificationVisibility.public),
+          iOS: DarwinNotificationDetails(presentSound: true),
           windows: WindowsNotificationDetails(),
         ),
         payload: payload,

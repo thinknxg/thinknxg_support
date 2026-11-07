@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api/models.dart';
 import '../state/controllers.dart';
+import '../platform/services.dart';
 import 'common.dart';
 
 class AlertsView extends StatelessWidget {
@@ -32,6 +33,10 @@ class AlertsView extends StatelessWidget {
                   },
                 ),
               ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+              child: Text(AppServices.pushStatus(), key: const Key('push-status'), style: Theme.of(context).textTheme.bodySmall),
             ),
             if (c.items.isNotEmpty)
               Align(

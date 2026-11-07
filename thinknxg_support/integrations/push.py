@@ -71,7 +71,8 @@ def message_for(token: str, data: dict, platform: str) -> dict:
     """The FCM message: generic notification text, routing data only (strings), high priority for chats."""
     payload = {k: str(v) for k, v in (data or {}).items() if v is not None and k in ("doctype", "name", "kind")}
     msg = {"token": token, "notification": {"title": GENERIC_TITLE, "body": GENERIC_BODY}, "data": payload,
-           "android": {"priority": "high", "notification": {"channel_id": "support_alerts", "tag": payload.get("name") or "support"}},
+           "android": {"priority": "high", "notification": {"channel_id": "support_alerts_v2", "sound": "default",
+                                                            "tag": payload.get("name") or "support"}},
            "apns": {"headers": {"apns-priority": "10"},
                     "payload": {"aps": {"sound": "default", "thread-id": payload.get("name") or "support"}}}}
     if platform == "Windows":
