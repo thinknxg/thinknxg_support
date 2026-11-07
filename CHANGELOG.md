@@ -20,6 +20,14 @@
   server re-checks access, dead device tokens switched off; *Send Test Push to Me* in Support Agent App Settings
 * Packaging: Windows installer (Inno Setup, signed when a certificate is configured), Android APK + App Bundle,
   signed iOS build uploaded to TestFlight when Apple signing is configured
+* Agents (console and apps): **Create ticket** from a chat (priority, team, type, optional first reply with a
+  Helpdesk saved reply), **Link customer** (suggested from the visitor's e-mail/phone, add the visitor as a contact),
+  **HD Saved Reply** picker in ticket replies
+* End chat always asks *Was the customer's issue resolved?* and *Does the customer need a follow-up?* (Yes/No,
+  required), also stored on the conversation (*Issue Resolved*, *Needs Follow-up* filters)
+* Fix: customers are registered as **HD Customers** (with their contacts) when created or changed, not only when
+  they raise a ticket; existing support customers are backfilled
+* Fix: live chat messages in chats without a queue now alert agents (they reached nobody); apps check every 5 s
 * CI: Flutter analyse / test / Windows, Android and iOS builds; backend tests on a Frappe v16 bench with Helpdesk
 
 ## 1.8.0 — 2026-11-06
