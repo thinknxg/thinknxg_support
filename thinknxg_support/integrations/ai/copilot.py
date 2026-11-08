@@ -163,3 +163,5 @@ def handoff_summary(conversation: str):
         auto_note(conv)
     except (common.Unavailable, frappe.ValidationError):
         pass
+    except Exception:  # a summary must never get in the way of the handoff itself
+        frappe.log_error(title="thinkNXG Support: handoff summary failed")

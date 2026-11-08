@@ -59,14 +59,16 @@ def call(kind: str, system: str, user: str, conversation: str | None = None, max
         providers.log_usage(kind=kind, status="Error", conversation=conversation, error=str(e))
         raise Unavailable(str(e)) from e
     providers.log_usage(kind=kind, result=r, conversation=conversation)
-    return (r.get("text") or "").strip()
+    text = r.get("text")
+    return text.strip() if isinstance(text, str) else ""
 
 
 def parse_json(text: str):
     """The first JSON object or array in a model reply (models sometimes wrap it in prose or fences)."""
     text = (text or "").strip()
     text = re.sub(r"^```(?:json)?|```$", "", text, flags=re.M).strip()
-    for opener, closer in (("{", "}"), ("[", "]")):
+    pairs = sorted((("{", "}"), ("[", "]")), key=lambda p: (text.find(p[0]) == -1, text.find(p[0])))
+    for opener, closer in pairs:  # whichever comes first: '[{...}]' is an array, not its first object
         start, end = text.find(opener), text.rfind(closer)
         if start != -1 and end > start:
             try:
