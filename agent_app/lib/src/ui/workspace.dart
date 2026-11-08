@@ -180,7 +180,8 @@ class WorkspaceState extends State<Workspace> {
               onOpenTicket: openTicket,
               onOpenConversation: openConversation,
               copilot: me.can('copilot'),
-              messaging: me.messaging),
+              messaging: me.messaging,
+              leads: me.can('leads')),
           'Conversation');
     }
   }
@@ -273,6 +274,7 @@ class WorkspaceState extends State<Workspace> {
           showDetailsPanel: extraWide,
           copilot: me.can('copilot'),
               messaging: me.messaging,
+              leads: me.can('leads'),
           composerFocus: composerFocus);
     }
     return const EmptyState(Icons.forum_outlined, 'Select a conversation or ticket.');

@@ -110,6 +110,7 @@ class FakeServer {
 
   int _changeSeq = 0;
   String agentStatus = 'Available';
+  final List<Map<String, dynamic>> leadCalls = [];
   final List<Object?> heartbeatActive = [];
   final List<Map<String, dynamic>> messageCalls = [];
 
@@ -204,7 +205,7 @@ class FakeServer {
           },
           'capabilities': {
             'conversations': true, 'helpdesk': true, 'live_chat': true, 'whatsapp': true, 'copilot': true,
-            'status': true, 'priority': true, 'tags': true,
+            'status': true, 'priority': true, 'tags': true, 'leads': true,
             'messaging': {'reactions': ['👍', '❤️', '🙏'], 'voice': true, 'max_voice_seconds': 120, 'edit': true},
           },
           'queues': [
@@ -491,6 +492,18 @@ class FakeServer {
         return _ok(_detail(b['name']));
       case 'tag_suggestions':
         return _ok(['refund', 'vip']);
+      case 'create_lead':
+        if (b['email'] == null && b['phone'] == null) return _err(417, 'A lead needs an e-mail address or a phone number.');
+        leadCalls.add(Map<String, dynamic>.from(b));
+        _conv(b['name'])['lead'] = {
+          'doctype': 'CRM Lead', 'name': 'CRM-LEAD-0001', 'title': b['person_name'] ?? 'Lead', 'url': 'https://x/crm/leads/1',
+          'score': null, 'reasons': null,
+        };
+        return _ok(_detail(b['name']));
+      case 'collect_lead_details':
+        leadCalls.add({'collect': b['name']});
+        messages[b['name']]!.add(_msg('outbound', 'May I have your name?', author: 'Assistant'));
+        return _ok(_detail(b['name']));
       case 'register_device':
         return _ok({'device': 'D1'});
       case 'open_target':

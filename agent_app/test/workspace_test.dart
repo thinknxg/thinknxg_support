@@ -487,6 +487,39 @@ void main() {
       expect(find.byKey(const Key('tag-late delivery')), findsOneWidget);
     });
 
+    testWidgets('create a lead from the chat, or let the assistant ask for details', (tester) async {
+      final (_, server) = await signedIn(tester, const Size(1440, 900));
+      await tester.tap(find.byKey(const Key('conv-CONV-099')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('More actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('menu-collect')));
+      await tester.pumpAndSettle();
+      expect(server.leadCalls.last, {'collect': 'CONV-099'});
+      expect(find.text('May I have your name?'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('More actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('menu-lead')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('lead-email')), '');
+      await tester.enterText(find.byKey(const Key('lead-phone')), '');
+      await tester.tap(find.byKey(const Key('lead-save')));
+      await tester.pumpAndSettle();
+      expect(find.text('A lead needs an e-mail address or a phone number.'), findsOneWidget);
+      await tester.enterText(find.byKey(const Key('lead-name')), 'Maya Haddad');
+      await tester.enterText(find.byKey(const Key('lead-email')), 'maya@acme.example');
+      await tester.enterText(find.byKey(const Key('lead-company')), 'Acme');
+      await tester.tap(find.byKey(const Key('lead-save')));
+      await tester.pumpAndSettle();
+      expect(server.leadCalls.last, containsPair('email', 'maya@acme.example'));
+      expect(server.leadCalls.last, containsPair('company', 'Acme'));
+      expect(find.byKey(const Key('lead-pill')), findsOneWidget);
+      await tester.tap(find.byTooltip('More actions'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('menu-lead')), findsNothing); // one lead per chat
+    });
+
     testWidgets('edits by others appear on the next poll', (tester) async {
       final (_, server) = await signedIn(tester, const Size(1440, 900));
       final first = server.messages['CONV-100']!.first['id'] as String;

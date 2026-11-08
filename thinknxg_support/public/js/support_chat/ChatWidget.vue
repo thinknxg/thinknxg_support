@@ -1,6 +1,10 @@
 <template>
 	<div v-if="visible" class="txc-root" :class="rootClass" :dir="dir" :lang="lang"
 		:style="{ '--txc-brand': cfg.brand.color }">
+		<div v-if="teaser && !inline && !open" class="txc-teaser" role="status">
+			<button type="button" class="txc-teaser__text" @click="openTeaser">{{ teaser.message }}</button>
+			<button type="button" class="txc-teaser__x" :aria-label="t('close')" @click="dismissTeaser">×</button>
+		</div>
 		<button v-if="!inline && !open" type="button" class="txc-launcher" :aria-label="t('launcher')" @click="setOpen(true)">
 			<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor"
 				d="M12 3C6.5 3 2 6.9 2 11.7c0 2.3 1 4.4 2.8 6L4 21l3.9-1.6c1.2.4 2.6.7 4.1.7 5.5 0 10-3.9 10-8.7S17.5 3 12 3z" /></svg>
@@ -271,6 +275,50 @@ const blobs = reactive({});
 const recording = ref(null);
 const caps = computed(() => (cfg.value && cfg.value.messaging) || {});
 const reactionSet = computed(() => caps.value.reactions || []);
+// 1.14: a message on a matching page after some seconds (automation rule "Visitor on a Page")
+const teaser = ref(null);
+let teaserTimer = null;
+const TEASER_KEY = "thinknxg_support:teaser_dismissed";
+
+function globMatch(pattern, path) {
+	if (!pattern) return true;
+	const p = pattern.trim();
+	const re = new RegExp("^" + p.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".") + "$");
+	return re.test(path) || path.replace(/\/$/, "") === p.replace(/\/$/, "");
+}
+
+function startTeaser() {
+	const rules = (cfg.value && cfg.value.proactive) || [];
+	if (!rules.length || props.inline || open.value || hasChat.value) return;
+	let dismissed = [];
+	try {
+		dismissed = JSON.parse(window.sessionStorage.getItem(TEASER_KEY) || "[]");
+	} catch (e) {
+		/* ignore */
+	}
+	const rule = rules.find((r) => !dismissed.includes(r.rule) && globMatch(r.pattern, window.location.pathname));
+	if (!rule) return;
+	teaserTimer = setTimeout(() => {
+		if (!open.value && !hasChat.value) teaser.value = rule;
+	}, (rule.seconds || 20) * 1000);
+}
+
+function dismissTeaser() {
+	if (!teaser.value) return;
+	try {
+		const list = JSON.parse(window.sessionStorage.getItem(TEASER_KEY) || "[]");
+		list.push(teaser.value.rule);
+		window.sessionStorage.setItem(TEASER_KEY, JSON.stringify(list));
+	} catch (e) {
+		/* ignore */
+	}
+	teaser.value = null;
+}
+
+function openTeaser() {
+	dismissTeaser();
+	setOpen(true);
+}
 const canUpload = computed(() => mode.value === "customer" || !!caps.value.uploads);
 const canVoice = computed(() => !!caps.value.voice && typeof window !== "undefined" && !!window.MediaRecorder
 	&& !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
@@ -788,6 +836,7 @@ async function init() {
 	if (open.value || props.inline) seenReplies = messages.value.filter((m) => !m.from_customer).length;
 	schedule();
 	scrollDown();
+	startTeaser();
 }
 
 watch(() => props.organization, (v, old) => {
@@ -811,6 +860,7 @@ onMounted(() => {
 });
 onBeforeUnmount(() => {
 	clearTimeout(timer);
+	clearTimeout(teaserTimer);
 	Object.values(blobs).forEach((u) => URL.revokeObjectURL(u));
 	if (recorder) stopRecording(false);
 	document.removeEventListener("visibilitychange", onVisible);

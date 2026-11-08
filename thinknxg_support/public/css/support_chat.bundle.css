@@ -238,3 +238,11 @@
 .txc-recording { display: flex; align-items: center; gap: 10px; padding: 8px 12px; font-size: 13px; }
 .txc-rec-dot { width: 10px; height: 10px; border-radius: 50%; background: #dc2626; animation: txc-blink 1s infinite; }
 @keyframes txc-blink { 50% { opacity: .3; } }
+
+/* 1.14: proactive message on a page */
+.txc-teaser { position: fixed; inset-inline-end: 20px; bottom: 84px; max-width: 280px; display: flex; gap: 6px; align-items: flex-start;
+	background: #fff; color: #0f172a; border-radius: 14px; padding: 10px 10px 10px 14px; box-shadow: 0 8px 30px rgba(15,23,42,.18);
+	z-index: 2147483000; animation: txc-pop .2s ease-out; }
+.txc-teaser__text { border: 0; background: none; text-align: start; font: inherit; font-size: 14px; cursor: pointer; padding: 0; color: inherit; }
+.txc-teaser__x { border: 0; background: none; cursor: pointer; font-size: 18px; line-height: 1; color: #64748b; }
+@keyframes txc-pop { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }

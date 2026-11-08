@@ -141,6 +141,18 @@ class StaffApi {
   Future<ConversationSummary> setTags(String id, {List<String> add = const [], List<String> remove = const []}) async =>
       ConversationSummary.fromJson(_map(await client.post('set_tags', {'name': id, 'add': add, 'remove': remove})));
 
+  Future<ConversationSummary> createLead(String id, {String? name, String? email, String? phone, String? company}) async =>
+      ConversationSummary.fromJson(_map(await client.post('create_lead', {
+        'name': id,
+        if (name != null && name.isNotEmpty) 'person_name': name,
+        if (email != null && email.isNotEmpty) 'email': email,
+        if (phone != null && phone.isNotEmpty) 'phone': phone,
+        if (company != null && company.isNotEmpty) 'company': company,
+      })));
+
+  Future<ConversationSummary> collectLeadDetails(String id) async =>
+      ConversationSummary.fromJson(_map(await client.post('collect_lead_details', {'name': id})));
+
   Future<List<String>> tagSuggestions() async => [for (final t in _list(await client.get('tag_suggestions'))) '$t'];
 
   Future<AlertConfig> alertConfig() async => AlertConfig.fromJson(_map(await client.get('alert_config')));

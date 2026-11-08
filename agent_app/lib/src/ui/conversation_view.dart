@@ -47,6 +47,7 @@ class ConversationView extends StatefulWidget {
   final FocusNode? composerFocus;
   final bool copilot;
   final MessagingCaps messaging;
+  final bool leads;
 
   const ConversationView({
     super.key,
@@ -58,6 +59,7 @@ class ConversationView extends StatefulWidget {
     this.composerFocus,
     this.copilot = false,
     this.messaging = const MessagingCaps(),
+    this.leads = false,
   });
 
   @override
@@ -103,6 +105,7 @@ class _ConversationViewState extends State<ConversationView> {
               d: d,
               c: c,
               me: widget.me,
+              leads: widget.leads,
               onOpenTicket: widget.onOpenTicket,
               onDetails: widget.showDetailsPanel
                   ? null
@@ -210,7 +213,8 @@ class _Header extends StatelessWidget {
   final String me;
   final void Function(String)? onOpenTicket;
   final VoidCallback? onDetails;
-  const _Header({required this.d, required this.c, required this.me, this.onOpenTicket, this.onDetails});
+  final bool leads;
+  const _Header({required this.d, required this.c, required this.me, this.onOpenTicket, this.onDetails, this.leads = false});
 
   @override
   Widget build(BuildContext context) {
@@ -247,6 +251,9 @@ class _Header extends StatelessWidget {
                 if (onDetails != null) const PopupMenuItem(value: 'details', child: Text('Details and history')),
                 if (!d.isClosed) const PopupMenuItem(key: Key('menu-priority'), value: 'priority', child: Text('Priority…')),
                 const PopupMenuItem(key: Key('menu-tags'), value: 'tags', child: Text('Tags…')),
+                if (leads && d.lead == null) const PopupMenuItem(key: Key('menu-lead'), value: 'lead', child: Text('Create lead…')),
+                if (leads && d.lead == null && !d.isClosed)
+                  const PopupMenuItem(key: Key('menu-collect'), value: 'collect', child: Text('Ask the visitor for their details')),
               ],
             ),
           ]),
@@ -259,6 +266,14 @@ class _Header extends StatelessWidget {
                   key: const Key('priority-pill'),
                   color: d.highPriority ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.outline),
             for (final t in d.tags) Chip(key: Key('tag-$t'), label: Text(t), visualDensity: VisualDensity.compact),
+            if (d.lead != null)
+              Tooltip(
+                message: [d.lead!.doctype, if (d.lead!.reasons != null) d.lead!.reasons!].join('\n'),
+                child: StatusPill(
+                    d.lead!.score == null ? 'Lead: ${d.lead!.title}' : 'Lead: ${d.lead!.title} · ${d.lead!.score}',
+                    key: const Key('lead-pill'),
+                    color: Theme.of(context).colorScheme.tertiary),
+              ),
             if (d.urgency == 'High') StatusPill('Urgent', color: Theme.of(context).colorScheme.error),
             if (d.sentiment != null)
               Tooltip(
@@ -364,6 +379,13 @@ class _Header extends StatelessWidget {
         if (p != null && p != d.priority) await c.setPriority(p);
       case 'tags':
         await _TagsDialog.show(context, c);
+      case 'lead':
+        final v = await _LeadDialog.show(context, d);
+        if (v != null && await c.createLead(name: v.$1, email: v.$2, phone: v.$3, company: v.$4) && context.mounted) {
+          ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(content: Text('Lead saved.')));
+        }
+      case 'collect':
+        await c.collectLeadDetails();
     }
   }
 
@@ -718,4 +740,74 @@ class _TagsDialogState extends State<_TagsDialog> {
       ],
     );
   }
+}
+
+
+/// 1.14: the lead's details, filled in from the chat; the server links an existing lead with the same e-mail or phone.
+class _LeadDialog extends StatefulWidget {
+  final ConversationSummary d;
+  const _LeadDialog(this.d);
+
+  static Future<(String, String, String, String)?> show(BuildContext context, ConversationSummary d) =>
+      showDialog<(String, String, String, String)>(context: context, builder: (_) => _LeadDialog(d));
+
+  @override
+  State<_LeadDialog> createState() => _LeadDialogState();
+}
+
+class _LeadDialogState extends State<_LeadDialog> {
+  late final _name = TextEditingController(text: widget.d.contactName ?? widget.d.displayName);
+  late final _email = TextEditingController(text: widget.d.contactEmail ?? '');
+  late final _phone = TextEditingController(text: widget.d.contactPhone ?? '');
+  late final _company = TextEditingController(text: widget.d.customerName ?? '');
+  String? _error;
+
+  @override
+  void dispose() {
+    for (final c in [_name, _email, _phone, _company]) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  void _save() {
+    final email = _email.text.trim();
+    final phone = _phone.text.trim();
+    if (email.isEmpty && phone.isEmpty) {
+      setState(() => _error = 'A lead needs an e-mail address or a phone number.');
+      return;
+    }
+    Navigator.pop(context, (_name.text.trim(), email, phone, _company.text.trim()));
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: const Text('Create lead'),
+        content: SizedBox(
+          width: 420,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(key: const Key('lead-name'), controller: _name, decoration: const InputDecoration(labelText: 'Name')),
+            TextField(
+                key: const Key('lead-email'),
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: 'E-mail')),
+            TextField(
+                key: const Key('lead-phone'),
+                controller: _phone,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: 'Phone')),
+            TextField(key: const Key('lead-company'), controller: _company, decoration: const InputDecoration(labelText: 'Company')),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              ),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(key: const Key('lead-save'), onPressed: _save, child: const Text('Create')),
+        ],
+      );
 }

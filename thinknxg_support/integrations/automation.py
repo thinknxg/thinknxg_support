@@ -94,12 +94,12 @@ def run(rule, conv, why: str = "") -> str:
         user = conv.get("closed_by") or conv.get("assigned_agent")
         if not user or user in ("Guest", "Administrator"):
             user = None
-        from frappe.desk.form.assign_to import add as assign
-
         if user:
-            assign({"assign_to": [user], "doctype": CONV, "name": conv.name, "date": add_days(nowdate(), cint(rule.task_days)),
-                    "description": (rule.message or _("Follow up with the customer from chat {0}.").format(conv.name)),
-                    "priority": "Medium", "notify": 1}, ignore_permissions=True)
+            frappe.get_doc({"doctype": "ToDo", "allocated_to": user, "reference_type": CONV, "reference_name": conv.name,
+                            "date": add_days(nowdate(), cint(rule.task_days)), "priority": "Medium", "status": "Open",
+                            "assigned_by": "Administrator",
+                            "description": rule.message or _("Follow up with the customer from chat {0}.").format(conv.name),
+                            }).insert(ignore_permissions=True)
             result = f"to-do for {user}"
         else:
             result = "no agent to give the to-do to"

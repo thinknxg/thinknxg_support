@@ -91,6 +91,8 @@ index on (conversation, client_message_id). Tickets: *Support Agent Request* log
 | `create_ticket` | POST | `name`, `client_request_id`, `subject`, `priority`, `team`, `ticket_type`, `reply` | `{ticket, duplicate}` — transcript in the description, chat linked, assigned to the agent, optional first reply by e-mail |
 | `saved_replies` | GET | `q`, `ticket` | Helpdesk saved replies this agent may use (scope: global, my teams, mine) |
 | `saved_reply_render` | POST | `name`, `ticket` \| `conversation` | `{text, html}` rendered like Helpdesk does |
+| `create_lead` | POST | `name`, `person_name`, `email`, `phone`, `company` | ConversationDetail with `lead{doctype, name, title, url, score, reasons}` · CRM Lead (thinkNXG CRM) or ERPNext Lead; an existing lead with the same e-mail or phone is linked |
+| `collect_lead_details` | POST | `name` | ConversationDetail · the assistant asks the visitor for name, e-mail, phone and company, then creates the lead |
 | `set_status` | POST | `status` Available\|Away\|Busy\|Offline, `note` | `{status, set_status, reason, note}` · only Available agents get new chats; `status` is Offline off shift and Away when idle |
 | `team_status` | GET | | every agent with `status`, `reason`, `online` |
 | `set_priority` | POST | `name`, `priority` Low\|Normal\|High\|Urgent | ConversationDetail |

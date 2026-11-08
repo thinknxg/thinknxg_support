@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.14.0 — increment 3 of 3, 2026-11-08
+* **Leads from chats**: in thinkNXG CRM (CRM Lead) when it is installed, otherwise ERPNext Lead (Support Portal
+  Settings > Leads; "Off" switches it off). From the web console, the apps, lead capture or automation rules. An
+  existing lead with the same e-mail or phone is linked, not duplicated. The chat and, later, its outcome appear on
+  the lead's timeline.
+* **Lead capture** in the chat: the assistant asks for name, e-mail, phone and company one question at a time
+  (chatbot rule action "Collect Details", automation rule, or an agent's "Collect details"); "cancel" stops it, and
+  agents who have taken the chat are never interrupted.
+* **AI lead score** (Support AI Settings > Score Leads, off by default): 0 to 100 with reasons, on the chat.
+* **Automation rules** (*Support Automation Rule*): a message on a page after N seconds (website chat), a quiet
+  customer (nudge, close, or notify / escalate), a chat closed needing follow-up (a to-do or an escalation), a new
+  chat outside chat hours (a message or lead capture instead of the offline message). Runs are logged
+  (*Support Automation Run*) and counted on the analytics page with leads from chats and conversions.
+* Staff API: `create_lead`, `collect_lead_details`; `lead` on conversations; `capabilities.leads`.
+
 ## 1.14.0 (in progress) — increment 2 of 3, 2026-11-08
 * **Agent status**: Available, Away, Busy or Offline, set in the web console and the apps. Only Available agents get
   new chats; Away and Busy agents keep theirs; Offline agents are also not rung for queue chats. Away also comes

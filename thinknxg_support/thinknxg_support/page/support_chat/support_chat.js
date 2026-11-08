@@ -375,6 +375,8 @@ class SupportChatConsole {
 						<select class="txk-priority input-xs" title="${__("Priority")}">${["Low", "Normal", "High", "Urgent"].map((p) => `<option value="${p}" ${(c.priority || "Normal") === p ? "selected" : ""}>${__("Priority")}: ${__(p)}</option>`).join("")}</select>
 						${(c.tags || []).map((t) => `<span class="txk-tag">${esc(t)} <a href="#" data-untag="${esc(t)}" title="${__("Remove tag")}">×</a></span>`).join(" ")}
 						<a href="#" class="txk-addtag">+ ${__("Tag")}</a>
+						${c.lead ? `<a href="${esc(c.lead.url)}" target="_blank" rel="noopener" class="txk-tag" title="${esc(c.lead.doctype)}">${__("Lead")}: ${esc(c.lead.title)}${c.lead_score != null && c.lead_score !== undefined && c.lead_score !== 0 ? ` · ${__("score")} ${c.lead_score}` : ""}</a>`
+							: c.leads_on ? `<a href="#" class="txk-lead">+ ${__("Lead")}</a> <a href="#" class="txk-collect" title="${__("The assistant asks the visitor for their name, e-mail, phone and company")}">${__("Collect details")}</a>` : ""}
 					</div></div>
 				<div class="btn-group">
 					${c.handling !== "Bot" && c.assigned_agent !== frappe.session.user ? `<button class="btn btn-default btn-xs" data-act="assign">${__("Assign to me")}</button>` : ""}
@@ -517,6 +519,25 @@ class SupportChatConsole {
 	// 1.14: priority and tags
 	bindOrganise(c) {
 		const reload = () => { this.loadThread(true); this.refresh(true); };
+		this.$main.find(".txk-lead").on("click", (e) => {
+			e.preventDefault();
+			frappe.call({ method: API + "lead_details", args: { name: c.name }, type: "GET" }).then((r) => {
+				const v = r.message || {};
+				frappe.prompt([
+					{ fieldname: "person_name", fieldtype: "Data", label: __("Name"), default: v.name },
+					{ fieldname: "email", fieldtype: "Data", options: "Email", label: __("E-mail"), default: v.email },
+					{ fieldname: "phone", fieldtype: "Data", label: __("Phone"), default: v.phone },
+					{ fieldname: "company", fieldtype: "Data", label: __("Company"), default: v.company },
+				], (vals) => frappe.call({ method: API + "create_lead", args: Object.assign({ name: c.name }, vals) }).then((res) => {
+					frappe.show_alert({ message: res.message.created ? __("Lead created") : __("Linked to the existing lead"), indicator: "green" });
+					reload();
+				}), __("Create lead"), __("Create"));
+			});
+		});
+		this.$main.find(".txk-collect").on("click", (e) => {
+			e.preventDefault();
+			frappe.call({ method: API + "collect_lead_details", args: { name: c.name } }).then(reload);
+		});
 		this.$main.find(".txk-priority").on("change", (e) =>
 			frappe.call({ method: API + "set_priority", args: { name: c.name, priority: e.target.value } }).then(reload));
 		this.$main.find("[data-untag]").on("click", (e) => {

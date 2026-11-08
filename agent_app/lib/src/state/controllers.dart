@@ -392,6 +392,13 @@ class ConversationController extends ChangeNotifier with _Polling {
   Future<bool> setPriority(String p) => _act(() => api.setPriority(id, p)); // 1.14
   Future<bool> addTag(String t) => _act(() => api.setTags(id, add: [t.trim()]));
   Future<bool> removeTag(String t) => _act(() => api.setTags(id, remove: [t]));
+  Future<bool> createLead({String? name, String? email, String? phone, String? company}) =>
+      _act(() => api.createLead(id, name: name, email: email, phone: phone, company: company));
+  Future<bool> collectLeadDetails() async {
+    final ok = await _act(() => api.collectLeadDetails(id));
+    if (ok) await poll(); // the assistant's first question appears
+    return ok;
+  }
   Future<bool> takeOver() => _act(() => api.takeOver(id));
   Future<bool> returnToAssistant() => _act(() => api.returnToAssistant(id));
   Future<bool> transfer({String? user, String? queue}) =>

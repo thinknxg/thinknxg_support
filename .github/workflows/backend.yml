@@ -86,6 +86,7 @@ jobs:
     name: With thinkNXG CRM (CRM Lead)
     needs: lint
     runs-on: ubuntu-latest
+    continue-on-error: true  # depends on the upstream CRM app installing on v16; the main job is the gate
     timeout-minutes: 75
     services:
       mariadb:
@@ -129,6 +130,7 @@ jobs:
           bench get-app --skip-assets --branch version-16 erpnext
           bench get-app --skip-assets https://github.com/frappe/telephony
           bench get-app --skip-assets helpdesk
+          bench get-app --skip-assets https://github.com/frappe/whatsapp  # Frappe CRM requires it
           bench get-app --skip-assets https://github.com/frappe/crm
           bench get-app --skip-assets thinknxg_support "$GITHUB_WORKSPACE/app"
       - name: Create site

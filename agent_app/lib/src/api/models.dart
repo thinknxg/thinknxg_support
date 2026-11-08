@@ -138,6 +138,7 @@ class ConversationSummary {
   // 1.14: set by people
   final String priority; // Low | Normal | High | Urgent
   final List<String> tags;
+  final LeadRef? lead; // 1.14 increment 3, detail only
 
   const ConversationSummary({
     required this.id,
@@ -166,6 +167,7 @@ class ConversationSummary {
     this.summary,
     this.priority = 'Normal',
     this.tags = const [],
+    this.lead,
   });
 
   bool get isClosed => status == 'Closed';
@@ -199,6 +201,7 @@ class ConversationSummary {
         summary: summary,
         priority: priority,
         tags: tags,
+        lead: lead,
       );
 
   factory ConversationSummary.fromJson(Map<String, dynamic> j) {
@@ -231,8 +234,19 @@ class ConversationSummary {
       summary: n(_m(j['insight'])['summary']),
       priority: n(j['priority']) ?? 'Normal',
       tags: [for (final t in _l(j['tags'])) '$t'],
+      lead: j['lead'] is Map ? LeadRef.fromJson(_m(j['lead'])) : null,
     );
   }
+}
+
+/// 1.14: the lead created or linked from a chat (CRM Lead in thinkNXG CRM, or ERPNext Lead).
+class LeadRef {
+  final String doctype, name, title, url;
+  final int? score;
+  final String? reasons;
+  const LeadRef(this.doctype, this.name, this.title, this.url, {this.score, this.reasons});
+  factory LeadRef.fromJson(Map<String, dynamic> j) => LeadRef(_s(j['doctype']), _s(j['name']), _s(j['title']), _s(j['url']),
+      score: j['score'] == null ? null : _i(j['score']), reasons: j['reasons'] == null ? null : _s(j['reasons']));
 }
 
 /// 1.14: an agent's status now. `status` is what routing uses (Offline off shift, Away when idle); `setStatus` is
