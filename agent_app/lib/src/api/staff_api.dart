@@ -19,6 +19,9 @@ class StaffApi {
     String? q,
     String? cursor,
     int limit = 30,
+    String? sort,
+    String? priority,
+    String? tag,
   }) async {
     final r = _map(await client.get('conversations', {
       'view': view,
@@ -28,6 +31,9 @@ class StaffApi {
       'q': q,
       'cursor': cursor,
       'limit': '$limit',
+      'sort': sort,
+      'priority': priority,
+      'tag': tag,
     }));
     return Page([for (final c in _list(r['items'])) ConversationSummary.fromJson(_map(c))], r['next_cursor'] as String?);
   }
@@ -120,7 +126,22 @@ class StaffApi {
 
   Future<void> typing(String id) => client.post('typing', {'name': id});
 
-  Future<void> heartbeat() => client.post('heartbeat', {});
+  /// 1.14: `active` says whether the person used the app since the last heartbeat (drives Away after idle minutes).
+  Future<AgentStatus?> heartbeat({bool? active}) async {
+    final r = await client.post('heartbeat', {if (active != null) 'active': active ? 1 : 0});
+    return r is Map ? AgentStatus.fromJson(r['status']) : null;
+  }
+
+  Future<AgentStatus?> setStatus(String status, {String? note}) async =>
+      AgentStatus.fromJson(await client.post('set_status', {'status': status, if (note != null) 'note': note}));
+
+  Future<ConversationSummary> setPriority(String id, String priority) async =>
+      ConversationSummary.fromJson(_map(await client.post('set_priority', {'name': id, 'priority': priority})));
+
+  Future<ConversationSummary> setTags(String id, {List<String> add = const [], List<String> remove = const []}) async =>
+      ConversationSummary.fromJson(_map(await client.post('set_tags', {'name': id, 'add': add, 'remove': remove})));
+
+  Future<List<String>> tagSuggestions() async => [for (final t in _list(await client.get('tag_suggestions'))) '$t'];
 
   Future<AlertConfig> alertConfig() async => AlertConfig.fromJson(_map(await client.get('alert_config')));
 

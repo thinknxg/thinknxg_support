@@ -245,6 +245,8 @@ class _Header extends StatelessWidget {
                 if (a.returnToAssistant) const PopupMenuItem(value: 'return', child: Text('Return to assistant')),
                 if (d.ticket != null && onOpenTicket != null) PopupMenuItem(value: 'ticket', child: Text('Open ticket #${d.ticket}')),
                 if (onDetails != null) const PopupMenuItem(value: 'details', child: Text('Details and history')),
+                if (!d.isClosed) const PopupMenuItem(key: Key('menu-priority'), value: 'priority', child: Text('Priority…')),
+                const PopupMenuItem(key: Key('menu-tags'), value: 'tags', child: Text('Tags…')),
               ],
             ),
           ]),
@@ -252,6 +254,11 @@ class _Header extends StatelessWidget {
           if (!(compact && typing))
           Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
             StatusPill(conversationStatusLabel(d), color: conversationStatusColor(context, d)),
+            if (d.priority != 'Normal')
+              StatusPill('${d.priority} priority',
+                  key: const Key('priority-pill'),
+                  color: d.highPriority ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.outline),
+            for (final t in d.tags) Chip(key: Key('tag-$t'), label: Text(t), visualDensity: VisualDensity.compact),
             if (d.urgency == 'High') StatusPill('Urgent', color: Theme.of(context).colorScheme.error),
             if (d.sentiment != null)
               Tooltip(
@@ -338,6 +345,25 @@ class _Header extends StatelessWidget {
       case 'transfer':
         final r = await TransferPicker.show(context, c.transferTargets);
         if (r != null) await c.transfer(user: r.user, queue: r.queue);
+      case 'priority':
+        final p = await showDialog<String>(
+          context: context,
+          builder: (ctx) => SimpleDialog(title: const Text('Priority'), children: [
+            for (final p in const ['Low', 'Normal', 'High', 'Urgent'])
+              SimpleDialogOption(
+                key: Key('priority-$p'),
+                onPressed: () => Navigator.pop(ctx, p),
+                child: Row(children: [
+                  Icon(p == d.priority ? Icons.radio_button_checked : Icons.radio_button_unchecked, size: 18),
+                  const SizedBox(width: 8),
+                  Text(p),
+                ]),
+              ),
+          ]),
+        );
+        if (p != null && p != d.priority) await c.setPriority(p);
+      case 'tags':
+        await _TagsDialog.show(context, c);
     }
   }
 
@@ -607,4 +633,89 @@ class _VoiceNoteState extends State<_VoiceNote> {
         label: Text('Voice note$_length'),
         onPressed: _loading ? null : _play,
       );
+}
+
+
+/// 1.14: tags on the conversation (Frappe's own tags, shared with the desk). Suggestions are tags already in use.
+class _TagsDialog extends StatefulWidget {
+  final ConversationController c;
+  final List<String> suggestions;
+  const _TagsDialog(this.c, this.suggestions);
+
+  static Future<void> show(BuildContext context, ConversationController c) async {
+    List<String> s = const [];
+    try {
+      s = await c.api.tagSuggestions();
+    } catch (_) {}
+    if (!context.mounted) return;
+    await showDialog<void>(context: context, builder: (_) => _TagsDialog(c, s));
+  }
+
+  @override
+  State<_TagsDialog> createState() => _TagsDialogState();
+}
+
+class _TagsDialogState extends State<_TagsDialog> {
+  final _ctl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _add(String t) async {
+    if (t.trim().isEmpty) return;
+    await widget.c.addTag(t.trim());
+    _ctl.clear();
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tags = widget.c.detail?.tags ?? const <String>[];
+    final more = widget.suggestions.where((s) => !tags.contains(s)).take(12).toList();
+    return AlertDialog(
+      title: const Text('Tags'),
+      content: SizedBox(
+        width: 420,
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            for (final t in tags)
+              InputChip(
+                key: Key('tagchip-$t'),
+                label: Text(t),
+                onDeleted: () async {
+                  await widget.c.removeTag(t);
+                  if (mounted) setState(() {});
+                },
+              ),
+            if (tags.isEmpty) const Text('No tags yet.'),
+          ]),
+          const SizedBox(height: 12),
+          TextField(
+            key: const Key('tag-field'),
+            controller: _ctl,
+            decoration: const InputDecoration(labelText: 'Add a tag', isDense: true),
+            onSubmitted: _add,
+          ),
+          if (more.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(spacing: 6, runSpacing: 6, children: [
+              for (final t in more) ActionChip(label: Text(t), onPressed: () => _add(t)),
+            ]),
+          ],
+          if (widget.c.actionError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(widget.c.actionError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            ),
+        ]),
+      ),
+      actions: [
+        TextButton(key: const Key('tag-add'), onPressed: () => _add(_ctl.text), child: const Text('Add')),
+        FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Done')),
+      ],
+    );
+  }
 }

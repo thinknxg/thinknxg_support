@@ -443,6 +443,50 @@ void main() {
       expect(find.byKey(Key('voice-${m['id']}')), findsOneWidget);
     });
 
+    testWidgets('agents set their status; heartbeats report activity', (tester) async {
+      final (_, server) = await signedIn(tester, const Size(1440, 900));
+      expect(find.byKey(const Key('my-status-label')), findsOneWidget);
+      expect(server.heartbeatActive.first, 1); // just opened: active
+      await tester.tap(find.byKey(const Key('my-status')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('status-Busy')));
+      await tester.pumpAndSettle();
+      expect(server.agentStatus, 'Busy');
+      expect(find.text('Busy'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 46)); // reports the taps above
+      expect(server.heartbeatActive.last, 1);
+      await tester.pump(const Duration(seconds: 46)); // nothing touched since
+      expect(server.heartbeatActive.last, 0);
+    });
+
+    testWidgets('priority and tags from the conversation menu', (tester) async {
+      final (_, server) = await signedIn(tester, const Size(1440, 900));
+      await tester.tap(find.byKey(const Key('conv-CONV-100')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('More actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('menu-priority')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('priority-Urgent')));
+      await tester.pumpAndSettle();
+      expect(server.conversations.first['priority'], 'Urgent');
+      expect(find.byKey(const Key('priority-pill')), findsOneWidget);
+
+      await tester.tap(find.byTooltip('More actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('menu-tags')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('tag-field')), 'late delivery');
+      await tester.tap(find.byKey(const Key('tag-add')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('refund')); // a suggestion
+      await tester.pumpAndSettle();
+      expect(server.conversations.first['tags'], ['late delivery', 'refund']);
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('tag-late delivery')), findsOneWidget);
+    });
+
     testWidgets('edits by others appear on the next poll', (tester) async {
       final (_, server) = await signedIn(tester, const Size(1440, 900));
       final first = server.messages['CONV-100']!.first['id'] as String;

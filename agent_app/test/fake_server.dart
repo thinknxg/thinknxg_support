@@ -109,6 +109,8 @@ class FakeServer {
   }
 
   int _changeSeq = 0;
+  String agentStatus = 'Available';
+  final List<Object?> heartbeatActive = [];
   final List<Map<String, dynamic>> messageCalls = [];
 
   Map<String, dynamic> _find(String conv, String id) => messages[conv]!.firstWhere((x) => x['id'] == id);
@@ -196,9 +198,13 @@ class FakeServer {
         return _ok({
           'api_version': 1,
           'site': {'url': 'https://support.example.com', 'name': 'support.example.com', 'app_version': '1.9.0'},
-          'agent': {'user': user, 'full_name': 'Agent One', 'email': user, 'is_manager': false, 'helpdesk_agent': true},
+          'agent': {
+            'user': user, 'full_name': 'Agent One', 'email': user, 'is_manager': false, 'helpdesk_agent': true,
+            'status': {'status': agentStatus, 'set_status': agentStatus, 'reason': null, 'note': null},
+          },
           'capabilities': {
             'conversations': true, 'helpdesk': true, 'live_chat': true, 'whatsapp': true, 'copilot': true,
+            'status': true, 'priority': true, 'tags': true,
             'messaging': {'reactions': ['👍', '❤️', '🙏'], 'voice': true, 'max_voice_seconds': 120, 'edit': true},
           },
           'queues': [
@@ -463,7 +469,28 @@ class FakeServer {
         return _ok({'ok': true});
       case 'heartbeat':
         heartbeats++;
-        return _ok({'ok': true});
+        heartbeatActive.add(b['active']);
+        return _ok({'ok': true, 'status': {'status': agentStatus, 'set_status': agentStatus}});
+      case 'set_status':
+        if (!const ['Available', 'Away', 'Busy', 'Offline'].contains(b['status'])) return _err(417, 'Choose a status.');
+        agentStatus = b['status'] as String;
+        return _ok({'status': agentStatus, 'set_status': agentStatus, 'reason': null, 'note': b['note']});
+      case 'set_priority':
+        _conv(b['name'])['priority'] = b['priority'];
+        return _ok(_detail(b['name']));
+      case 'set_tags':
+        final c = _conv(b['name']);
+        final tags = List<String>.from(c['tags'] as List? ?? const []);
+        for (final t in (b['remove'] as List? ?? const [])) {
+          tags.remove('$t');
+        }
+        for (final t in (b['add'] as List? ?? const [])) {
+          if (!tags.contains('$t')) tags.add('$t');
+        }
+        c['tags'] = tags;
+        return _ok(_detail(b['name']));
+      case 'tag_suggestions':
+        return _ok(['refund', 'vip']);
       case 'register_device':
         return _ok({'device': 'D1'});
       case 'open_target':

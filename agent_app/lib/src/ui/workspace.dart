@@ -41,6 +41,32 @@ class WorkspaceState extends State<Workspace> {
   late final AlertCenter alertCenter;
   final List<Timer> _timers = [];
   bool _foreground = true;
+  // 1.14: my status, and whether I used the app since the last heartbeat (Away after idle minutes)
+  late final ValueNotifier<AgentStatus?> myStatus = ValueNotifier(me.status);
+  bool _activeSinceBeat = true;
+
+  bool _onKey(KeyEvent _) {
+    _activeSinceBeat = true;
+    return false;
+  }
+
+  Future<void> _beat() async {
+    final active = _activeSinceBeat && _foreground;
+    _activeSinceBeat = false;
+    try {
+      final s = await widget.session.api?.heartbeat(active: active);
+      if (s != null) myStatus.value = s;
+    } catch (_) {}
+  }
+
+  Future<void> setMyStatus(String status) async {
+    try {
+      final s = await widget.session.api?.setStatus(status);
+      if (s != null) myStatus.value = s;
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
 
   Bootstrap get me => widget.session.me!;
 
@@ -56,7 +82,8 @@ class WorkspaceState extends State<Workspace> {
     alerts.loadConfig().then((_) => alerts.refresh());
     _startPolling();
     _refreshAll();
-    api.heartbeat().catchError((_) {});
+    HardwareKeyboard.instance.addHandler(_onKey);
+    _beat();
     // Polling keeps running while the window is hidden or minimised so alerts still ring (desktop) and show a
     // notification; a resume refreshes everything at once.
     _life = AppLifecycleListener(
@@ -107,7 +134,7 @@ class WorkspaceState extends State<Workspace> {
     }));
     _timers.add(Timer.periodic(Duration(seconds: me.threadPollSeconds), (_) => conversation?.poll()));
     _timers.add(Timer.periodic(Duration(seconds: me.alertsPollSeconds), (_) => alerts.refresh()));
-    _timers.add(Timer.periodic(const Duration(seconds: 45), (_) => widget.session.api?.heartbeat().catchError((_) {})));
+    _timers.add(Timer.periodic(const Duration(seconds: 45), (_) => _beat()));
   }
 
   void _stopPolling() {
@@ -120,6 +147,8 @@ class WorkspaceState extends State<Workspace> {
   @override
   void dispose() {
     _stopPolling();
+    HardwareKeyboard.instance.removeHandler(_onKey);
+    myStatus.dispose();
     _life.dispose();
     AppServices.pendingLink.removeListener(_openPending);
     alertCenter.dispose();
@@ -258,7 +287,11 @@ class WorkspaceState extends State<Workspace> {
       (Section.tickets, Icons.confirmation_number_outlined, Icons.confirmation_number, 'Tickets'),
       (Section.alerts, Icons.notifications_none, Icons.notifications, 'Alerts'),
     ];
-    return CallbackShortcuts(
+    return Listener(
+      onPointerDown: (_) => _activeSinceBeat = true,
+      onPointerSignal: (_) => _activeSinceBeat = true,
+      onPointerHover: (_) => _activeSinceBeat = true,
+      child: CallbackShortcuts(
       bindings: _shortcuts,
       child: FocusTraversalGroup(
         child: ListenableBuilder(
@@ -270,9 +303,10 @@ class WorkspaceState extends State<Workspace> {
             }
 
             final account = _AccountButton(session: widget.session);
+            final status = me.can('status') ? _StatusButton(status: myStatus, onSet: setMyStatus) : const SizedBox.shrink();
             if (!wide) {
               return Scaffold(
-                appBar: AppBar(title: Text(destinations[section.index].$4), actions: [account]),
+                appBar: AppBar(title: Text(destinations[section.index].$4), actions: [status, account]),
                 body: Column(children: [if (inbox.offline) const _OfflineBanner(), Expanded(child: _list())]),
                 bottomNavigationBar: NavigationBar(
                   selectedIndex: section.index,
@@ -296,7 +330,12 @@ class WorkspaceState extends State<Workspace> {
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Tooltip(message: me.siteUrl, child: const Icon(Icons.support_agent, size: 32)),
                   ),
-                  trailing: Expanded(child: Align(alignment: Alignment.bottomCenter, child: Padding(padding: const EdgeInsets.all(8), child: account))),
+                  trailing: Expanded(
+                      child: Align(
+                          alignment: Alignment.bottomCenter,
+                          child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Column(mainAxisSize: MainAxisSize.min, children: [status, const SizedBox(height: 8), account])))),
                   destinations: [
                     for (final d in destinations)
                       NavigationRailDestination(icon: badge(d.$1, Icon(d.$2)), selectedIcon: badge(d.$1, Icon(d.$3)), label: Text(d.$4)),
@@ -311,6 +350,7 @@ class WorkspaceState extends State<Workspace> {
             );
           },
         ),
+      ),
       ),
     );
   }
@@ -384,4 +424,52 @@ class _OfflineBanner extends StatelessWidget {
       ),
     );
   }
+}
+
+
+/// 1.14: Available, Away, Busy or Offline. Only Available agents get new chats; the others keep theirs.
+class _StatusButton extends StatelessWidget {
+  final ValueNotifier<AgentStatus?> status;
+  final Future<void> Function(String) onSet;
+  const _StatusButton({required this.status, required this.onSet});
+
+  static Color colour(BuildContext context, String s) => switch (s) {
+        'Available' => Colors.green.shade600,
+        'Away' => Colors.orange.shade700,
+        'Busy' => Theme.of(context).colorScheme.error,
+        _ => Colors.grey,
+      };
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<AgentStatus?>(
+        valueListenable: status,
+        builder: (context, s, _) {
+          final now = s?.status ?? 'Available';
+          return PopupMenuButton<String>(
+            key: const Key('my-status'),
+            tooltip: 'My status: ${s?.label ?? now}',
+            onSelected: onSet,
+            itemBuilder: (_) => [
+              for (final (v, hint) in const [
+                ('Available', 'Get new chats'),
+                ('Away', 'No new chats for now'),
+                ('Busy', 'Keep my chats, no new ones'),
+                ('Offline', 'No new chats or queue alerts'),
+              ])
+                CheckedPopupMenuItem(
+                    key: Key('status-$v'), value: v, checked: (s?.setStatus ?? 'Available') == v, child: ListTile(
+                      dense: true, contentPadding: EdgeInsets.zero, title: Text(v), subtitle: Text(hint))),
+            ],
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.circle, size: 12, color: colour(context, now)),
+                const SizedBox(width: 4),
+                Text(s?.reason == null ? now : '$now · ${s!.reason}', key: const Key('my-status-label'),
+                    style: Theme.of(context).textTheme.labelMedium),
+              ]),
+            ),
+          );
+        },
+      );
 }

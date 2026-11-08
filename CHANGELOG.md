@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.14.0 (in progress) — increment 2 of 3, 2026-11-08
+* **Agent status**: Available, Away, Busy or Offline, set in the web console and the apps. Only Available agents get
+  new chats; Away and Busy agents keep theirs; Offline agents are also not rung for queue chats. Away also comes
+  automatically after idle minutes (Support Portal Settings > Agent Status, default 10; older apps never go Away).
+* **Shifts** (*Support Agent Shift*): a weekly schedule per agent, overnight shifts included; off shift counts as
+  Offline. Agents without a status or a shift work exactly as before.
+* **Priority** (Low, Normal, High, Urgent) set by people, separate from the AI's urgency; inbox "Priority first".
+* **Tags** on conversations, using Frappe's own tags (desk list filters and the sidebar work with them).
+* Staff API: `set_status`, `team_status`, `heartbeat(active)`, `set_priority`, `set_tags`, `tag_suggestions`,
+  `conversations(sort, priority, tag)`; `priority` and `tags` on conversations; `status` in bootstrap.
+
 ## 1.14.0 (in progress) — increment 1 of 3, 2026-11-08
 * **Reply to a message** with a quote, in the chat widget, the web console and the agent apps; also on WhatsApp.
 * **Edit and remove messages**: staff their own while the chat is open; customers and visitors their own within the

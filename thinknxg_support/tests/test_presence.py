@@ -39,6 +39,7 @@ class Base(BaseTestCase):
         frappe.db.set_single_value("Support Portal Settings", {"auto_away_minutes": 10, "enable_live_chat": 1,
                                                               "allow_guest_chat": 1, "guest_chat_rate_limit": 1000})
         frappe.clear_document_cache("Support Portal Settings", "Support Portal Settings")
+        frappe.cache.delete_keys("thinknxg_support:rl:")
         from thinknxg_support.utils import clear_request_cache
 
         clear_request_cache()

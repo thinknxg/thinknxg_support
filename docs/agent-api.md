@@ -80,7 +80,7 @@ index on (conversation, client_message_id). Tickets: *Support Agent Request* log
 | `customer_history` | GET | `name` | `conversations` (same account, e-mail or WhatsApp number, only ones this agent may open), `tickets` (Helpdesk permissions) |
 | `live` | GET | `name` | `customer_typing, visitor_online, ai_drafting` |
 | `typing` | POST | `name` | shows "agent is typing" to the customer; also marks the agent online |
-| `heartbeat` | POST | | marks the agent online (routing, transfer list); the app sends it every 45 s |
+| `heartbeat` | POST | `active` 0\|1 (1.14: used the app since the last heartbeat) | marks the agent online (routing, transfer list); the app sends it every 45 s |
 | `alert_config` | GET | | team alert rules merged with this agent's preferences (sound, popup, repeat, volume, mute) |
 | `send_test_push` | POST | | a test push to this agent's devices |
 | `send_test_alert` | POST | | a real test alert through the server |
@@ -91,6 +91,11 @@ index on (conversation, client_message_id). Tickets: *Support Agent Request* log
 | `create_ticket` | POST | `name`, `client_request_id`, `subject`, `priority`, `team`, `ticket_type`, `reply` | `{ticket, duplicate}` — transcript in the description, chat linked, assigned to the agent, optional first reply by e-mail |
 | `saved_replies` | GET | `q`, `ticket` | Helpdesk saved replies this agent may use (scope: global, my teams, mine) |
 | `saved_reply_render` | POST | `name`, `ticket` \| `conversation` | `{text, html}` rendered like Helpdesk does |
+| `set_status` | POST | `status` Available\|Away\|Busy\|Offline, `note` | `{status, set_status, reason, note}` · only Available agents get new chats; `status` is Offline off shift and Away when idle |
+| `team_status` | GET | | every agent with `status`, `reason`, `online` |
+| `set_priority` | POST | `name`, `priority` Low\|Normal\|High\|Urgent | ConversationDetail |
+| `set_tags` | POST | `name`, `add` [..], `remove` [..] | ConversationDetail (`tags`) · Frappe's own tags |
+| `tag_suggestions` | GET | | tags already used on conversations |
 | `edit_message` | POST | `name`, `message`, `text` | the message · your own messages while the chat is open; WhatsApp messages cannot be changed once sent; earlier versions kept |
 | `remove_message` | POST | `name`, `message` | the message (`removed`) · the customer sees "Message removed"; managers may remove any customer-visible message |
 | `react` | POST | `name`, `message`, `emoji` (one of `capabilities.messaging.reactions`) | the message · toggles your reaction; on WhatsApp it is sent to the customer |

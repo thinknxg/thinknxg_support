@@ -41,15 +41,17 @@ class InboxFilter {
   final String status; // open | closed | all
   final String? queue;
   final String q;
-  const InboxFilter({this.view = 'all', this.channel, this.status = 'open', this.queue, this.q = ''});
+  final String sort; // recent | priority (1.14)
+  const InboxFilter({this.view = 'all', this.channel, this.status = 'open', this.queue, this.q = '', this.sort = 'recent'});
   InboxFilter copyWith({String? view, String? channel, bool clearChannel = false, String? status, String? queue,
-          bool clearQueue = false, String? q}) =>
+          bool clearQueue = false, String? q, String? sort}) =>
       InboxFilter(
         view: view ?? this.view,
         channel: clearChannel ? null : (channel ?? this.channel),
         status: status ?? this.status,
         queue: clearQueue ? null : (queue ?? this.queue),
         q: q ?? this.q,
+        sort: sort ?? this.sort,
       );
 }
 
@@ -140,6 +142,7 @@ class InboxController extends ChangeNotifier with _Polling {
         queue: filter.queue,
         q: filter.q.trim().isEmpty ? null : filter.q.trim(),
         cursor: cursor,
+        sort: filter.sort == 'recent' ? null : filter.sort,
       );
 
   /// Reflect a change made in the open conversation right away (claim, read, close).
@@ -386,6 +389,9 @@ class ConversationController extends ChangeNotifier with _Polling {
   }
 
   Future<bool> claim() => _act(() => api.claim(id));
+  Future<bool> setPriority(String p) => _act(() => api.setPriority(id, p)); // 1.14
+  Future<bool> addTag(String t) => _act(() => api.setTags(id, add: [t.trim()]));
+  Future<bool> removeTag(String t) => _act(() => api.setTags(id, remove: [t]));
   Future<bool> takeOver() => _act(() => api.takeOver(id));
   Future<bool> returnToAssistant() => _act(() => api.returnToAssistant(id));
   Future<bool> transfer({String? user, String? queue}) =>

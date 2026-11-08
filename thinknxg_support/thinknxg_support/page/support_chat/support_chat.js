@@ -50,6 +50,12 @@ class SupportChatConsole {
 		frappe.realtime.on("thinknxg_support_chat", (d) => this.onEvent(d));
 		this.timer = setInterval(() => !document.hidden && this.refresh(true), 15000);
 		this.liveTimer = setInterval(() => !document.hidden && this.active && this.pollLive(), 2000);
+		// 1.14: my status (only Available agents get new chats), and whether I am using the console
+		this.activeSinceBeat = true;
+		["mousemove", "keydown", "click", "scroll"].forEach((ev) => document.addEventListener(ev, () => { this.activeSinceBeat = true; }, { passive: true }));
+		this.statusField = this.page.add_field({ fieldname: "agent_status", label: __("My status"), fieldtype: "Select",
+			options: ["Available", "Away", "Busy", "Offline"].map((v) => ({ value: v, label: __(v) })), default: "Available",
+			change: () => this.setStatus(this.statusField.get_value()) });
 		this.beat();
 		this.beatTimer = setInterval(() => this.beat(), 30000);
 		frappe.call({ method: API + "queues", type: "GET" }).then((r) => this.fillQueues(r.message || []));
@@ -57,7 +63,28 @@ class SupportChatConsole {
 	}
 
 	beat() {
-		if (!document.hidden) frappe.call({ method: API + "heartbeat", quiet: true });
+		if (document.hidden) return;
+		const active = this.activeSinceBeat ? 1 : 0;
+		this.activeSinceBeat = false;
+		frappe.call({ method: API + "heartbeat", args: { active }, quiet: true }).then((r) => this.showStatus(r.message));
+	}
+
+	setStatus(status) {
+		if (!status || this.settingStatus || (this.myStatus && this.myStatus.set_status === status)) return;
+		frappe.call({ method: API + "set_agent_status", args: { status }, quiet: true }).then((r) => {
+			this.showStatus(r.message);
+			frappe.show_alert({ message: status === "Available" ? __("You get new chats.") : __("You keep your chats and get no new ones."), indicator: status === "Available" ? "green" : "orange" });
+		});
+	}
+
+	showStatus(s) {
+		if (!s || !s.status || !this.statusField) return;
+		this.myStatus = s;
+		this.settingStatus = true;
+		this.statusField.set_value(s.set_status || s.status).finally(() => { this.settingStatus = false; });
+		const colour = { Available: "green", Away: "orange", Busy: "red", Offline: "grey" }[s.status];
+		const label = s.reason ? `${__(s.status)} (${__(s.reason)})` : __(s.status);
+		this.page.set_indicator(label, colour);
 	}
 
 	build() {
@@ -129,6 +156,10 @@ class SupportChatConsole {
 				.tx-console .txk-removed { font-size:11px; color:var(--orange-600, #c2410c); margin-top:4px; }
 				.tx-console .txk-replybar { display:flex; justify-content:space-between; font-size:12px; border-inline-start:3px solid var(--primary); padding:2px 8px; background:var(--subtle-fg); border-radius:4px; }
 				.tx-console .txk-file { font-size:12px; }
+				.tx-console .txk-org { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:4px; font-size:12px; }
+				.tx-console .txk-priority { height:24px; padding:0 6px; font-size:12px; border-radius:6px; border:1px solid var(--border-color); background:var(--card-bg); }
+				.tx-console .txk-tag { display:inline-block; background:var(--subtle-fg); border-radius:999px; padding:0 8px; font-size:11px; }
+				.tx-console .txk-tag a { color:var(--text-muted); }
 				@media (max-width: 900px) { .tx-console .txk { grid-template-columns:1fr; height:auto; }
 					.tx-console .txk-side { max-height:40vh; } .tx-console .txk-main { min-height:60vh; } }
 			</style>
@@ -227,6 +258,7 @@ class SupportChatConsole {
 					<div class="txk-name">${esc(r.display_name || r.subject)}</div>
 					<div class="txk-prev">${r.customer_typing ? `<i>${__("typing…")}</i>` : esc(r.preview || "")}</div>
 					<div class="txk-prev">${esc(CHANNEL_LABEL[r.channel] || "")}${who ? " · " + who : ""}${r.queue ? " · " + esc(r.queue) : ""}</div>
+					${(r.priority === "High" || r.priority === "Urgent" || (r.tags || []).length) ? `<div class="txk-prev">${r.priority === "Urgent" || r.priority === "High" ? `<span class="indicator-pill ${r.priority === "Urgent" ? "red" : "orange"}">${__(r.priority)}</span> ` : ""}${(r.tags || []).map((t) => `<span class="txk-tag">${esc(t)}</span>`).join(" ")}</div>` : ""}
 				</div>
 				<div class="txk-meta">
 					<span>${r.last_activity_at ? frappe.datetime.comment_when(r.last_activity_at, true) : ""}</span>
@@ -338,7 +370,12 @@ class SupportChatConsole {
 
 		this.$main.html(`
 			<div class="txk-head">
-				<div><h4>${esc(c.display_name || c.subject)}</h4><div>${pills.join("")}</div><small>${who.join(" · ")}</small></div>
+				<div><h4>${esc(c.display_name || c.subject)}</h4><div>${pills.join("")}</div><small>${who.join(" · ")}</small>
+					<div class="txk-org">
+						<select class="txk-priority input-xs" title="${__("Priority")}">${["Low", "Normal", "High", "Urgent"].map((p) => `<option value="${p}" ${(c.priority || "Normal") === p ? "selected" : ""}>${__("Priority")}: ${__(p)}</option>`).join("")}</select>
+						${(c.tags || []).map((t) => `<span class="txk-tag">${esc(t)} <a href="#" data-untag="${esc(t)}" title="${__("Remove tag")}">×</a></span>`).join(" ")}
+						<a href="#" class="txk-addtag">+ ${__("Tag")}</a>
+					</div></div>
 				<div class="btn-group">
 					${c.handling !== "Bot" && c.assigned_agent !== frappe.session.user ? `<button class="btn btn-default btn-xs" data-act="assign">${__("Assign to me")}</button>` : ""}
 					${c.handling === "Agent" && c.status !== "Closed" ? `<button class="btn btn-default btn-xs" data-act="tobot">${__("Return to assistant")}</button>` : ""}
@@ -411,6 +448,7 @@ class SupportChatConsole {
 		});
 		this.$main.find("[data-act]").on("click", (e) => this.action(e.currentTarget.dataset.act, c));
 		this.bindMessageActions(c, data);
+		this.bindOrganise(c);
 		this.pollLive();
 	}
 
@@ -474,6 +512,27 @@ class SupportChatConsole {
 		});
 		$m.find(".txk-filecancel").on("click", (e) => { e.preventDefault(); this.file = null; $m.find(".txk-file").prop("hidden", true); });
 		$m.find(".txk-voice").on("click", (e) => this.toggleVoice(c, $(e.currentTarget)));
+	}
+
+	// 1.14: priority and tags
+	bindOrganise(c) {
+		const reload = () => { this.loadThread(true); this.refresh(true); };
+		this.$main.find(".txk-priority").on("change", (e) =>
+			frappe.call({ method: API + "set_priority", args: { name: c.name, priority: e.target.value } }).then(reload));
+		this.$main.find("[data-untag]").on("click", (e) => {
+			e.preventDefault();
+			frappe.call({ method: API + "set_tags", args: { name: c.name, remove: JSON.stringify([e.currentTarget.dataset.untag]) } }).then(reload);
+		});
+		this.$main.find(".txk-addtag").on("click", (e) => {
+			e.preventDefault();
+			frappe.call({ method: API + "tag_suggestions", type: "GET", quiet: true }).then((r) => {
+				const d = new frappe.ui.Dialog({ title: __("Add a tag"), fields: [{ fieldname: "tag", fieldtype: "Autocomplete", label: __("Tag"),
+					options: (r.message || []).filter((t) => !(c.tags || []).includes(t)), reqd: 1 }],
+					primary_action_label: __("Add"),
+					primary_action: (v) => { d.hide(); frappe.call({ method: API + "set_tags", args: { name: c.name, add: JSON.stringify([v.tag]) } }).then(reload); } });
+				d.show();
+			});
+		});
 	}
 
 	async toggleVoice(c, $btn) {

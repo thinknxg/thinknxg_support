@@ -40,6 +40,7 @@ class Bootstrap {
   final int inboxPollSeconds;
   final int threadPollSeconds;
   final int alertsPollSeconds;
+  final AgentStatus? status;
 
   const Bootstrap({
     required this.apiVersion,
@@ -56,6 +57,7 @@ class Bootstrap {
     required this.inboxPollSeconds,
     required this.threadPollSeconds,
     required this.alertsPollSeconds,
+    this.status,
   });
 
   bool can(String capability) => _b(capabilities[capability]);
@@ -80,6 +82,7 @@ class Bootstrap {
       inboxPollSeconds: _i(poll['inbox_seconds']).clamp(2, 300),
       threadPollSeconds: _i(poll['thread_seconds']).clamp(2, 300),
       alertsPollSeconds: _i(poll['alerts_seconds']).clamp(2, 300),
+      status: AgentStatus.fromJson(agent['status']),
     );
   }
 }
@@ -132,6 +135,9 @@ class ConversationSummary {
   final String? contactName, contactEmail, contactPhone, customerName, handoffReason;
   // AI insight (1.10): from the customer's latest message
   final String? sentiment, urgency, intent, language, summary;
+  // 1.14: set by people
+  final String priority; // Low | Normal | High | Urgent
+  final List<String> tags;
 
   const ConversationSummary({
     required this.id,
@@ -158,9 +164,12 @@ class ConversationSummary {
     this.intent,
     this.language,
     this.summary,
+    this.priority = 'Normal',
+    this.tags = const [],
   });
 
   bool get isClosed => status == 'Closed';
+  bool get highPriority => priority == 'High' || priority == 'Urgent';
   bool get needsAttention => sentiment == 'Negative' || urgency == 'High';
 
   ConversationSummary withUnread(int n) => ConversationSummary(
@@ -188,6 +197,8 @@ class ConversationSummary {
         intent: intent,
         language: language,
         summary: summary,
+        priority: priority,
+        tags: tags,
       );
 
   factory ConversationSummary.fromJson(Map<String, dynamic> j) {
@@ -218,8 +229,30 @@ class ConversationSummary {
       intent: n(_m(j['insight'])['intent']),
       language: n(_m(j['insight'])['language']),
       summary: n(_m(j['insight'])['summary']),
+      priority: n(j['priority']) ?? 'Normal',
+      tags: [for (final t in _l(j['tags'])) '$t'],
     );
   }
+}
+
+/// 1.14: an agent's status now. `status` is what routing uses (Offline off shift, Away when idle); `setStatus` is
+/// what the agent chose.
+class AgentStatus {
+  final String status, setStatus;
+  final String? reason, note;
+  const AgentStatus(this.status, {String? setStatus, this.reason, this.note}) : setStatus = setStatus ?? status;
+  static AgentStatus? fromJson(Object? raw) {
+    if (raw is! Map) return null;
+    final j = Map<String, dynamic>.from(raw);
+    final s = _s(j['status']);
+    if (s.isEmpty) return null;
+    return AgentStatus(s,
+        setStatus: _s(j['set_status']).isEmpty ? s : _s(j['set_status']),
+        reason: j['reason'] == null ? null : _s(j['reason']),
+        note: j['note'] == null ? null : _s(j['note']));
+  }
+
+  String get label => reason == null ? status : '$status ($reason)';
 }
 
 enum MessageDirection { inbound, outbound, internal }
