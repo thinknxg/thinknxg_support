@@ -14,3 +14,4 @@ thinknxg_support.patches.v1_8.feedback_defaults
 thinknxg_support.patches.v1_9.agent_app_setup
 thinknxg_support.patches.v1_9.fix_oauth_redirect_uris
 thinknxg_support.patches.v1_9.hd_customers_and_wrap_up
+thinknxg_support.patches.v1_10.ai_copilot_defaults

@@ -314,6 +314,48 @@ void main() {
       expect(sink.played, ['Ping']);
     });
 
+    testWidgets('AI copilot: insight shown, suggestion and rewrite go into the draft, nothing is sent', (tester) async {
+      final (_, server) = await signedIn(tester, const Size(1440, 900));
+      expect(find.text('Urgent'), findsWidgets); // inbox flags the frustrated customer
+      await tester.tap(find.byKey(const Key('conv-CONV-100')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('sentiment')), findsOneWidget);
+      final sentBefore = server.messages['CONV-100']!.length;
+
+      await tester.tap(find.byKey(const Key('composer-ai')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('copilot-suggest')));
+      await tester.pumpAndSettle();
+      expect(find.text('Sorry about the delay with your order.'), findsOneWidget);
+      await tester.ensureVisible(find.text('Use this').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Use this').first);
+      await tester.pumpAndSettle();
+      expect(find.text('Sorry about the delay with your order.'), findsOneWidget); // now in the composer
+
+      await tester.tap(find.byKey(const Key('composer-ai')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('copilot-professional')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Use in reply'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Use in reply'));
+      await tester.pumpAndSettle();
+      expect(find.text('Thank you for your patience. Sorry about the delay with your order.'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('composer-ai')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('copilot-translate-draft')));
+      await tester.pumpAndSettle();
+      expect(find.text('نص مترجم'), findsOneWidget);
+      expect(server.copilotCalls.last['target'], 'ar'); // the customer's language
+      await tester.tap(find.byTooltip('Close'));
+      await tester.pumpAndSettle();
+
+      expect(server.messages['CONV-100']!.length, sentBefore, reason: 'the copilot never sends');
+      expect(server.copilotCalls.map((c) => c['action']), ['suggest', 'rewrite', 'translate']);
+    });
+
     testWidgets('offline banner, then everything refreshes on reconnect', (tester) async {
       final (_, server) = await signedIn(tester, const Size(1440, 900));
       server.offline = true;

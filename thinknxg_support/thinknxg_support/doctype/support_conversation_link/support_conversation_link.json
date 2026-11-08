@@ -54,6 +54,14 @@
   "closure_notes",
   "issue_resolved",
   "needs_follow_up",
+  "ai_insight_section",
+  "sentiment",
+  "urgency",
+  "intent",
+  "column_break_ai2",
+  "customer_language",
+  "summary",
+  "summary_on",
   "wrap_up_answers",
   "feedback",
   "survey_token_hash",
@@ -424,12 +432,71 @@
    "idx": 47
   },
   {
+   "fieldname": "ai_insight_section",
+   "fieldtype": "Section Break",
+   "label": "AI Insight",
+   "collapsible": 1,
+   "idx": 48
+  },
+  {
+   "fieldname": "sentiment",
+   "fieldtype": "Select",
+   "label": "Sentiment",
+   "options": "\nPositive\nNeutral\nNegative",
+   "read_only": 1,
+   "in_standard_filter": 1,
+   "description": "From the customer's latest message",
+   "idx": 49
+  },
+  {
+   "fieldname": "urgency",
+   "fieldtype": "Select",
+   "label": "Urgency",
+   "options": "\nLow\nMedium\nHigh",
+   "read_only": 1,
+   "in_standard_filter": 1,
+   "idx": 50
+  },
+  {
+   "fieldname": "intent",
+   "fieldtype": "Data",
+   "label": "Intent",
+   "read_only": 1,
+   "idx": 51
+  },
+  {
+   "fieldname": "column_break_ai2",
+   "fieldtype": "Column Break",
+   "idx": 52
+  },
+  {
+   "fieldname": "customer_language",
+   "fieldtype": "Data",
+   "label": "Language",
+   "read_only": 1,
+   "idx": 53
+  },
+  {
+   "fieldname": "summary",
+   "fieldtype": "Small Text",
+   "label": "AI Summary",
+   "read_only": 1,
+   "idx": 54
+  },
+  {
+   "fieldname": "summary_on",
+   "fieldtype": "Datetime",
+   "label": "Summary Updated",
+   "read_only": 1,
+   "idx": 55
+  },
+  {
    "fieldname": "wrap_up_answers",
    "fieldtype": "Table",
    "label": "Wrap Up Answers",
    "options": "Support Chat Closing Answer",
    "read_only": 1,
-   "idx": 48
+   "idx": 56
   },
   {
    "fieldname": "feedback",
@@ -437,7 +504,7 @@
    "label": "Customer Feedback",
    "options": "Support Chat Feedback",
    "read_only": 1,
-   "idx": 49
+   "idx": 57
   },
   {
    "fieldname": "survey_token_hash",
@@ -445,7 +512,7 @@
    "label": "Survey Token Hash",
    "read_only": 1,
    "hidden": 1,
-   "idx": 50
+   "idx": 58
   },
   {
    "fieldname": "survey_sent_on",
@@ -453,13 +520,13 @@
    "label": "Survey Sent On",
    "read_only": 1,
    "hidden": 1,
-   "idx": 51
+   "idx": 59
   },
   {
    "fieldname": "integration_section",
    "fieldtype": "Section Break",
    "label": "Integration",
-   "idx": 52
+   "idx": 60
   },
   {
    "fieldname": "external_provider",
@@ -467,59 +534,59 @@
    "label": "External Provider",
    "options": "Portal Native\nRaven",
    "default": "Portal Native",
-   "idx": 53
+   "idx": 61
   },
   {
    "fieldname": "external_conversation_id",
    "fieldtype": "Data",
    "label": "External Conversation Id",
    "read_only": 1,
-   "idx": 54
+   "idx": 62
   },
   {
    "fieldname": "last_activity_at",
    "fieldtype": "Datetime",
    "label": "Last Activity At",
    "read_only": 1,
-   "idx": 55
+   "idx": 63
   },
   {
    "fieldname": "last_message_reference",
    "fieldtype": "Data",
    "label": "Last Message Reference",
    "read_only": 1,
-   "idx": 56
+   "idx": 64
   },
   {
    "fieldname": "column_break_2",
    "fieldtype": "Column Break",
-   "idx": 57
+   "idx": 65
   },
   {
    "fieldname": "unread_customer",
    "fieldtype": "Int",
    "label": "Unread Customer",
    "read_only": 1,
-   "idx": 58
+   "idx": 66
   },
   {
    "fieldname": "unread_agent",
    "fieldtype": "Int",
    "label": "Unread Agent",
    "read_only": 1,
-   "idx": 59
+   "idx": 67
   },
   {
    "fieldname": "messages_section",
    "fieldtype": "Section Break",
    "label": "Messages",
-   "idx": 60
+   "idx": 68
   },
   {
    "fieldname": "messages_html",
    "fieldtype": "HTML",
    "label": "Messages Html",
-   "idx": 61
+   "idx": 69
   }
  ],
  "index_web_pages_for_search": 0,

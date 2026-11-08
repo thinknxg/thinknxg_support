@@ -197,7 +197,9 @@ def add_inbound_message(conv, content: str, *, sender: str | None, sender_name: 
     from thinknxg_support.integrations import realtime
 
     from thinknxg_support.integrations import alerts, escalations
+    from thinknxg_support.integrations.ai import analysis  # 1.10: intent / sentiment, in the background
 
+    analysis.queue(conv, msg.name)
     started = False
     if not conv.get("handling"):
         from thinknxg_support.integrations.ai.engine import initial_handling

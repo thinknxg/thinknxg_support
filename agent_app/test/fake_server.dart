@@ -35,6 +35,7 @@ class FakeServer {
   final Map<String, Map<String, dynamic>> closed = {};
   final Map<String, Map<String, dynamic>> linked = {};
   final List<Map<String, dynamic>> createdTickets = [];
+  final List<Map<String, dynamic>> copilotCalls = [];
   int heartbeats = 0;
   bool customerTyping = false;
   int _seq = 0;
@@ -53,6 +54,8 @@ class FakeServer {
         'ticket': i == 0 ? '42' : null,
         'last_activity_at': DateTime.utc(2026, 11, 6, 12).subtract(Duration(minutes: i)).toIso8601String(),
         'unread': i == 0 ? 1 : 0,
+        'sentiment': i == 0 ? 'Negative' : null,
+        'urgency': i == 0 ? 'High' : null,
         'preview': i == 0 ? 'My invoice is wrong' : 'Hello',
         'whatsapp_window_open': i % 3 == 2 ? (i != 2) : null,
       });
@@ -113,6 +116,8 @@ class FakeServer {
         'whatsapp_window_open': c['whatsapp_window_open'],
       },
       'customer_name': c['customer_name'],
+      'insight': {'sentiment': c['sentiment'], 'urgency': c['urgency'], 'intent': c['sentiment'] == null ? null : 'late delivery',
+                  'language': c['sentiment'] == null ? null : 'ar', 'summary': c['summary']},
       'contact': {'name': c['display_name'], 'email': 'asha@example.com'},
     };
   }
@@ -175,7 +180,7 @@ class FakeServer {
           'api_version': 1,
           'site': {'url': 'https://support.example.com', 'name': 'support.example.com', 'app_version': '1.9.0'},
           'agent': {'user': user, 'full_name': 'Agent One', 'email': user, 'is_manager': false, 'helpdesk_agent': true},
-          'capabilities': {'conversations': true, 'helpdesk': true, 'live_chat': true, 'whatsapp': true},
+          'capabilities': {'conversations': true, 'helpdesk': true, 'live_chat': true, 'whatsapp': true, 'copilot': true},
           'queues': [
             {'name': 'Billing', 'member': true},
           ],
@@ -248,6 +253,31 @@ class FakeServer {
         closed[b['name'] as String] = ans;
         c['status'] = 'Closed';
         return _ok(_detail(b['name']));
+      case 'copilot':
+        copilotCalls.add(Map<String, dynamic>.from(b));
+        switch (b['action']) {
+          case 'suggest':
+            return _ok({
+              'suggestions': [
+                {'label': 'Apologise', 'text': 'Sorry about the delay with your order.'},
+                {'label': 'Ask', 'text': 'Could you share your order number?'},
+              ],
+              'sources': [{'title': 'Delivery times'}],
+            });
+          case 'rewrite':
+            return _ok({'text': 'Thank you for your patience. ${b['text']}'});
+          case 'translate':
+            return _ok({'text': 'نص مترجم', 'language': b['target']});
+          case 'summarize':
+            _conv(b['name'])['summary'] = '- Late order';
+            return _ok({'summary': '- Late order'});
+          case 'recommend':
+            return _ok({'solution': 'Check the courier.', 'follow_ups': ['Is the address right?'], 'articles': []});
+          case 'note':
+            messages[b['name']]!.add(_msg('internal', 'AI summary: Late order', internal: true));
+            return _ok({'summary': '- Late order', 'message': 'X'});
+        }
+        return _err(417, 'Unknown copilot action.');
       case 'customer_search':
         return _ok([
           {'name': 'CUST-ASHA', 'customer_name': 'Asha Trading LLC', 'email_id': 'asha@example.com', 'suggested': true},

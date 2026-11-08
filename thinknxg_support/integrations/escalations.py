@@ -376,6 +376,20 @@ def on_chat_handoff(conv, reason: str, agent: str | None = None, queue: str | No
 
 
 @_safe
+def on_negative_sentiment(conv, analysis: dict | None = None):
+    """1.10: a negative and frustrated (or urgent) customer message, from the AI message analysis."""
+    if not (enabled() and cint(settings().get("on_negative_sentiment"))):
+        return
+    analysis = analysis or {}
+    query_type = "Support Chat" if conv.get("channel") in ("Live Chat", "WhatsApp") else "Conversation"
+    note = ", ".join(x for x in (analysis.get("intent"), "urgent" if analysis.get("urgency") == "High" else None,
+                                 "frustrated" if analysis.get("frustrated") else None) if x)
+    raise_escalation(query_type, "Negative Sentiment", CONV, conv.name, subject=conv.subject or _("Customer is frustrated"),
+                     assigned_to=conv.get("assigned_agent"), team=conv.get("queue"), priority="High", note=note,
+                     user="Administrator", **_conv_details(conv))
+
+
+@_safe
 def on_direct_chat(conv):
     """A live chat or WhatsApp chat that starts with people (assistant off for it) is an escalation from the start."""
     if not (enabled() and cint(settings().on_direct_live_chat)) or conv.get("channel") not in ("Live Chat", "WhatsApp"):

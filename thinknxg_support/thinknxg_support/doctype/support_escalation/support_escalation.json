@@ -103,7 +103,7 @@
    "fieldname": "escalation_type",
    "fieldtype": "Select",
    "label": "Escalation Type",
-   "options": "AI Handoff\nCustomer Asked for Agent\nChatbot Rule\nDirect Live Chat\nConversation Escalated\nRequest Escalated\nUrgent Ticket\nSLA Breach\nManual",
+   "options": "AI Handoff\nCustomer Asked for Agent\nChatbot Rule\nDirect Live Chat\nConversation Escalated\nRequest Escalated\nUrgent Ticket\nSLA Breach\nManual\nNegative Sentiment",
    "in_standard_filter": 1,
    "idx": 6
   },

@@ -382,6 +382,24 @@ class TestStaffApi(BaseTestCase):
         s.push_enabled = 0
         s.save()
 
+    def test_copilot_endpoint_returns_drafts_only(self):
+        from thinknxg_support.integrations.ai import providers
+
+        frappe.db.set_single_value("Support AI Settings", {"enable_copilot": 1, "provider": "OpenAI Compatible",
+                                                           "api_base_url": "https://ai.example.com/v1", "daily_token_budget": 0})
+        frappe.clear_document_cache("Support AI Settings", "Support AI Settings")
+        r, name = self._chat()
+        before = frappe.db.count(MSG, {"conversation": name})
+        as_user(self.a1)
+        fake = {"text": '[{"label": "Apologise", "text": "Sorry about that."}]', "provider": "Fake", "model": "f"}
+        with patch.object(providers, "complete", return_value=fake):
+            out = v1.copilot(name, "suggest")
+        self.assertEqual(out["suggestions"][0]["text"], "Sorry about that.")
+        self.assertEqual(frappe.db.count(MSG, {"conversation": name}), before)  # nothing sent
+        self.assertIn("insight", v1.conversation(name))
+        as_user(self.outsider)
+        self.assertRaises(frappe.PermissionError, v1.copilot, name, "suggest")
+
     def test_unstored_alerts_reach_the_apps(self):
         from thinknxg_support.integrations import alerts
 

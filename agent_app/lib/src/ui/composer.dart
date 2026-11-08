@@ -19,6 +19,7 @@ class Composer extends StatefulWidget {
   final VoidCallback? onRemoveFile;
   final VoidCallback? onCanned;
   final String cannedTooltip;
+  final VoidCallback? onAi;
 
   const Composer({
     super.key,
@@ -35,6 +36,7 @@ class Composer extends StatefulWidget {
     this.onRemoveFile,
     this.onCanned,
     this.cannedTooltip = 'Canned responses (Ctrl+/)',
+    this.onAi,
   });
 
   @override
@@ -130,9 +132,18 @@ class _ComposerState extends State<Composer> {
                 ),
               ),
             Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              if (widget.onAi != null)
+                IconButton(
+                  key: const Key('composer-ai'),
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'AI copilot (Ctrl+I): suggest, rewrite, translate, summarise',
+                  onPressed: sending ? null : widget.onAi,
+                  icon: const Icon(Icons.auto_awesome),
+                ),
               if (widget.onCanned != null)
                 IconButton(
                   key: const Key('composer-canned'),
+                  visualDensity: VisualDensity.compact,
                   tooltip: widget.cannedTooltip,
                   onPressed: sending || replyBlocked ? null : widget.onCanned,
                   icon: const Icon(Icons.bolt_outlined),
@@ -140,6 +151,7 @@ class _ComposerState extends State<Composer> {
               if (widget.onAttach != null)
                 IconButton(
                   key: const Key('composer-attach'),
+                  visualDensity: VisualDensity.compact,
                   tooltip: 'Attach a file',
                   onPressed: sending || replyBlocked ? null : widget.onAttach,
                   icon: const Icon(Icons.attach_file),
@@ -150,6 +162,7 @@ class _ComposerState extends State<Composer> {
                     const SingleActivator(LogicalKeyboardKey.enter, control: true): _send,
                     const SingleActivator(LogicalKeyboardKey.enter, meta: true): _send,
                     if (widget.onCanned != null) const SingleActivator(LogicalKeyboardKey.slash, control: true): widget.onCanned!,
+                    if (widget.onAi != null) const SingleActivator(LogicalKeyboardKey.keyI, control: true): widget.onAi!,
                   },
                   child: TextField(
                     key: const Key('composer-field'),
@@ -163,6 +176,7 @@ class _ComposerState extends State<Composer> {
                     onChanged: widget.onChanged,
                     decoration: InputDecoration(
                       hintText: note ? 'Write an internal note…' : 'Write a reply…',
+                      hintMaxLines: 1,
                       filled: true,
                       fillColor: note ? Colors.amber.shade100 : s.surfaceContainerHighest,
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),

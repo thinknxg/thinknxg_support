@@ -31,7 +31,15 @@
   "feedback",
   "read_by_agent",
   "ai_usage",
-  "actions_json"
+  "actions_json",
+  "ai_insight_section",
+  "ai_sentiment",
+  "ai_frustrated",
+  "ai_urgency",
+  "column_break_ai1",
+  "ai_intent",
+  "ai_language",
+  "ai_entities"
  ],
  "fields": [
   {
@@ -218,6 +226,63 @@
    "options": "JSON",
    "read_only": 1,
    "idx": 25
+  },
+  {
+   "fieldname": "ai_insight_section",
+   "fieldtype": "Section Break",
+   "label": "AI Insight",
+   "collapsible": 1,
+   "idx": 26
+  },
+  {
+   "fieldname": "ai_sentiment",
+   "fieldtype": "Select",
+   "label": "Sentiment",
+   "options": "\nPositive\nNeutral\nNegative",
+   "read_only": 1,
+   "idx": 27
+  },
+  {
+   "fieldname": "ai_frustrated",
+   "fieldtype": "Check",
+   "label": "Frustrated",
+   "read_only": 1,
+   "idx": 28
+  },
+  {
+   "fieldname": "ai_urgency",
+   "fieldtype": "Select",
+   "label": "Urgency",
+   "options": "\nLow\nMedium\nHigh",
+   "read_only": 1,
+   "idx": 29
+  },
+  {
+   "fieldname": "column_break_ai1",
+   "fieldtype": "Column Break",
+   "idx": 30
+  },
+  {
+   "fieldname": "ai_intent",
+   "fieldtype": "Data",
+   "label": "Intent",
+   "read_only": 1,
+   "idx": 31
+  },
+  {
+   "fieldname": "ai_language",
+   "fieldtype": "Data",
+   "label": "Language",
+   "read_only": 1,
+   "idx": 32
+  },
+  {
+   "fieldname": "ai_entities",
+   "fieldtype": "Code",
+   "label": "Entities",
+   "options": "JSON",
+   "read_only": 1,
+   "idx": 33
   }
  ],
  "index_web_pages_for_search": 0,

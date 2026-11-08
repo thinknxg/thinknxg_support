@@ -20,11 +20,11 @@ ALERT = "Support Agent Alert"
 CONV = "Support Conversation Link"
 EVENT = "thinknxg_support_alert"
 CLEAR = "thinknxg_support_alert_clear"
-KINDS = ['New Chat', 'Chat Message', 'New Ticket', 'Ticket Assigned', 'Conversation Message', 'Escalation', 'Negative Feedback', 'Positive Feedback']
+KINDS = ['New Chat', 'Chat Message', 'New Ticket', 'Ticket Assigned', 'Conversation Message', 'Escalation', 'Negative Feedback', 'Positive Feedback', 'Frustrated Customer']
 EPHEMERAL = {"Chat Message", "Conversation Message", "Positive Feedback"}  # not stored unless the team makes them repeat
 DEFAULTS = {k: {"enabled": 1, "popup": 1, "sound": s, "repeat_until_ack": r, "repeat_seconds": sec, "max_repeats": mx,
                 "desktop_notification": d, "volume": v, "custom_sound": None}
-            for k, s, r, sec, mx, d, v in [('New Chat', 'Ring', 1, 10, 0, 1, 90), ('Chat Message', 'Ping', 0, 0, 0, 1, 70), ('New Ticket', 'Chime', 1, 60, 3, 1, 80), ('Ticket Assigned', 'Bell', 1, 30, 5, 1, 80), ('Conversation Message', 'Pop', 0, 0, 0, 1, 70), ('Escalation', 'Siren', 1, 15, 0, 1, 100), ('Negative Feedback', 'Knock', 0, 0, 0, 1, 80), ('Positive Feedback', 'Chime', 0, 0, 0, 0, 60)]}
+            for k, s, r, sec, mx, d, v in [('New Chat', 'Ring', 1, 10, 0, 1, 90), ('Chat Message', 'Ping', 0, 0, 0, 1, 70), ('New Ticket', 'Chime', 1, 60, 3, 1, 80), ('Ticket Assigned', 'Bell', 1, 30, 5, 1, 80), ('Conversation Message', 'Pop', 0, 0, 0, 1, 70), ('Escalation', 'Siren', 1, 15, 0, 1, 100), ('Negative Feedback', 'Knock', 0, 0, 0, 1, 80), ('Positive Feedback', 'Chime', 0, 0, 0, 0, 60), ('Frustrated Customer', 'Alarm', 0, 0, 0, 1, 90)]}
 
 
 def _safe(fn):

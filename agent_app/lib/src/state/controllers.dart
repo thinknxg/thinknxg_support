@@ -373,6 +373,34 @@ class ConversationController extends ChangeNotifier with _Polling {
     return null;
   }
 
+  /// AI copilot call; null on error (shown in [actionError]). Nothing is ever sent to the customer by it.
+  Future<Map<String, dynamic>?> copilot(String action, {String? text, String? style, String? target}) async {
+    busy = true;
+    actionError = null;
+    safeNotify();
+    try {
+      final r = await api.copilot(id, action, text: text, style: style, target: target);
+      if (action == 'summarize' || action == 'note') detail = await api.conversation(id);
+      if (action == 'note') await poll();
+      return r;
+    } on SessionExpired {
+      onExpired();
+    } on ApiException catch (e) {
+      actionError = e.message;
+    } finally {
+      busy = false;
+      safeNotify();
+    }
+    return null;
+  }
+
+  /// Put text into the composer (a suggestion, a rewrite or a translation) for the agent to edit and send.
+  void useDraft(String text) {
+    draft.text = text;
+    if (draft.state == SendState.sent) draft.state = SendState.idle;
+    safeNotify();
+  }
+
   Future<bool> linkCustomer(String customer, {String? contact, bool createContact = false}) =>
       _act(() => api.linkCustomer(id, customer, contact: contact, createContact: createContact));
 
