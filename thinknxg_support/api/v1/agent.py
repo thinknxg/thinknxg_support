@@ -202,7 +202,7 @@ def heartbeat(active=None):
 
 # 1.14: agent status, priority and tags in the web console (same rules as the apps)
 @frappe.whitelist(methods=["POST"])
-def set_status(status, note=None):
+def set_agent_status(status, note=None):
     frappe.only_for(STAFF)
     from thinknxg_support.integrations import presence
 
