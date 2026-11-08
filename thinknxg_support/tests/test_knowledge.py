@@ -3,6 +3,7 @@ import io
 import re
 import zipfile
 from unittest.mock import patch
+from urllib.parse import urlparse
 
 import frappe
 
@@ -269,7 +270,7 @@ class TestCrawler(AIBase):
         SITE_PAGES["https://help.example.com/robots.txt"] = (200, {}, b"User-agent: *\nDisallow: /\n")
         crawler.crawl("Example Help")
         self.assertEqual(self._pages(), {})
-        self.assertEqual([u for u in self.requested if "/help" in u], [])
+        self.assertEqual([u for u in self.requested if urlparse(u).path.startswith("/help")], [])
 
 
 class FakeAI:
