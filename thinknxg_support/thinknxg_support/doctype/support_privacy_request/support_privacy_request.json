@@ -1,0 +1,245 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "request_type",
+  "status",
+  "column_break_p0",
+  "received_on",
+  "reference",
+  "who_section",
+  "email",
+  "phone",
+  "column_break_p1",
+  "customer",
+  "verify_section",
+  "identity_verified",
+  "verification_note",
+  "include_internal_notes",
+  "result_section",
+  "conversations",
+  "messages",
+  "files",
+  "column_break_p2",
+  "completed_on",
+  "completed_by",
+  "export_file",
+  "linked_records"
+ ],
+ "fields": [
+  {
+   "fieldname": "request_type",
+   "fieldtype": "Select",
+   "label": "Request Type",
+   "options": "Export\nErase",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Export: a copy of the person's chats. Erase: remove their personal data from chats",
+   "idx": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nReviewed\nCompleted",
+   "default": "Draft",
+   "read_only": 1,
+   "in_list_view": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "column_break_p0",
+   "fieldtype": "Column Break",
+   "idx": 3
+  },
+  {
+   "fieldname": "received_on",
+   "fieldtype": "Date",
+   "label": "Received On",
+   "default": "Today",
+   "idx": 4
+  },
+  {
+   "fieldname": "reference",
+   "fieldtype": "Data",
+   "label": "Reference",
+   "description": "Your own reference, e.g. the e-mail or ticket in which it was asked",
+   "idx": 5
+  },
+  {
+   "fieldname": "who_section",
+   "fieldtype": "Section Break",
+   "label": "Whose Data",
+   "description": "Chats are matched by e-mail, phone or WhatsApp number, linked contact, linked customer, and the person's portal account",
+   "idx": 6
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email",
+   "options": "Email",
+   "idx": 7
+  },
+  {
+   "fieldname": "phone",
+   "fieldtype": "Data",
+   "label": "Phone",
+   "description": "Digits, with or without +",
+   "idx": 8
+  },
+  {
+   "fieldname": "column_break_p1",
+   "fieldtype": "Column Break",
+   "idx": 9
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer",
+   "description": "Optional: all chats linked to this customer. Use only when the whole account asks",
+   "idx": 10
+  },
+  {
+   "fieldname": "verify_section",
+   "fieldtype": "Section Break",
+   "label": "Identity",
+   "idx": 11
+  },
+  {
+   "fieldname": "identity_verified",
+   "fieldtype": "Check",
+   "label": "I Have Verified the Requester's Identity",
+   "description": "Required before running. Never export or erase on an unverified request",
+   "idx": 12
+  },
+  {
+   "fieldname": "verification_note",
+   "fieldtype": "Small Text",
+   "label": "Verification Note",
+   "description": "How it was verified (no copies of ID documents here)",
+   "idx": 13
+  },
+  {
+   "fieldname": "include_internal_notes",
+   "fieldtype": "Check",
+   "label": "Include Internal Notes",
+   "description": "Export only: include staff notes (usually left out)",
+   "idx": 14
+  },
+  {
+   "fieldname": "result_section",
+   "fieldtype": "Section Break",
+   "label": "Result",
+   "idx": 15
+  },
+  {
+   "fieldname": "conversations",
+   "fieldtype": "Int",
+   "label": "Conversations",
+   "read_only": 1,
+   "idx": 16
+  },
+  {
+   "fieldname": "messages",
+   "fieldtype": "Int",
+   "label": "Messages",
+   "read_only": 1,
+   "idx": 17
+  },
+  {
+   "fieldname": "files",
+   "fieldtype": "Int",
+   "label": "Files",
+   "read_only": 1,
+   "idx": 18
+  },
+  {
+   "fieldname": "column_break_p2",
+   "fieldtype": "Column Break",
+   "idx": 19
+  },
+  {
+   "fieldname": "completed_on",
+   "fieldtype": "Datetime",
+   "label": "Completed On",
+   "read_only": 1,
+   "idx": 20
+  },
+  {
+   "fieldname": "completed_by",
+   "fieldtype": "Link",
+   "label": "Completed By",
+   "options": "User",
+   "read_only": 1,
+   "idx": 21
+  },
+  {
+   "fieldname": "export_file",
+   "fieldtype": "Attach",
+   "label": "Export File",
+   "read_only": 1,
+   "idx": 22
+  },
+  {
+   "fieldname": "linked_records",
+   "fieldtype": "Small Text",
+   "label": "Linked Records",
+   "read_only": 1,
+   "description": "Records outside chats that may also hold this person's data (handle them where they live)",
+   "idx": 23
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Privacy Request",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "hash"
+}

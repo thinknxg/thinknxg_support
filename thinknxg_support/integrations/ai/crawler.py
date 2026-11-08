@@ -348,11 +348,12 @@ def crawl(website: str) -> str:
             if len(text) < MIN_TEXT:
                 stats["skipped"] += 1
                 continue
-            _store(site, final, title, text, depth, lang, existing, stats)
+            if not _store(site, final, title, text, depth, lang, existing, stats):
+                break  # the site's crawled-page limit is reached (1.13)
             stored.add(final)
             if fetched % 20 == 0:
                 frappe.db.commit()
-        complete = not todo and start_ok
+        complete = not todo and start_ok and not stats.get("limited")
         if complete:
             for url, row in existing.items():
                 if url not in stored and row.status == "Active":
@@ -361,7 +362,9 @@ def crawl(website: str) -> str:
                     stats["gone"] += 1
         result = _("{0} pages read: {1} new, {2} changed, {3} unchanged, {4} removed, {5} skipped, {6} errors.").format(
             fetched, stats["new"], stats["changed"], stats["same"], stats["gone"], stats["skipped"], stats["errors"])
-        if not complete:
+        if stats.get("limited"):
+            result += " " + _("The crawled-page limit of this site is reached; no new pages were added.")
+        elif not complete:
             result += " " + (_("Stopped at the page limit; pages not reached are kept.") if todo else
                              _("The start page could not be read; nothing was removed."))
         if errors:
@@ -393,7 +396,14 @@ def _store(site, url, title, text, depth, lang, existing, stats):
     if row and (row.status == "Excluded" or (row.status == "Active" and row.content_hash == h)):
         frappe.db.set_value(PAGE, row.name, "last_fetched", now, update_modified=False)
         stats["same"] += 1
-        return
+        return True
+    if not row or row.status != "Active":
+        from thinknxg_support.integrations import limits
+
+        left = limits.remaining("crawled_pages")
+        if left is not None and left <= 0:
+            stats["limited"] = 1
+            return False
     values = {"title": title, "text": text, "content_hash": h, "status": "Active", "depth": depth,
               "language": lang or None, "last_fetched": now}
     if row:
@@ -410,6 +420,7 @@ def _store(site, url, title, text, depth, lang, existing, stats):
         retrieval.index_source(PAGE, doc.name)
     except Exception:
         frappe.log_error(title="thinkNXG Support: crawled page could not be indexed")
+    return True
 
 
 def reindex(website: str):

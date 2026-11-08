@@ -1,0 +1,135 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "intro_section",
+  "plan_html",
+  "limits_section",
+  "ai_tokens_per_month",
+  "guest_chats_per_day",
+  "column_break_l1",
+  "knowledge_documents",
+  "knowledge_storage_mb",
+  "websites",
+  "crawled_pages"
+ ],
+ "fields": [
+  {
+   "fieldname": "intro_section",
+   "fieldtype": "Section Break",
+   "description": "Limits for this site. 0 means no limit of your own. Your hosting plan may set upper limits (shown below); you can set lower ones, not higher",
+   "idx": 1
+  },
+  {
+   "fieldname": "plan_html",
+   "fieldtype": "HTML",
+   "label": "Plan and Usage",
+   "idx": 2
+  },
+  {
+   "fieldname": "limits_section",
+   "fieldtype": "Section Break",
+   "label": "Limits",
+   "idx": 3
+  },
+  {
+   "fieldname": "ai_tokens_per_month",
+   "fieldtype": "Int",
+   "label": "AI Tokens per Month",
+   "default": "0",
+   "description": "All AI calls together (assistant, copilot, analysis, translation). The daily budget in Support AI Settings still applies",
+   "idx": 4
+  },
+  {
+   "fieldname": "guest_chats_per_day",
+   "fieldtype": "Int",
+   "label": "Guest Chats per Day",
+   "default": "0",
+   "description": "New chats from website visitors who are not signed in. Visitors over the limit are asked to try later or use the portal",
+   "idx": 5
+  },
+  {
+   "fieldname": "column_break_l1",
+   "fieldtype": "Column Break",
+   "idx": 6
+  },
+  {
+   "fieldname": "knowledge_documents",
+   "fieldtype": "Int",
+   "label": "Knowledge Documents",
+   "default": "0",
+   "idx": 7
+  },
+  {
+   "fieldname": "knowledge_storage_mb",
+   "fieldtype": "Int",
+   "label": "Knowledge Document Storage (MB)",
+   "default": "0",
+   "idx": 8
+  },
+  {
+   "fieldname": "websites",
+   "fieldtype": "Int",
+   "label": "Crawled Websites",
+   "default": "0",
+   "idx": 9
+  },
+  {
+   "fieldname": "crawled_pages",
+   "fieldtype": "Int",
+   "label": "Crawled Pages (all websites)",
+   "default": "0",
+   "idx": 10
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Usage Limits",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

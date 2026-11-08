@@ -377,6 +377,40 @@ Guest chat security:
 Settings: *Support Portal Settings → Live Chat* (on/off, guests, website button, position, title,
 greeting, offline message, privacy note, support days/hours in the system time zone, limits).
 
+## Analytics, privacy, security and usage limits (1.13)
+
+**Support Analytics** (`/app/support-analytics`, support managers): live panel (waiting now with the longest wait,
+active chats, visitors online, open chats, the last 24 hours of activity; refreshes every 30 seconds) and, for a
+period, channel and queue: conversations, AI resolved vs human handled, AI resolution rate, first response and
+resolution time (median and 90th percentile), customer satisfaction, AI tokens and errors, daily chart, channels,
+customer mood, handoff reasons, intents, languages, agent performance (chats, first response, handling time,
+transfers, CSAT, alert response). Definitions are on the page. Figures are cached for five minutes (*Refresh*
+recalculates). Indexes on the conversation, assignment and feedback fields it filters on are added by migrate.
+
+**Privacy requests** (*Support Privacy Request*, administrators): enter an e-mail, phone or customer, confirm the
+requester's identity, *Find Chats*, then *Create Export* (a private JSON file of their chats; staff notes only if
+ticked) or *Erase Personal Data* (type ERASE). Erasing anonymises the chats: names, e-mail, phone, WhatsApp number,
+IP, sign-in tokens, message text, AI summaries, feedback comments, alert texts and attachments are removed and Raven
+copies deleted, while counts and times stay for reports. Customers, contacts and Helpdesk tickets are listed under
+*Linked Records* to be handled where they live. The audit log keeps counts only.
+
+**Security check** (on the analytics page): two-factor sign-in for support roles, password policy, lock-out after
+failed sign-ins, session expiry, HTTPS and AI redaction, each with the fix. System Managers can require two-factor
+for the support roles with one button (System Settings > Enable Two Factor Auth, and Two Factor Authentication on
+Support Agent, Support Manager and Support Portal Administrator). The agent apps use the same web sign-in.
+
+**Usage limits** (*Support Usage Limits*): AI tokens per month, guest chats per day, knowledge documents and storage,
+crawled websites and pages. A hosting operator sets upper limits in `site_config.json`:
+
+```json
+"thinknxg_support_limits": {"ai_tokens_per_month": 2000000, "guest_chats_per_day": 500, "knowledge_documents": 200,
+                            "knowledge_storage_mb": 1024, "websites": 5, "crawled_pages": 2000}
+```
+
+Administrators can set lower limits, not higher. Over the limit: the assistant and copilot stop (as with the daily
+budget; chats go to people), new guest chats are asked to try later, new documents and websites are refused, and
+crawls add no new pages.
+
 ## Documents, website crawling and languages (1.11)
 
 **Uploaded documents** (*Support Knowledge Document*): PDF with selectable text, Word (.docx), Excel (.xlsx), CSV,

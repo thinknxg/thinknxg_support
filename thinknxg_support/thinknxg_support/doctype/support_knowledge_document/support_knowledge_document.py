@@ -16,6 +16,12 @@ class SupportKnowledgeDocument(Document):
             self.language = self.language.strip().lower()[:8]
         if self.is_new() or self.has_value_changed("file"):
             self.status = "Pending"
+            from thinknxg_support.integrations import limits  # 1.13: the site's limits
+
+            if self.is_new():
+                limits.check("knowledge_documents")
+            size = frappe.db.get_value("File", {"file_url": self.file}, "file_size") or 0
+            limits.check("knowledge_storage_mb", adding=round(int(size) / (1024 * 1024)))
 
     def on_update(self):
         documents.make_private(self)

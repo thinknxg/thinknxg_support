@@ -199,6 +199,7 @@ def log_usage(kind="Answer", status="Success", result=None, conversation=None, e
         })
         doc.insert(ignore_permissions=True)
         frappe.cache.delete_value("thinknxg_support:ai_tokens_today")
+        frappe.cache.delete_value("thinknxg_support:ai_tokens_month")
         return doc.name
     except Exception:
         frappe.logger("thinknxg_support").exception("could not write AI usage log")
@@ -217,4 +218,8 @@ def tokens_used_today() -> int:
 
 def budget_left() -> bool:
     budget = int(cfg().daily_token_budget or 0)
-    return budget <= 0 or tokens_used_today() < budget
+    if budget > 0 and tokens_used_today() >= budget:
+        return False
+    from thinknxg_support.integrations import limits  # 1.13: monthly limit of the site (hosting plan)
+
+    return limits.ai_allowed()

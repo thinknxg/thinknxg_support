@@ -190,6 +190,10 @@ def start_guest(message: str, name: str | None = None, email: str | None = None,
         frappe.throw(_("Chat is not available. Please log in to contact support."), frappe.PermissionError)
     ratelimit.check("guest_chat_start", 5, 3600)
     ratelimit.check("guest_chat_msg", s.guest_chat_rate_limit or 20, 600)
+    from thinknxg_support.integrations import limits  # 1.13: the site's daily guest chat limit
+
+    limits.check("guest_chats_per_day", message=_("Our chat is very busy today. Please try again later, or sign in "
+                                                  "to the support portal to contact us."))
 
     user = frappe.session.user
     if user != "Guest":  # logged-in, unlinked user: identity comes from the account, not the form

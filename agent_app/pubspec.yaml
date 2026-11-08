@@ -1,7 +1,7 @@
 name: thinknxg_agent
 description: thinkNXG Support Agent app for Windows, Android and iOS.
 publish_to: none
-version: 1.11.0+3
+version: 1.13.0+4
 
 environment:
   sdk: ">=3.4.0 <4.0.0"

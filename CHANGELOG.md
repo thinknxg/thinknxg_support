@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.13.0 — 2026-11-08
+* **Support Analytics** page: live waiting, active chats and visitors; AI resolved vs human, AI resolution rate,
+  first response and resolution times, satisfaction, AI usage, mood, intents, languages, handoff reasons and agent
+  performance, by period, channel and queue. Managers only; cached; new indexes for its queries.
+* **Privacy requests**: export or erase one person's chat data, with identity confirmation, counts-only audit and a
+  list of linked records elsewhere.
+* **Security check** with two-factor guidance and a one-click requirement for the support roles.
+* **Usage limits per site**: hosting caps in `site_config.json`, lower limits in *Support Usage Limits*, enforced for
+  AI tokens, guest chats, knowledge documents and storage, websites and crawled pages.
+* Release 1.12 (messaging, CRM and automation) is still to come; lead figures join the analytics with it.
+
 ## 1.11.0 — 2026-11-08
 * **Knowledge base uploads** (*Support Knowledge Document*): PDF, Word, Excel, CSV, text, Markdown and HTML files
   become knowledge for the assistant and the copilot. Files stay private; documents are staff-only until you choose

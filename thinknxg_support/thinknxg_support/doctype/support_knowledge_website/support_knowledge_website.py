@@ -17,6 +17,10 @@ class SupportKnowledgeWebsite(Document):
         except crawler.UnsafeURL as e:
             frappe.throw(str(e))
         self.start_url = url
+        if self.is_new():
+            from thinknxg_support.integrations import limits  # 1.13
+
+            limits.check("websites")
         self.max_pages = min(max(cint(self.max_pages) or 200, 1), crawler.MAX_PAGES)
         self.max_depth = min(max(cint(self.max_depth), 0), 10)
         self.delay_seconds = max(flt(self.delay_seconds), 0.5)
