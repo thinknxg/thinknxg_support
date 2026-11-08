@@ -64,9 +64,9 @@ jobs:
         run: |
           cd ~/frappe-bench
           # server tests only: skip front-end builds (an upstream Helpdesk UI build failure must not block them)
-          bench get-app --skip-assets --branch version-16 erpnext
+          bench get-app --skip-assets --branch version-16 https://github.com/frappe/erpnext
           bench get-app --skip-assets https://github.com/frappe/telephony  # Helpdesk requires it (URL: no name lookup)
-          bench get-app --skip-assets helpdesk
+          bench get-app --skip-assets https://github.com/frappe/helpdesk
           bench get-app --skip-assets thinknxg_support "$GITHUB_WORKSPACE/app"
       - name: Create site
         run: |
@@ -127,9 +127,9 @@ jobs:
       - name: Get apps
         run: |
           cd ~/frappe-bench
-          bench get-app --skip-assets --branch version-16 erpnext
+          bench get-app --skip-assets --branch version-16 https://github.com/frappe/erpnext
           bench get-app --skip-assets https://github.com/frappe/telephony
-          bench get-app --skip-assets helpdesk
+          bench get-app --skip-assets https://github.com/frappe/helpdesk
           bench get-app --skip-assets https://github.com/frappe/whatsapp  # Frappe CRM requires it
           bench get-app --skip-assets https://github.com/frappe/crm
           bench get-app --skip-assets thinknxg_support "$GITHUB_WORKSPACE/app"
