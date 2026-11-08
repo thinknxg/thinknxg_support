@@ -1,0 +1,245 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "site_name",
+  "enabled",
+  "start_url",
+  "column_break_w1",
+  "audience",
+  "language",
+  "refresh",
+  "scope_section",
+  "include_paths",
+  "exclude_patterns",
+  "column_break_w2",
+  "max_pages",
+  "max_depth",
+  "use_sitemap",
+  "include_pdfs",
+  "delay_seconds",
+  "status_section",
+  "last_crawl_on",
+  "page_count",
+  "column_break_w3",
+  "last_crawl_status"
+ ],
+ "fields": [
+  {
+   "fieldname": "site_name",
+   "fieldtype": "Data",
+   "label": "Name",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "1",
+   "in_list_view": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "start_url",
+   "fieldtype": "Data",
+   "label": "Start Address",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "e.g. https://www.example.com/help. Only this site is crawled (with or without www)",
+   "idx": 3
+  },
+  {
+   "fieldname": "column_break_w1",
+   "fieldtype": "Column Break",
+   "idx": 4
+  },
+  {
+   "fieldname": "audience",
+   "fieldtype": "Select",
+   "label": "Audience",
+   "options": "Everyone\nCustomers\nStaff",
+   "default": "Everyone",
+   "description": "Everyone: guests too. Customers: logged-in portal customers. Staff: only the agent copilot, never the customer-facing assistant",
+   "idx": 5
+  },
+  {
+   "fieldname": "language",
+   "fieldtype": "Data",
+   "label": "Language",
+   "description": "Optional language code; otherwise each page's own language is used",
+   "idx": 6
+  },
+  {
+   "fieldname": "refresh",
+   "fieldtype": "Select",
+   "label": "Refresh",
+   "options": "Manual\nDaily\nWeekly",
+   "default": "Weekly",
+   "description": "Changed pages are re-read; removed pages leave the knowledge base",
+   "idx": 7
+  },
+  {
+   "fieldname": "scope_section",
+   "fieldtype": "Section Break",
+   "label": "What to Read",
+   "description": "The crawler always obeys robots.txt and noindex, never logs in, and never visits private or internal network addresses. Crawl only sites you own or may use",
+   "idx": 8
+  },
+  {
+   "fieldname": "include_paths",
+   "fieldtype": "Small Text",
+   "label": "Include Paths",
+   "description": "Optional: only addresses starting with these paths, one per line, e.g. /help/",
+   "idx": 9
+  },
+  {
+   "fieldname": "exclude_patterns",
+   "fieldtype": "Small Text",
+   "label": "Exclude Patterns",
+   "description": "Optional: skip addresses matching these, one per line, e.g. /blog/* or */login*",
+   "idx": 10
+  },
+  {
+   "fieldname": "column_break_w2",
+   "fieldtype": "Column Break",
+   "idx": 11
+  },
+  {
+   "fieldname": "max_pages",
+   "fieldtype": "Int",
+   "label": "Max Pages",
+   "default": "200",
+   "description": "Up to 2000",
+   "idx": 12
+  },
+  {
+   "fieldname": "max_depth",
+   "fieldtype": "Int",
+   "label": "Link Depth",
+   "default": "3",
+   "description": "How many clicks away from the start page (0 to 10)",
+   "idx": 13
+  },
+  {
+   "fieldname": "use_sitemap",
+   "fieldtype": "Check",
+   "label": "Read the Sitemap",
+   "default": "1",
+   "idx": 14
+  },
+  {
+   "fieldname": "include_pdfs",
+   "fieldtype": "Check",
+   "label": "Read Linked PDFs",
+   "default": "1",
+   "idx": 15
+  },
+  {
+   "fieldname": "delay_seconds",
+   "fieldtype": "Float",
+   "label": "Pause Between Requests (seconds)",
+   "default": "1",
+   "description": "At least 0.5, to be gentle with the site",
+   "idx": 16
+  },
+  {
+   "fieldname": "status_section",
+   "fieldtype": "Section Break",
+   "label": "Last Crawl",
+   "idx": 17
+  },
+  {
+   "fieldname": "last_crawl_on",
+   "fieldtype": "Datetime",
+   "label": "Last Crawl On",
+   "read_only": 1,
+   "idx": 18
+  },
+  {
+   "fieldname": "page_count",
+   "fieldtype": "Int",
+   "label": "Pages in Knowledge Base",
+   "read_only": 1,
+   "idx": 19
+  },
+  {
+   "fieldname": "column_break_w3",
+   "fieldtype": "Column Break",
+   "idx": 20
+  },
+  {
+   "fieldname": "last_crawl_status",
+   "fieldtype": "Small Text",
+   "label": "Last Crawl Status",
+   "read_only": 1,
+   "idx": 21
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Knowledge Website",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Agent",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "field:site_name",
+ "naming_rule": "By fieldname"
+}

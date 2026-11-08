@@ -88,6 +88,9 @@ def handoff(conv, reason: str, message: str | None = None, announce: bool = True
             text = _("Connecting you with {0} from our team.").format(first) if first else _("Connecting you with our team.")
         else:
             text = _("I've passed this to our team. Someone will reply here shortly.")
+        from thinknxg_support.integrations.ai import language  # 1.11: in the customer's language
+
+        text = language.localize(conv, text)
         conversations.post_agent_message(conv, f"<p>{frappe.utils.escape_html(text)}</p>", sender="Administrator",
                                          source="system", sender_type="System", response_source="Handoff")
     last = frappe.get_all("Support Portal Message", filters={"conversation": conv.name, "direction": "Inbound"},

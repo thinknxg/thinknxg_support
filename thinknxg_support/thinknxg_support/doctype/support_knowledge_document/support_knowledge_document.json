@@ -1,0 +1,216 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "enabled",
+  "audience",
+  "column_break_d1",
+  "category",
+  "language",
+  "status",
+  "file_section",
+  "file",
+  "column_break_d2",
+  "file_type",
+  "pages",
+  "characters",
+  "processed_on",
+  "error",
+  "text_section",
+  "extracted_text"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "reqd": 1,
+   "in_list_view": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "1",
+   "in_list_view": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "audience",
+   "fieldtype": "Select",
+   "label": "Audience",
+   "options": "Everyone\nCustomers\nStaff",
+   "default": "Staff",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Everyone: guests too. Customers: logged-in portal customers. Staff: only the agent copilot, never the customer-facing assistant",
+   "idx": 3
+  },
+  {
+   "fieldname": "column_break_d1",
+   "fieldtype": "Column Break",
+   "idx": 4
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Data",
+   "label": "Category",
+   "in_standard_filter": 1,
+   "idx": 5
+  },
+  {
+   "fieldname": "language",
+   "fieldtype": "Data",
+   "label": "Language",
+   "description": "Optional language code of the document, e.g. ar or en",
+   "idx": 6
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Pending\nProcessing\nReady\nFailed",
+   "default": "Pending",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 7
+  },
+  {
+   "fieldname": "file_section",
+   "fieldtype": "Section Break",
+   "label": "File",
+   "description": "PDF (with selectable text), Word (.docx), Excel (.xlsx), CSV, text, Markdown or HTML, up to 25 MB. The file is kept private; only staff can open it",
+   "idx": 8
+  },
+  {
+   "fieldname": "file",
+   "fieldtype": "Attach",
+   "label": "File",
+   "reqd": 1,
+   "idx": 9
+  },
+  {
+   "fieldname": "column_break_d2",
+   "fieldtype": "Column Break",
+   "idx": 10
+  },
+  {
+   "fieldname": "file_type",
+   "fieldtype": "Data",
+   "label": "File Type",
+   "read_only": 1,
+   "idx": 11
+  },
+  {
+   "fieldname": "pages",
+   "fieldtype": "Int",
+   "label": "Pages or Sheets",
+   "read_only": 1,
+   "idx": 12
+  },
+  {
+   "fieldname": "characters",
+   "fieldtype": "Int",
+   "label": "Characters",
+   "read_only": 1,
+   "idx": 13
+  },
+  {
+   "fieldname": "processed_on",
+   "fieldtype": "Datetime",
+   "label": "Processed On",
+   "read_only": 1,
+   "idx": 14
+  },
+  {
+   "fieldname": "error",
+   "fieldtype": "Small Text",
+   "label": "Error",
+   "read_only": 1,
+   "idx": 15
+  },
+  {
+   "fieldname": "text_section",
+   "fieldtype": "Section Break",
+   "label": "Extracted Text",
+   "collapsible": 1,
+   "description": "What the assistant reads. Check it once after uploading",
+   "idx": 16
+  },
+  {
+   "fieldname": "extracted_text",
+   "fieldtype": "Long Text",
+   "label": "Extracted Text",
+   "read_only": 1,
+   "idx": 17
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Knowledge Document",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Agent",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "hash",
+ "title_field": "title",
+ "search_fields": "category,status"
+}

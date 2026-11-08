@@ -51,6 +51,8 @@
   "knowledge_tab",
   "index_helpdesk_articles",
   "index_snippets",
+  "index_documents",
+  "index_websites",
   "top_k",
   "min_relevance",
   "chunk_size",
@@ -59,6 +61,12 @@
   "embedding_base_url",
   "embedding_api_key",
   "embedding_model",
+  "language_section",
+  "knowledge_language",
+  "answer_language",
+  "column_break_lang",
+  "translate_questions",
+  "localize_messages",
   "index_section",
   "index_status",
   "chunk_count",
@@ -373,37 +381,53 @@
    "idx": 44
   },
   {
+   "fieldname": "index_documents",
+   "fieldtype": "Check",
+   "label": "Use Uploaded Documents",
+   "default": "1",
+   "description": "Support Knowledge Document: PDF, Word, Excel, CSV, text, Markdown and HTML files",
+   "idx": 45
+  },
+  {
+   "fieldname": "index_websites",
+   "fieldtype": "Check",
+   "label": "Use Crawled Websites",
+   "default": "1",
+   "description": "Support Knowledge Website",
+   "idx": 46
+  },
+  {
    "fieldname": "top_k",
    "fieldtype": "Int",
    "label": "Passages per Answer",
    "default": "4",
-   "idx": 45
+   "idx": 47
   },
   {
    "fieldname": "min_relevance",
    "fieldtype": "Float",
    "label": "Minimum Relevance (0 to 1)",
    "default": "0.3",
-   "idx": 46
+   "idx": 48
   },
   {
    "fieldname": "chunk_size",
    "fieldtype": "Int",
    "label": "Passage Size (characters)",
    "default": "900",
-   "idx": 47
+   "idx": 49
   },
   {
    "fieldname": "column_break_k1",
    "fieldtype": "Column Break",
-   "idx": 48
+   "idx": 50
   },
   {
    "fieldname": "use_embeddings",
    "fieldtype": "Check",
    "label": "Use Embeddings",
    "description": "Semantic search. Without it the assistant uses keyword search",
-   "idx": 49
+   "idx": 51
   },
   {
    "fieldname": "embedding_base_url",
@@ -411,7 +435,7 @@
    "label": "Embedding API Base URL",
    "default": "https://api.openai.com/v1",
    "description": "Any /embeddings endpoint in the OpenAI format (OpenAI, Azure, Voyage, Ollama, ...)",
-   "idx": 50
+   "idx": 52
   },
   {
    "fieldname": "embedding_api_key",
@@ -419,46 +443,90 @@
    "label": "Embedding API Key",
    "length": 500,
    "description": "Leave empty to reuse the model API key",
-   "idx": 51
+   "idx": 53
   },
   {
    "fieldname": "embedding_model",
    "fieldtype": "Data",
    "label": "Embedding Model",
-   "idx": 52
+   "idx": 54
+  },
+  {
+   "fieldname": "language_section",
+   "fieldtype": "Section Break",
+   "label": "Languages",
+   "description": "Customers can write in any language. Detection is free; translations are short AI calls that count towards the daily budget and are cached",
+   "idx": 55
+  },
+  {
+   "fieldname": "knowledge_language",
+   "fieldtype": "Data",
+   "label": "Knowledge Base Language",
+   "default": "en",
+   "description": "Language code most of your knowledge is written in, e.g. en or ar",
+   "idx": 56
+  },
+  {
+   "fieldname": "answer_language",
+   "fieldtype": "Select",
+   "label": "Answer In",
+   "options": "Customer's language\nKnowledge language",
+   "default": "Customer's language",
+   "idx": 57
+  },
+  {
+   "fieldname": "column_break_lang",
+   "fieldtype": "Column Break",
+   "idx": 58
+  },
+  {
+   "fieldname": "translate_questions",
+   "fieldtype": "Check",
+   "label": "Search Across Languages",
+   "default": "1",
+   "description": "When a customer writes in another language, also search with the question translated into the knowledge base language. Not needed with multilingual embeddings",
+   "idx": 59
+  },
+  {
+   "fieldname": "localize_messages",
+   "fieldtype": "Check",
+   "label": "Translate Fixed Messages",
+   "default": "1",
+   "description": "No-answer, handoff and offline messages in the customer's language",
+   "idx": 60
   },
   {
    "fieldname": "index_section",
    "fieldtype": "Section Break",
    "label": "Index Status",
-   "idx": 53
+   "idx": 61
   },
   {
    "fieldname": "index_status",
    "fieldtype": "Small Text",
    "label": "Index Status",
    "read_only": 1,
-   "idx": 54
+   "idx": 62
   },
   {
    "fieldname": "chunk_count",
    "fieldtype": "Int",
    "label": "Indexed Passages",
    "read_only": 1,
-   "idx": 55
+   "idx": 63
   },
   {
    "fieldname": "last_indexed_on",
    "fieldtype": "Datetime",
    "label": "Last Indexed On",
    "read_only": 1,
-   "idx": 56
+   "idx": 64
   },
   {
    "fieldname": "privacy_tab",
    "fieldtype": "Tab Break",
    "label": "Privacy",
-   "idx": 57
+   "idx": 65
   },
   {
    "fieldname": "redact_contact_details",
@@ -466,14 +534,14 @@
    "label": "Remove Emails and Phone Numbers Before Sending",
    "default": "1",
    "description": "Card-like numbers are always removed",
-   "idx": 58
+   "idx": 66
   },
   {
    "fieldname": "usage_retention_days",
    "fieldtype": "Int",
    "label": "Keep Usage Logs (days)",
    "default": "90",
-   "idx": 59
+   "idx": 67
   }
  ],
  "index_web_pages_for_search": 0,

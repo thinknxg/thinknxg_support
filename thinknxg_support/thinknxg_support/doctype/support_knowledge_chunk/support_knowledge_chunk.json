@@ -55,7 +55,7 @@
    "fieldname": "audience",
    "fieldtype": "Select",
    "label": "Audience",
-   "options": "Everyone\nCustomers",
+   "options": "Everyone\nCustomers\nStaff",
    "in_standard_filter": 1,
    "idx": 5
   },

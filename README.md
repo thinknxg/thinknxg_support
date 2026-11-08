@@ -377,6 +377,29 @@ Guest chat security:
 Settings: *Support Portal Settings → Live Chat* (on/off, guests, website button, position, title,
 greeting, offline message, privacy note, support days/hours in the system time zone, limits).
 
+## Documents, website crawling and languages (1.11)
+
+**Uploaded documents** (*Support Knowledge Document*): PDF with selectable text, Word (.docx), Excel (.xlsx), CSV,
+text, Markdown and HTML, up to 25 MB. The file is always kept private (a public upload is moved to private files).
+The text is read in the background; the form shows *Ready* with the character count, or *Failed* with the reason
+(for example a scanned PDF: there is no text recognition yet). Check the extracted text once. Audience defaults to
+*Staff*: only the agent copilot uses it until you choose *Customers* or *Everyone*. *Read Again* re-reads the file.
+
+**Websites** (*Support Knowledge Website*): a start address, optional paths to include and patterns to exclude,
+page limit (up to 2000), link depth, sitemap and linked PDFs, refresh Manual / Daily / Weekly. *Crawl Now* runs it
+in the background; each page becomes a *Support Knowledge Web Page* you can set to *Excluded*. The crawler stays on
+one site (with or without www), obeys robots.txt and noindex / nofollow, never logs in, never visits private or
+internal network addresses (also after redirects), pauses between requests and caps page sizes. Changed pages are
+re-indexed; a page that has gone leaves the knowledge base only after a crawl that finished its whole queue, so a
+site outage removes nothing. Crawl only sites you own or are allowed to use.
+
+**Languages.** Set *Knowledge Base Language* (default `en`). Customer language comes from the 1.10 message analysis
+when it ran, otherwise from the messages (Arabic, Urdu, Persian, Hindi and other scripts, and common words for
+English, French, Spanish, German, Portuguese, Italian, Dutch, Turkish, Indonesian). *Search Across Languages* adds a
+search with the question translated (skipped with embeddings, which are usually multilingual). *Answer In* chooses
+the customer's language or the knowledge base language. *Translate Fixed Messages* translates no-answer, handoff and
+offline messages. Translations are cached for 30 days and logged as *Translation* in the usage log.
+
 ## AI assistant, chatbot and handoff (1.2)
 
 Every live chat (and optionally WhatsApp and portal messages) can be answered first by a rule-based
@@ -400,7 +423,8 @@ hand off -> first enabled queue for the channel -> least busy / round robin agen
 | Piece | Where | Notes |
 |---|---|---|
 | Assistant settings | *Support AI Settings* | Provider, model, key, channels, audiences, thresholds, limits, privacy. Buttons: Test Connection, Rebuild Knowledge Index, Try a Question |
-| Knowledge | Published Helpdesk articles + built-in *Support Knowledge Article* + *Support Knowledge Snippet* | Split into passages (*Support Knowledge Chunk*). Snippets can be limited to verified customers |
+| Knowledge | Published Helpdesk articles + built-in *Support Knowledge Article* + *Support Knowledge Snippet* + uploaded *Support Knowledge Document* + crawled *Support Knowledge Website* pages (1.11) | Split into passages (*Support Knowledge Chunk*). Audiences: Everyone, Customers (verified), Staff (agent copilot only) |
+| Languages (1.11) | *Support AI Settings > Knowledge > Languages* | Detects the customer's language, searches with the question translated into the knowledge base language, answers in the customer's language, translates fixed messages. Short cached AI calls within the daily budget |
 | Chatbot | *Support Chatbot* with rules | Welcome message and buttons, handoff words, rules with actions: Reply, Reply and Hand Off, Reply and Ask AI, Create Ticket, End Chat |
 | Queues | *Support Chat Queue* | Channels, members, max open chats each, Least Busy / Round Robin / Manual |
 | Assignments | *Support Chat Assignment* | Who handled each conversation, when they first replied, outcome |

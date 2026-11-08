@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.11.0 — 2026-11-08
+* **Knowledge base uploads** (*Support Knowledge Document*): PDF, Word, Excel, CSV, text, Markdown and HTML files
+  become knowledge for the assistant and the copilot. Files stay private; documents are staff-only until you choose
+  another audience. Clear errors for scanned or damaged files.
+* **Website crawling** (*Support Knowledge Website*, *Support Knowledge Web Page*): your help site or website in the
+  knowledge base, refreshed daily or weekly. robots.txt, noindex, one site only, no internal addresses, size limits.
+* **Multilingual answers**: language detection, search across languages, answers in the customer's language and
+  translated fixed messages (Support AI Settings > Knowledge > Languages).
+* New *Staff* audience for knowledge, used only by the agent copilot. Existing articles, snippets, the article
+  importer and their audiences are unchanged. Patch `v1_11.knowledge_defaults` stores the new defaults.
+
 ## 1.10.0 — 2026-11-08
 * **AI agent copilot** (web console "AI assist" menu, and the AI button / Ctrl+I in the Windows, Android and iOS
   apps): suggested replies grounded in the knowledge base, rewrite (professional, friendly, shorter, fix grammar),
