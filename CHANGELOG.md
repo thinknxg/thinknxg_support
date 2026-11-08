@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.14.1, 2026-11-08
+* Fix: **Log out** in the support portal gave "Not Permitted" (Frappe v16 only accepts logout as a POST). The portal
+  now posts to `/api/method/logout` and returns to the portal home.
+
 ## 1.14.0 — increment 3 of 3, 2026-11-08
 * **Leads from chats**: in thinkNXG CRM (CRM Lead) when it is installed, otherwise ERPNext Lead (Support Portal
   Settings > Leads; "Off" switches it off). From the web console, the apps, lead capture or automation rules. An
