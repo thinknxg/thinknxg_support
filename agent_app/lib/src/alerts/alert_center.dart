@@ -54,6 +54,7 @@ class AlertCenter extends ChangeNotifier {
     'Escalation': 'Escalation',
     'Negative Feedback': 'Negative feedback',
     'Positive Feedback': 'Positive feedback',
+    'Frustrated Customer': 'A customer seems frustrated',
   };
 
   /// Called with every poll of open alerts.

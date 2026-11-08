@@ -190,6 +190,8 @@ class ConversationTile extends StatelessWidget {
           const SizedBox(height: 4),
           Wrap(spacing: 6, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
             StatusPill(conversationStatusLabel(c), color: conversationStatusColor(context, c)),
+            if (c.needsAttention)
+              StatusPill(c.urgency == 'High' ? 'Urgent' : 'Unhappy', color: Theme.of(context).colorScheme.error),
             if (c.assignee != null) Text(c.assignee!.name, style: Theme.of(context).textTheme.bodySmall),
             if (c.queue != null) Text('· ${c.queue}', style: Theme.of(context).textTheme.bodySmall),
           ]),

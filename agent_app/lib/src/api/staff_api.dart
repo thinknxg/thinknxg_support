@@ -196,6 +196,10 @@ class StaffApi {
   Future<String> savedReplyRender(String name, {String? ticket, String? conversation}) async =>
       '${_map(await client.post('saved_reply_render', {'name': name, 'ticket': ticket, 'conversation': conversation}))['text'] ?? ''}';
 
+  /// AI copilot (drafts only): suggest | rewrite | summarize | recommend | translate | note.
+  Future<Map<String, dynamic>> copilot(String id, String action, {String? text, String? style, String? target}) async =>
+      _map(await client.post('copilot', {'name': id, 'action': action, 'text': text, 'style': style, 'target': target}));
+
   Future<String> sendTestAlert() async => '${_map(await client.post('send_test_alert', {}))['message'] ?? ''}';
 
   Future<List<String>> acknowledgeAlerts(List<String> ids) async =>

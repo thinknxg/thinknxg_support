@@ -37,7 +37,7 @@
    "fieldname": "kind",
    "fieldtype": "Select",
    "label": "Kind",
-   "options": "Answer\nEmbedding\nTest\nTrial",
+   "options": "Answer\nEmbedding\nTest\nTrial\nAnalysis\nCopilot\nSummary\nTranslation",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "idx": 2

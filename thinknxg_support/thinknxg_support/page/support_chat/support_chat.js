@@ -3,6 +3,7 @@
 const API = "thinknxg_support.api.v1.agent.";
 const DOCM = "thinknxg_support.thinknxg_support.doctype.support_conversation_link.support_conversation_link.";
 const TOOLS = "thinknxg_support.integrations.agent_tools.";
+const COPILOT = "thinknxg_support.api.v1.copilot.";
 
 // Canned response text for the reply box: HTML to plain text, placeholders filled from the chat.
 function cannedText(html, c) {
@@ -331,6 +332,21 @@ class SupportChatConsole {
 				<div class="txk-bar">
 					<label class="small"><input type="checkbox" class="txk-internal" ${this.internal ? "checked" : ""}> ${__("Internal note")}</label>
 					<span>
+						<span class="dropdown txk-ai">
+							<button class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" title="${__("AI copilot: drafts only, you decide what is sent")}">${__("AI assist")}</button>
+							<ul class="dropdown-menu dropdown-menu-right">
+								<li><a class="dropdown-item" data-ai="suggest">${__("Suggest replies")}</a></li>
+								<li><a class="dropdown-item" data-ai="rewrite:professional">${__("Rewrite: professional")}</a></li>
+								<li><a class="dropdown-item" data-ai="rewrite:friendly">${__("Rewrite: friendly")}</a></li>
+								<li><a class="dropdown-item" data-ai="rewrite:concise">${__("Rewrite: shorter")}</a></li>
+								<li><a class="dropdown-item" data-ai="rewrite:fix">${__("Fix grammar")}</a></li>
+								<li><a class="dropdown-item" data-ai="translate:customer">${__("Translate my draft to the customer's language")}</a></li>
+								<li><a class="dropdown-item" data-ai="translate:last">${__("Translate the customer's last message")}</a></li>
+								<li><a class="dropdown-item" data-ai="recommend">${__("Recommended solution and articles")}</a></li>
+								<li><a class="dropdown-item" data-ai="summarize">${__("Summarise the conversation")}</a></li>
+								<li><a class="dropdown-item" data-ai="note">${__("Add summary as internal note")}</a></li>
+							</ul>
+						</span>
 						<button class="btn btn-default btn-sm txk-canned-btn" title="${__("Insert a canned response (or type / in the box)")}">${__("Canned responses")}</button>
 						<button class="btn btn-primary btn-sm txk-send">${__("Send")}</button>
 					</span>
@@ -345,6 +361,8 @@ class SupportChatConsole {
 		});
 		$ta.on("input", () => this.suggest($ta, c));
 		this.$main.find(".txk-canned-btn").on("click", () => this.cannedDialog(c));
+		this.$main.find("[data-ai]").on("click", (e) => { e.preventDefault(); this.copilot(e.currentTarget.dataset.ai, c, data); });
+		this.showInsight(c);
 		$ta.on("input", () => {
 			if (this.internal || Date.now() - this.lastTyping < 3000) return;
 			this.lastTyping = Date.now();
@@ -361,6 +379,80 @@ class SupportChatConsole {
 		});
 		this.$main.find("[data-act]").on("click", (e) => this.action(e.currentTarget.dataset.act, c));
 		this.pollLive();
+	}
+
+	// ---------------------------------------------------------------- AI copilot (1.10): drafts only
+	showInsight(c) {
+		const esc = frappe.utils.escape_html;
+		frappe.call({ method: COPILOT + "insight", args: { name: c.name }, type: "GET", quiet: true }).then((r) => {
+			const i = r.message || {};
+			if (this.active !== c.name) return;
+			const tone = { Negative: "red", Neutral: "gray", Positive: "green" }[i.sentiment];
+			const bits = [];
+			if (i.sentiment) bits.push(`<span class="indicator-pill ${tone}">${esc(__(i.sentiment))}</span>`);
+			if (i.urgency === "High") bits.push(`<span class="indicator-pill red">${__("Urgent")}</span>`);
+			if (i.intent) bits.push(`<span class="indicator-pill blue">${esc(i.intent)}</span>`);
+			if (i.customer_language) bits.push(`<span class="indicator-pill gray">${esc(i.customer_language.toUpperCase())}</span>`);
+			if (bits.length) this.$main.find(".txk-head h4").after(`<div class="txk-insight" title="${__("AI analysis of the customer's latest message")}">${bits.join(" ")}</div>`);
+			this.insight = i;
+		});
+	}
+
+	copilot(act, c, data) {
+		const esc = frappe.utils.escape_html;
+		const [kind, opt] = act.split(":");
+		const $ta = this.$main.find("textarea");
+		const draft = ($ta.val() || "").trim();
+		const put = (text) => { $ta.val(text).trigger("focus"); };
+		const busy = frappe.show_alert({ message: __("AI is working…"), indicator: "blue" }, 15);
+		const done = () => busy && busy.remove && busy.remove();
+		const call = (method, args) => frappe.call({ method: COPILOT + method, args: Object.assign({ name: c.name }, args), type: "POST" })
+			.then((r) => { done(); return r.message || {}; }, (e) => { done(); throw e; });
+		if (kind === "suggest") {
+			return call("suggest").then((m) => {
+				const items = m.suggestions || [];
+				if (!items.length) return frappe.msgprint(__("No suggestion this time."));
+				const d = new frappe.ui.Dialog({ title: __("Suggested replies"), fields: [{ fieldtype: "HTML", fieldname: "list" }] });
+				d.fields_dict.list.$wrapper.html(items.map((s, i) => `<div class="txk-sug" style="border:1px solid var(--border-color);border-radius:8px;padding:8px 10px;margin-bottom:8px">
+					<div class="small text-muted">${esc(s.label)}</div><div style="white-space:pre-wrap">${esc(s.text)}</div>
+					<button class="btn btn-default btn-xs" data-use="${i}" style="margin-top:6px">${__("Use this")}</button></div>`).join("")
+					+ (m.sources && m.sources.length ? `<div class="small text-muted">${__("Based on")}: ${m.sources.map((x) => esc(x.title)).join(", ")}</div>` : ""));
+				d.fields_dict.list.$wrapper.find("[data-use]").on("click", (e) => { put(items[+e.currentTarget.dataset.use].text); d.hide(); });
+				d.show();
+			});
+		}
+		if (kind === "rewrite") {
+			if (!draft) return frappe.msgprint(__("Write a draft first, then ask the AI to rewrite it."));
+			return call("rewrite", { text: draft, style: opt }).then((m) => m.text && put(m.text));
+		}
+		if (kind === "translate" && opt === "customer") {
+			if (!draft) return frappe.msgprint(__("Write a draft first."));
+			const target = (this.insight && this.insight.customer_language) || "ar";
+			return call("translate", { text: draft, target }).then((m) => m.text && put(m.text));
+		}
+		if (kind === "translate") {
+			const last = (data.messages || []).filter((m) => m.direction === "Inbound").pop();
+			if (!last) return frappe.msgprint(__("The customer has not written yet."));
+			const text = $("<div>").html(last.content || "").text();
+			return call("translate", { text, target: (frappe.boot.lang || "en").slice(0, 2) })
+				.then((m) => frappe.msgprint({ title: __("Customer's last message, translated"), message: `<div style="white-space:pre-wrap">${esc(m.text || "")}</div>` }));
+		}
+		if (kind === "summarize") {
+			return call("summarize").then((m) => frappe.msgprint({ title: __("Conversation summary"), message: `<div style="white-space:pre-wrap">${esc(m.summary || "")}</div>` }));
+		}
+		if (kind === "recommend") {
+			return call("recommend").then((m) => {
+				const arts = (m.articles || []).map((a) => `<li>${a.route && /^(https?:)?\//.test(a.route) ? `<a href="${esc(a.route)}" target="_blank">${esc(a.title)}</a>` : esc(a.title)}${a.used ? " ✓" : ""}</li>`).join("");
+				const fu = (m.follow_ups || []).map((q) => `<li>${esc(q)}</li>`).join("");
+				frappe.msgprint({ title: __("Recommended"), wide: true, message:
+					`<p style="white-space:pre-wrap">${esc(m.solution || __("No recommendation from the knowledge base."))}</p>`
+					+ (fu ? `<h5>${__("Questions to ask")}</h5><ul>${fu}</ul>` : "")
+					+ (arts ? `<h5>${__("Knowledge base")}</h5><ul>${arts}</ul>` : "") });
+			});
+		}
+		if (kind === "note") {
+			return call("note").then(() => { frappe.show_alert({ message: __("Summary added as an internal note"), indicator: "green" }); this.loadThread(true); });
+		}
 	}
 
 	send(c) {

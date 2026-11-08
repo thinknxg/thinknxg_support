@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.10.0 — 2026-11-08
+* **AI agent copilot** (web console "AI assist" menu, and the AI button / Ctrl+I in the Windows, Android and iOS
+  apps): suggested replies grounded in the knowledge base, rewrite (professional, friendly, shorter, fix grammar),
+  translate the draft into the customer's language or the customer's message into yours, recommended solution and
+  questions to ask, conversation summary, and "Add summary note" (internal). Everything is a draft; nothing is sent
+  without the agent.
+* **Message insight** (off by default: Support AI Settings > Analyse Customer Messages): intent, sentiment,
+  frustration, urgency and language for each customer message, rolled up on the conversation, shown as pills in the
+  inbox and chat header. Frustrated or urgent negative messages raise the new "Frustrated Customer" alert and,
+  when switched on in Support Escalation Settings, a "Negative Sentiment" escalation.
+* **Assistant style and memory**: tone, persona and how many earlier messages the assistant reads.
+* **Handoff summary**: when the assistant hands a chat to people, an internal summary note is added.
+* Staff API: `copilot` method, `insight` on conversations. All AI calls use the existing provider, daily budget,
+  usage log and contact-detail redaction. Patch `v1_10.ai_copilot_defaults` stores the new defaults; no data changes.
+
 ## 1.9.0 — 2026-11-06
 * **thinkNXG Support Agent apps** (Windows, Android, iOS; one Flutter codebase in `agent_app/`): sign in with the
   staff account in the browser (OAuth + PKCE), inbox for Portal / Live Chat / WhatsApp, claim, reply, internal

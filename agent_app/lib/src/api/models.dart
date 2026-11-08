@@ -129,6 +129,8 @@ class ConversationSummary {
   // detail only
   final ConversationActions actions;
   final String? contactName, contactEmail, contactPhone, customerName, handoffReason;
+  // AI insight (1.10): from the customer's latest message
+  final String? sentiment, urgency, intent, language, summary;
 
   const ConversationSummary({
     required this.id,
@@ -150,9 +152,15 @@ class ConversationSummary {
     this.contactPhone,
     this.customerName,
     this.handoffReason,
+    this.sentiment,
+    this.urgency,
+    this.intent,
+    this.language,
+    this.summary,
   });
 
   bool get isClosed => status == 'Closed';
+  bool get needsAttention => sentiment == 'Negative' || urgency == 'High';
 
   ConversationSummary withUnread(int n) => ConversationSummary(
         id: id,
@@ -174,6 +182,11 @@ class ConversationSummary {
         contactPhone: contactPhone,
         customerName: customerName,
         handoffReason: handoffReason,
+        sentiment: sentiment,
+        urgency: urgency,
+        intent: intent,
+        language: language,
+        summary: summary,
       );
 
   factory ConversationSummary.fromJson(Map<String, dynamic> j) {
@@ -199,6 +212,11 @@ class ConversationSummary {
       contactPhone: n(contact['phone']),
       customerName: n(j['customer_name']),
       handoffReason: n(j['handoff_reason']),
+      sentiment: n(j['sentiment'] ?? _m(j['insight'])['sentiment']),
+      urgency: n(j['urgency'] ?? _m(j['insight'])['urgency']),
+      intent: n(_m(j['insight'])['intent']),
+      language: n(_m(j['insight'])['language']),
+      summary: n(_m(j['insight'])['summary']),
     );
   }
 }

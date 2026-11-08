@@ -19,6 +19,7 @@ class Composer extends StatefulWidget {
   final VoidCallback? onRemoveFile;
   final VoidCallback? onCanned;
   final String cannedTooltip;
+  final VoidCallback? onAi;
 
   const Composer({
     super.key,
@@ -35,6 +36,7 @@ class Composer extends StatefulWidget {
     this.onRemoveFile,
     this.onCanned,
     this.cannedTooltip = 'Canned responses (Ctrl+/)',
+    this.onAi,
   });
 
   @override
@@ -130,6 +132,13 @@ class _ComposerState extends State<Composer> {
                 ),
               ),
             Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              if (widget.onAi != null)
+                IconButton(
+                  key: const Key('composer-ai'),
+                  tooltip: 'AI copilot (Ctrl+I): suggest, rewrite, translate, summarise',
+                  onPressed: sending ? null : widget.onAi,
+                  icon: const Icon(Icons.auto_awesome),
+                ),
               if (widget.onCanned != null)
                 IconButton(
                   key: const Key('composer-canned'),
@@ -150,6 +159,7 @@ class _ComposerState extends State<Composer> {
                     const SingleActivator(LogicalKeyboardKey.enter, control: true): _send,
                     const SingleActivator(LogicalKeyboardKey.enter, meta: true): _send,
                     if (widget.onCanned != null) const SingleActivator(LogicalKeyboardKey.slash, control: true): widget.onCanned!,
+                    if (widget.onAi != null) const SingleActivator(LogicalKeyboardKey.keyI, control: true): widget.onAi!,
                   },
                   child: TextField(
                     key: const Key('composer-field'),

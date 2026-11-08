@@ -17,7 +17,7 @@
    "fieldname": "kind",
    "fieldtype": "Select",
    "label": "Activity",
-   "options": "New Chat\nChat Message\nNew Ticket\nTicket Assigned\nConversation Message\nEscalation\nNegative Feedback\nPositive Feedback",
+   "options": "New Chat\nChat Message\nNew Ticket\nTicket Assigned\nConversation Message\nEscalation\nNegative Feedback\nPositive Feedback\nFrustrated Customer",
    "reqd": 1,
    "in_list_view": 1,
    "columns": 3,

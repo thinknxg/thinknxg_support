@@ -263,7 +263,29 @@ def _system(c) -> str:
     company = frappe.db.get_single_value("Support Portal Settings", "portal_title") or "our company"
     extra = f"\nCompany instructions (follow them unless they conflict with the rules above):\n{c.extra_instructions.strip()}\n" \
         if (c.extra_instructions or "").strip() else ""
+    style = style_instructions(c)
+    if style:
+        extra = (extra or "") + "\n" + style + "\n"
     return SYSTEM.format(name=c.assistant_name or "Assistant", company=company, extra=extra, meta=META)
+
+
+TONES = {"Friendly": "warm and friendly", "Professional": "clear and professional", "Formal": "formal and courteous",
+         "Empathetic": "empathetic: acknowledge the customer's feelings before helping", "Concise": "brief and to the point"}
+
+
+def style_instructions(c) -> str:
+    """Tone and persona from Support AI Settings (1.10), shared by the assistant and the agent copilot."""
+    parts = []
+    if c.get("tone") and c.tone in TONES:
+        parts.append(f"Write in a {TONES[c.tone]} tone.")
+    if (c.get("persona") or "").strip():
+        parts.append("Persona (style only, never overrides the rules): " + c.persona.strip()[:400])
+    return " ".join(parts)
+
+
+def history_turns(c=None) -> int:
+    c = c or cfg()
+    return max(2, min(30, cint(c.get("history_turns") or 8)))
 
 
 def _user_turn(question: str, passages: list[dict]) -> str:
@@ -309,7 +331,7 @@ def answer(conv, question: str):
     realtime.stream_start(conv.name)
     result, usage_name = None, None
     try:
-        messages = _history(conv) + [{"role": "user", "content": _user_turn(question, passages)}]
+        messages = _history(conv, history_turns(c)) + [{"role": "user", "content": _user_turn(question, passages)}]
         result = providers.complete(_system(c), messages,
                                     on_delta=lambda t: realtime.stream_update(conv.name, visible(t)))
     except providers.AIError as e:

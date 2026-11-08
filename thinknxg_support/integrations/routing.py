@@ -72,6 +72,9 @@ def handoff(conv, reason: str, message: str | None = None, announce: bool = True
     from thinknxg_support.integrations import escalations
 
     escalations.on_chat_handoff(conv, reason, agent, queue.name if queue else None)
+    from thinknxg_support.integrations.ai import copilot  # 1.10: summary note for the agent who takes over
+
+    copilot.queue_handoff_summary(conv)
     from thinknxg_support.integrations import alerts
 
     alerts.on_new_chat(conv, reason)

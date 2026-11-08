@@ -7,6 +7,7 @@ import '../state/controllers.dart';
 import 'chat_actions.dart';
 import 'common.dart';
 import 'composer.dart';
+import 'copilot_sheet.dart';
 import 'pickers.dart';
 
 /// Pick a file for the composer and report problems inline (size, cancelled picker).
@@ -40,6 +41,7 @@ class ConversationView extends StatefulWidget {
   final void Function(String conversationId)? onOpenConversation;
   final bool showDetailsPanel;
   final FocusNode? composerFocus;
+  final bool copilot;
 
   const ConversationView({
     super.key,
@@ -49,6 +51,7 @@ class ConversationView extends StatefulWidget {
     this.onOpenConversation,
     this.showDetailsPanel = false,
     this.composerFocus,
+    this.copilot = false,
   });
 
   @override
@@ -149,6 +152,7 @@ class _ConversationViewState extends State<ConversationView> {
             onSend: c.send,
             onAttach: () => pickInto(context, c.attach),
             onRemoveFile: () => c.attach(null),
+            onAi: widget.copilot ? () => CopilotSheet.show(context, c) : null,
             onCanned: () async {
               final picked = await CannedPicker.show(context, () => c.api.cannedResponses(channel: d.channel));
               if (picked != null) await c.insertCanned(picked);
@@ -216,6 +220,18 @@ class _Header extends StatelessWidget {
           if (!(compact && typing))
           Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
             StatusPill(conversationStatusLabel(d), color: conversationStatusColor(context, d)),
+            if (d.urgency == 'High') StatusPill('Urgent', color: Theme.of(context).colorScheme.error),
+            if (d.sentiment != null)
+              Tooltip(
+                message: [if (d.intent != null) d.intent!, 'AI analysis of the latest message'].join(' · '),
+                child: StatusPill(d.sentiment!,
+                    key: const Key('sentiment'),
+                    color: d.sentiment == 'Negative'
+                        ? Theme.of(context).colorScheme.error
+                        : d.sentiment == 'Positive'
+                            ? Colors.green.shade700
+                            : Theme.of(context).colorScheme.outline),
+              ),
             if (c.live.customerTyping)
               Text('Customer is typing…', key: const Key('typing'), style: TextStyle(color: Theme.of(context).colorScheme.primary))
             else if (c.live.aiDrafting)

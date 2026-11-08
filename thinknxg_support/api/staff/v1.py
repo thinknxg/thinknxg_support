@@ -71,6 +71,7 @@ def bootstrap():
             "whatsapp": bool(ps.get("enable_whatsapp")), "raven": bool(ps.get("enable_raven")),
             "helpdesk": helpdesk_agent.available(), "assistant": _assistant_on(),
             "wrap_up": True, "canned_responses": True, "alerts": True, "push": bool(s.push_enabled),
+            "copilot": _copilot_on(),
             "realtime": False,  # first release: authenticated polling (see docs/agent-api.md)
             "integrations": {k: bool((v or {}).get("installed")) for k, v in (caps.get("apps") or {}).items()}
             if isinstance(caps, dict) else {},
@@ -79,6 +80,14 @@ def bootstrap():
         "poll": {"inbox_seconds": s.inbox_poll_seconds or 10, "thread_seconds": s.thread_poll_seconds or 4,
                  "alerts_seconds": s.alerts_poll_seconds or 15},
     }
+
+
+def _copilot_on() -> bool:
+    try:
+        c = frappe.get_cached_doc("Support AI Settings")
+        return bool(cint(c.get("enable_copilot")) and c.provider)
+    except Exception:
+        return False
 
 
 def _assistant_on() -> bool:
@@ -148,6 +157,7 @@ def _unread_counts(user: str, names: list[str]) -> dict:
 
 
 CONV_FIELDS = ("c.name, c.subject, c.status, c.channel, c.customer, c.is_guest, c.guest_name, c.whatsapp_number, "
+               "c.sentiment, c.urgency, "
                "c.whatsapp_profile_name, c.started_by, c.assigned_agent, c.last_activity_at, c.last_message_reference, "
                "c.whatsapp_window_expires, c.helpdesk_ticket, c.handling, c.queue, c.modified")
 
@@ -160,6 +170,7 @@ def _summary(r, unread: int, preview: str = "") -> dict:
         "last_activity_at": _iso(r.last_activity_at or r.modified), "unread": unread, "preview": preview,
         "whatsapp_window_open": bool(r.whatsapp_window_expires and get_datetime(r.whatsapp_window_expires) > now_datetime())
         if r.channel == "WhatsApp" else None,
+        "sentiment": r.get("sentiment"), "urgency": r.get("urgency"),
         "version": str(r.modified),
     }
 
@@ -247,6 +258,8 @@ def conversation_detail(doc) -> dict:
         "created_at": _iso(doc.creation), "handoff_reason": doc.get("handoff_reason"),
         "actions": _actions(doc),
         "read_up_to": _iso(_read_marker(frappe.session.user, [doc.name]).get(doc.name)),
+        "insight": {k: doc.get(f) for k, f in (("sentiment", "sentiment"), ("urgency", "urgency"), ("intent", "intent"),
+                                               ("language", "customer_language"), ("summary", "summary"))},
     })
     return out
 
@@ -405,6 +418,24 @@ def close(name: str, reason: str | None = None, notes: str | None = None, answer
 
     agent_tools.end_chat(name, reason=reason, notes=notes, answers=answers, send_closing_message=send_closing_message)
     return conversation_detail(frappe.get_doc(CONV, name))
+
+
+@frappe.whitelist(methods=["POST"])
+def copilot(name: str, action: str, text: str | None = None, style: str | None = None, target: str | None = None):
+    """Agent copilot (1.10): drafts only, never sent to the customer.
+    action: suggest | rewrite | summarize | recommend | translate | note"""
+    doc = _conv(name, "write" if action == "note" else "read")
+    from thinknxg_support.integrations.ai import common, copilot as cp
+
+    fns = {"suggest": lambda: cp.suggest_replies(doc), "rewrite": lambda: cp.rewrite(text or "", style or "professional", doc),
+           "summarize": lambda: cp.summarize(doc), "recommend": lambda: cp.recommend(doc),
+           "translate": lambda: cp.translate(text or "", target or "en", doc), "note": lambda: cp.auto_note(doc)}
+    if action not in fns:
+        frappe.throw(_("Unknown copilot action."))
+    try:
+        return fns[action]()
+    except common.Unavailable as e:
+        raise ChannelActionRequired(str(e), "copilot_unavailable", [])
 
 
 @frappe.whitelist(methods=["GET"])

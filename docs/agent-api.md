@@ -91,6 +91,7 @@ index on (conversation, client_message_id). Tickets: *Support Agent Request* log
 | `create_ticket` | POST | `name`, `client_request_id`, `subject`, `priority`, `team`, `ticket_type`, `reply` | `{ticket, duplicate}` — transcript in the description, chat linked, assigned to the agent, optional first reply by e-mail |
 | `saved_replies` | GET | `q`, `ticket` | Helpdesk saved replies this agent may use (scope: global, my teams, mine) |
 | `saved_reply_render` | POST | `name`, `ticket` \| `conversation` | `{text, html}` rendered like Helpdesk does |
+| `copilot` | POST | `name`, `action` suggest\|rewrite\|translate\|summarize\|recommend\|note, `text`, `style` professional\|friendly\|concise\|empathetic\|fix, `target` (language code) | suggest `{suggestions[{label,text}], sources}` · rewrite / translate `{text}` · summarize `{summary}` · recommend `{solution, follow_ups, articles}` · note `{summary, message}` (internal note). Drafts only: nothing is sent to the customer. **422** `copilot_unavailable` when switched off or over budget |
 
 `reply` and `ticket_reply` also accept one file (multipart/form-data, field `file`, same size and type rules as the
 portal). Files are private, attached to the message (or ticket) and never included in lists. WhatsApp: files are
@@ -98,7 +99,8 @@ refused with **422** `attachments_unsupported` (outbound WhatsApp media is not s
 | `sign_out` | POST | `push_token` | stops push to this device (the app then revokes its token and clears local data) |
 
 **ConversationSummary**: `id, subject, display_name, channel, status, handling, queue, assignee{user,name}, customer,
-is_guest, ticket, last_activity_at, unread (this agent), preview, whatsapp_window_open, version`.
+is_guest, ticket, last_activity_at, unread (this agent), preview, whatsapp_window_open, version, sentiment, urgency`. ConversationDetail adds
+`insight{sentiment, urgency, intent, language, summary}` (filled when AI message analysis is on).
 
 **Ticket**: `id, subject, status, status_category, priority, raised_by, customer, contact, team,
 assignees[{user,name}], sla{response_by, resolution_by, status, first_responded_on}, created_at, modified, unread`.

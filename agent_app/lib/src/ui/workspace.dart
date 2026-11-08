@@ -144,7 +144,13 @@ class WorkspaceState extends State<Workspace> {
     }
     setState(() => section = Section.inbox);
     if (!_wide) {
-      _push(ConversationView(controller: conversation!, me: me.user, onOpenTicket: openTicket, onOpenConversation: openConversation),
+      _push(
+          ConversationView(
+              controller: conversation!,
+              me: me.user,
+              onOpenTicket: openTicket,
+              onOpenConversation: openConversation,
+              copilot: me.can('copilot')),
           'Conversation');
     }
   }
@@ -235,6 +241,7 @@ class WorkspaceState extends State<Workspace> {
           onOpenTicket: openTicket,
           onOpenConversation: openConversation,
           showDetailsPanel: extraWide,
+          copilot: me.can('copilot'),
           composerFocus: composerFocus);
     }
     return const EmptyState(Icons.forum_outlined, 'Select a conversation or ticket.');
