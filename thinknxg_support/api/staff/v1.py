@@ -65,7 +65,8 @@ def bootstrap():
                  "app_version": frappe.get_attr("thinknxg_support.__version__")},
         "agent": {"user": user, "full_name": u.get("full_name") or user, "email": u.get("email") or user,
                   "image": u.get("user_image"), "is_manager": staff_auth.is_manager(),
-                  "helpdesk_agent": helpdesk_agent.is_hd_agent() if helpdesk_agent.available() else False},
+                  "helpdesk_agent": helpdesk_agent.is_hd_agent() if helpdesk_agent.available() else False,
+                  "status": _presence().effective(user)},  # 1.14
         "capabilities": {
             "conversations": True, "live_chat": bool(ps.get("enable_live_chat")),
             "whatsapp": bool(ps.get("enable_whatsapp")), "raven": bool(ps.get("enable_raven")),
@@ -73,6 +74,7 @@ def bootstrap():
             "wrap_up": True, "canned_responses": True, "alerts": True, "push": bool(s.push_enabled),
             "copilot": _copilot_on(),
             "messaging": _messaging_caps(),  # 1.14: reply, edit, remove, reactions, voice notes
+            "status": True, "priority": True, "tags": True,  # 1.14 increment 2
             "realtime": False,  # first release: authenticated polling (see docs/agent-api.md)
             "integrations": {k: bool((v or {}).get("installed")) for k, v in (caps.get("apps") or {}).items()}
             if isinstance(caps, dict) else {},
@@ -164,7 +166,7 @@ def _unread_counts(user: str, names: list[str]) -> dict:
 
 
 CONV_FIELDS = ("c.name, c.subject, c.status, c.channel, c.customer, c.is_guest, c.guest_name, c.whatsapp_number, "
-               "c.sentiment, c.urgency, "
+               "c.sentiment, c.urgency, c.priority, c._user_tags, "
                "c.whatsapp_profile_name, c.started_by, c.assigned_agent, c.last_activity_at, c.last_message_reference, "
                "c.whatsapp_window_expires, c.helpdesk_ticket, c.handling, c.queue, c.modified")
 
@@ -178,14 +180,17 @@ def _summary(r, unread: int, preview: str = "") -> dict:
         "whatsapp_window_open": bool(r.whatsapp_window_expires and get_datetime(r.whatsapp_window_expires) > now_datetime())
         if r.channel == "WhatsApp" else None,
         "sentiment": r.get("sentiment"), "urgency": r.get("urgency"),
+        "priority": r.get("priority") or "Normal", "tags": [t for t in (r.get("_user_tags") or "").split(",") if t.strip()],
         "version": str(r.modified),
     }
 
 
 @frappe.whitelist(methods=["GET"])
 def conversations(view: str = "all", channel: str | None = None, status: str = "open", queue: str | None = None,
-                  q: str | None = None, cursor: str | None = None, limit: int = 30):
-    """Paginated inbox, newest activity first. view: all | mine | unassigned | waiting (handed to people, nobody yet)."""
+                  q: str | None = None, cursor: str | None = None, limit: int = 30, sort: str = "recent",
+                  priority: str | None = None, tag: str | None = None):
+    """Paginated inbox, newest activity first. view: all | mine | unassigned | waiting (handed to people, nobody yet).
+    1.14: sort=priority (Urgent first, then newest), and filters priority and tag."""
     staff_auth.require_staff()
     if not frappe.has_permission(CONV, "read"):
         raise frappe.PermissionError
@@ -207,18 +212,29 @@ def conversations(view: str = "all", channel: str | None = None, status: str = "
         where.append("c.status = 'Closed'")
     if queue:
         where.append("c.queue = %s"); args.append(queue)
+    if priority in ("Low", "Normal", "High", "Urgent"):
+        where.append("coalesce(nullif(c.priority, ''), 'Normal') = %s"); args.append(priority)
+    if tag:
+        where.append("concat(',', coalesce(c._user_tags, ''), ',') like %s"); args.append(f"%,{strip_html(tag)[:40]},%")
     if q:
         like = f"%{strip_html(q)[:60]}%"
         where.append("(c.subject like %s or c.guest_name like %s or c.guest_email like %s or c.whatsapp_number like %s "
                      "or c.whatsapp_profile_name like %s or c.customer like %s or c.name like %s)")
         args += [like] * 7
     after = cursors.decode(cursor)
+    rank = ("(case c.priority when 'Urgent' then 4 when 'High' then 3 when 'Low' then 1 else 2 end)")
+    by_priority = sort == "priority"
     if after:
-        where.append("(coalesce(c.last_activity_at, c.modified), c.name) < (%s, %s)")
-        args += [after["t"], after["n"]]
-    rows = frappe.db.sql(f"""select {CONV_FIELDS}, coalesce(c.last_activity_at, c.modified) as sort_at
+        if by_priority and "p" in after:
+            where.append(f"({rank} < %s or ({rank} = %s and (coalesce(c.last_activity_at, c.modified), c.name) < (%s, %s)))")
+            args += [after["p"], after["p"], after["t"], after["n"]]
+        else:
+            where.append("(coalesce(c.last_activity_at, c.modified), c.name) < (%s, %s)")
+            args += [after["t"], after["n"]]
+    order = f"{rank} desc, sort_at desc, c.name desc" if by_priority else "sort_at desc, c.name desc"
+    rows = frappe.db.sql(f"""select {CONV_FIELDS}, coalesce(c.last_activity_at, c.modified) as sort_at, {rank} as prio
         from `tab{CONV}` c where {' and '.join(where)}
-        order by sort_at desc, c.name desc limit %s""", (*args, limit + 1), as_dict=True)
+        order by {order} limit %s""", (*args, limit + 1), as_dict=True)
     page = rows[:limit]
     refs = [r.last_message_reference for r in page if r.last_message_reference]
     previews = {}
@@ -228,7 +244,9 @@ def conversations(view: str = "all", channel: str | None = None, status: str = "
             prefix = "" if m.direction == "Inbound" else ((m.sender_type or "") + ": ")
             previews[m.name] = (prefix + strip_html(m.content or ""))[:120]
     unread = _unread_counts(user, [r.name for r in page])
-    nxt = cursors.encode(str(page[-1].sort_at), page[-1].name) if len(rows) > limit and page else None
+    nxt = None
+    if len(rows) > limit and page:
+        nxt = cursors.encode(str(page[-1].sort_at), page[-1].name, page[-1].prio if by_priority else None)
     return {"items": [_summary(r, unread.get(r.name, 0), previews.get(r.last_message_reference, "")) for r in page],
             "next_cursor": nxt}
 
@@ -267,6 +285,7 @@ def conversation_detail(doc) -> dict:
         "read_up_to": _iso(_read_marker(frappe.session.user, [doc.name]).get(doc.name)),
         "insight": {k: doc.get(f) for k, f in (("sentiment", "sentiment"), ("urgency", "urgency"), ("intent", "intent"),
                                                ("language", "customer_language"), ("summary", "summary"))},
+        "tags": [t for t in (frappe.db.get_value(CONV, doc.name, "_user_tags") or "").split(",") if t.strip()],
     })
     return out
 
@@ -812,7 +831,8 @@ def transfer_targets(name: str):
             f"select assigned_agent, count(*) n from `tab{CONV}` where status != 'Closed' and assigned_agent in %s "
             "group by assigned_agent", (tuple(users),), as_dict=True)}
     agents = [{"user": u, "name": frappe.utils.get_fullname(u), "online": bool(realtime.is_online(u)),
-               "open_chats": int(load.get(u, 0)), "in_queue": u in in_queue} for u in users]
+               "open_chats": int(load.get(u, 0)), "in_queue": u in in_queue,
+               "status": _presence().effective(u)["status"]} for u in users]
     agents.sort(key=lambda a: (not a["online"], not a["in_queue"], a["open_chats"], (a["name"] or "").lower()))
     queues = frappe.get_all("Support Chat Queue", filters={"enabled": 1}, pluck="name", order_by="priority desc")
     return {"agents": agents[:200], "queues": queues, "current": {"user": doc.assigned_agent, "queue": doc.queue}}
@@ -875,13 +895,70 @@ def typing(name: str):
 
 
 @frappe.whitelist(methods=["POST"])
-def heartbeat():
-    """The app is open: count the agent as online for routing and the transfer list."""
+def heartbeat(active: int | None = None):
+    """The app is open: count the agent as online for routing and the transfer list. 1.14: `active` (1 used the
+    app since the last heartbeat, 0 not) drives Away after idle minutes; older apps send nothing and are never made
+    Away. Returns the agent's status now."""
     staff_auth.require_staff()
     from thinknxg_support.integrations import realtime
 
     realtime.heartbeat(frappe.session.user)
-    return {"ok": True}
+    _presence().heartbeat(frappe.session.user, active)
+    return {"ok": True, "status": _presence().effective(frappe.session.user)}
+
+
+def _presence():
+    from thinknxg_support.integrations import presence
+
+    return presence
+
+
+# ------------------------------------------------------------------ 1.14: status, priority, tags
+@frappe.whitelist(methods=["POST"])
+def set_status(status: str, note: str | None = None):
+    staff_auth.require_staff()
+    return _presence().set_status(frappe.session.user, status, note)
+
+
+@frappe.whitelist(methods=["GET"])
+def team_status():
+    staff_auth.require_staff()
+    return _presence().team()
+
+
+@frappe.whitelist(methods=["POST"])
+def set_priority(name: str, priority: str):
+    doc = _conv(name, "write")
+    if priority not in ("Low", "Normal", "High", "Urgent"):
+        frappe.throw(_("Choose Low, Normal, High or Urgent."))
+    doc.db_set("priority", priority)
+    from thinknxg_support.integrations import conversations, realtime
+
+    realtime.bump(doc.name)
+    conversations.publish_agent_event(doc, "status")
+    return conversation_detail(frappe.get_doc(CONV, doc.name))
+
+
+@frappe.whitelist(methods=["POST"])
+def set_tags(name: str, add: list | str | None = None, remove: list | str | None = None):
+    doc = _conv(name, "write")
+    from thinknxg_support.integrations import tags
+
+    def as_list(v):
+        if isinstance(v, str):
+            v = json.loads(v) if v.strip().startswith("[") else [v]
+        return [str(x) for x in (v or [])]
+
+    tags.update(doc.name, as_list(add), as_list(remove))
+    return conversation_detail(frappe.get_doc(CONV, doc.name))
+
+
+@frappe.whitelist(methods=["GET"])
+def tag_suggestions():
+    staff_auth.require_staff()
+    from thinknxg_support.integrations import tags
+
+    return tags.suggestions()
 
 
 # ------------------------------------------------------------------ alerts and push for the apps

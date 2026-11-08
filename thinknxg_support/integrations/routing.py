@@ -27,6 +27,9 @@ def pick_agent(queue) -> str | None:
     members = [m for m in queue.members if m.active and frappe.db.get_value("User", m.user, "enabled")]
     if queue.only_online_agents:
         members = [m for m in members if realtime.is_online(m.user)]
+    from thinknxg_support.integrations import presence  # 1.14: Available and on shift (no status = Available)
+
+    members = [m for m in members if presence.takes_new_chats(m.user)]
     members = [m for m in members if open_load(m.user) < (cint(m.max_chats) or 5)]
     if not members:
         return None

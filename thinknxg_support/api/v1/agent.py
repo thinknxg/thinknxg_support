@@ -58,7 +58,8 @@ def inbox(status="active", channel=None, mine=0, search=None, queue=None):
                            fields=["name", "subject", "status", "channel", "customer", "is_guest", "guest_name",
                                    "whatsapp_number", "whatsapp_profile_name", "started_by", "unread_agent",
                                    "assigned_agent", "last_activity_at", "last_message_reference",
-                                   "whatsapp_window_expires", "helpdesk_ticket", "handling", "queue", "handoff_at"])
+                                   "whatsapp_window_expires", "helpdesk_ticket", "handling", "queue", "handoff_at",
+                                   "priority", "_user_tags"])
     previews = {}
     refs = [r.last_message_reference for r in rows if r.last_message_reference]
     if refs:
@@ -70,6 +71,7 @@ def inbox(status="active", channel=None, mine=0, search=None, queue=None):
         r["preview"] = previews.get(r.last_message_reference, "")
         r["window_open"] = bool(r.whatsapp_window_expires and get_datetime(r.whatsapp_window_expires) > now_datetime())
         r["customer_typing"] = bool(realtime.typing(r.name, "customer"))
+        r["tags"] = [t for t in (r.pop("_user_tags", None) or "").split(",") if t.strip()]
         r.pop("last_message_reference", None)
     return rows
 
@@ -106,7 +108,8 @@ def thread(name):
                                     "guest_name", "guest_email", "guest_phone", "source_page", "whatsapp_number",
                                     "whatsapp_profile_name", "whatsapp_window_expires", "assigned_agent",
                                     "helpdesk_ticket", "chat_rating", "guest_last_seen", "creation", "handling", "queue",
-                                    "handoff_reason", "ai_replies")}
+                                    "handoff_reason", "ai_replies", "priority")}
+    meta["tags"] = [t for t in (frappe.db.get_value(CONV, name, "_user_tags") or "").split(",") if t.strip()]
     meta["display_name"] = _display_name(doc.as_dict())
     meta["window_open"] = whatsapp.window_open(doc) if doc.channel == "WhatsApp" else None
     meta["customer_name"] = frappe.db.get_value("Customer", doc.customer, "customer_name") if doc.customer else None
@@ -188,10 +191,61 @@ def typing(name):
 
 
 @frappe.whitelist(methods=["POST"])
-def heartbeat():
+def heartbeat(active=None):
     frappe.only_for(STAFF)
     realtime.heartbeat(frappe.session.user)
-    return {"ok": True}
+    from thinknxg_support.integrations import presence
+
+    presence.heartbeat(frappe.session.user, active)
+    return presence.effective(frappe.session.user)
+
+
+# 1.14: agent status, priority and tags in the web console (same rules as the apps)
+@frappe.whitelist(methods=["POST"])
+def set_status(status, note=None):
+    frappe.only_for(STAFF)
+    from thinknxg_support.integrations import presence
+
+    return presence.set_status(frappe.session.user, status, note)
+
+
+@frappe.whitelist(methods=["GET"])
+def team_status():
+    frappe.only_for(STAFF)
+    from thinknxg_support.integrations import presence
+
+    return presence.team()
+
+
+@frappe.whitelist(methods=["POST"])
+def set_priority(name, priority):
+    doc = _doc(name, "write")
+    if priority not in ("Low", "Normal", "High", "Urgent"):
+        frappe.throw(_("Choose Low, Normal, High or Urgent."))
+    doc.db_set("priority", priority)
+    realtime.bump(name)
+    return priority
+
+
+@frappe.whitelist(methods=["POST"])
+def set_tags(name, add=None, remove=None):
+    _doc(name, "write")
+    from thinknxg_support.integrations import tags
+
+    def as_list(v):
+        if isinstance(v, str):
+            v = json.loads(v) if v.strip().startswith("[") else [v]
+        return [str(x) for x in (v or [])]
+
+    return tags.update(name, as_list(add), as_list(remove))
+
+
+@frappe.whitelist(methods=["GET"])
+def tag_suggestions():
+    frappe.only_for(STAFF)
+    from thinknxg_support.integrations import tags
+
+    return tags.suggestions()
 
 
 @frappe.whitelist(methods=["POST"])
