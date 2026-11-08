@@ -23,7 +23,7 @@
 					<button type="button" class="tx-langbtn" @click="toggleLang">{{ state.t("land.language") }}</button>
 					<a v-if="state.isGuest" :href="loginUrl()" class="tx-btn tx-btn--primary tx-btn--sm">
 						<Icon name="login" size="16" />{{ state.t("land.login") }}</a>
-					<a v-else href="/?cmd=web_logout" class="tx-btn tx-btn--ghost tx-btn--sm">{{ state.t("land.logout") }}</a>
+					<a v-else href="#" class="tx-btn tx-btn--ghost tx-btn--sm" @click.prevent="logout">{{ state.t("land.logout") }}</a>
 					<button type="button" class="tx-iconbtn tx-pubhead__burger" :aria-label="state.t('land.menu')"
 						:aria-expanded="menuOpen" @click="menuOpen = !menuOpen"><Icon :name="menuOpen ? 'x' : 'menu'" /></button>
 				</div>
@@ -101,7 +101,7 @@
 					</div>
 					<a :href="link('settings')" data-nav><Icon name="settings" size="16" />{{ state.t("nav.settings") }}</a>
 					<a v-if="state.agentUrl" :href="state.agentUrl"><Icon name="headset" size="16" />{{ state.t("nav.agent") }}</a>
-					<a href="/?cmd=web_logout"><Icon name="logout" size="16" />{{ state.t("nav.logout") }}</a>
+					<a href="#" @click.prevent="logout"><Icon name="logout" size="16" />{{ state.t("nav.logout") }}</a>
 				</div>
 			</div>
 		</header>
@@ -160,6 +160,20 @@ import { state, applyBoot, setOrg, setLang, fmtDate, can, loginUrl, menuLabel } 
 import Icon from "./components/Icon.vue";
 import { Loader } from "./components/ui";
 import ChatWidget from "../support_chat/ChatWidget.vue";
+
+// Frappe v16 only accepts logout as a POST, so a plain link gives "Not Permitted".
+async function logout() {
+	try {
+		await fetch("/api/method/logout", {
+			method: "POST",
+			credentials: "same-origin",
+			headers: { Accept: "application/json", "X-Frappe-CSRF-Token": state.csrf },
+		});
+	} catch (e) {
+		/* fall through to the redirect; the session check on the next page decides */
+	}
+	window.location.href = state.base || "/";
+}
 
 import Landing from "./views/Landing.vue";
 import Dashboard from "./views/Dashboard.vue";

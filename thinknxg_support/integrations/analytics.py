@@ -96,7 +96,7 @@ def category(c) -> str:
 
 CONV_FIELDS = ["name", "creation", "channel", "queue", "status", "handling", "handoff_at", "first_agent_reply_at",
                "closed_on", "resolved_by_assistant", "ai_replies", "assigned_agent", "sentiment", "intent",
-               "customer_language", "handoff_reason", "is_guest"]
+               "customer_language", "handoff_reason", "is_guest", "lead_doctype", "lead"]
 
 
 def overview(from_date=None, to_date=None, channel=None, queue=None) -> dict:
@@ -125,6 +125,17 @@ def _overview(start, end, channel, queue) -> dict:
     fb_filters = _filters(start, end, channel, queue, field="submitted_on")
     feedback = frappe.get_all(FEEDBACK, filters=fb_filters, fields=["rating", "handled_by_assistant"], limit=MAX_ROWS)
     ratings = [cint(f.rating) for f in feedback if cint(f.rating)]
+    leads = [c for c in rows if c.get("lead")]
+    conversions = 0
+    from thinknxg_support.integrations import crm
+
+    for dt in {c.lead_doctype for c in leads if c.lead_doctype}:
+        try:
+            conversions += crm.converted(dt, list({c.lead for c in leads if c.lead_doctype == dt}))
+        except Exception:
+            pass
+    runs = frappe.get_all("Support Automation Run", filters={"ran_on": _filters(start, end, field="ran_on")["ran_on"]},
+                          fields=["rule"], limit=MAX_ROWS) if frappe.db.exists("DocType", "Support Automation Run") else []
     usage = frappe.get_all(USAGE, filters={"creation": _filters(start, end)["creation"]},
                            fields=["kind", "status", "total_tokens"], limit=MAX_ROWS)
     tokens = sum(cint(u.total_tokens) for u in usage)
@@ -155,6 +166,9 @@ def _overview(start, end, channel, queue) -> dict:
             "ai_tokens": tokens,
             "ai_calls": len(usage),
             "ai_errors": sum(1 for u in usage if u.status not in ("Success", "Skipped")),
+            "leads": len({(c.lead_doctype, c.lead) for c in leads}),
+            "lead_conversions": conversions,
+            "automation_runs": len(runs),
         },
         "daily": [{"date": k, "ai": v["ai"], "human": v["human"], "other": v["other"],
                    "first_response_median": _pct(v["_first"], 0.5)} for k, v in days.items()],
@@ -164,6 +178,7 @@ def _overview(start, end, channel, queue) -> dict:
         "sentiment": top([c.sentiment for c in rows], 3),
         "languages": top([(c.customer_language or "").lower() for c in rows]),
         "ai_usage": top([u.kind for u in usage], 12),
+        "automation": top([r.rule for r in runs], 12),
     }
 
 

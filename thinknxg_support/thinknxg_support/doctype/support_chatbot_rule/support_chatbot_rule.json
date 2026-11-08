@@ -69,7 +69,7 @@
    "fieldname": "action",
    "fieldtype": "Select",
    "label": "Action",
-   "options": "Reply\nReply and Hand Off\nReply and Ask AI\nCreate Ticket\nEnd Chat",
+   "options": "Reply\nReply and Hand Off\nReply and Ask AI\nCreate Ticket\nEnd Chat\nCollect Details",
    "default": "Reply",
    "in_list_view": 1,
    "columns": 2,

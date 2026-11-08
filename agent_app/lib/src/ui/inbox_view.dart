@@ -103,6 +103,12 @@ class _InboxViewState extends State<InboxView> {
                 items: const {'open': 'Open', 'closed': 'Closed', 'all': 'All'},
                 onChanged: (v) => c.setFilter(f.copyWith(status: v)),
               ),
+              _Drop<String>(
+                label: 'Sort',
+                value: f.sort,
+                items: const {'recent': 'Newest first', 'priority': 'Priority first'},
+                onChanged: (v) => c.setFilter(f.copyWith(sort: v)),
+              ),
               if (widget.queues.isNotEmpty)
                 _Drop<String?>(
                   label: 'Queue',
@@ -192,6 +198,8 @@ class ConversationTile extends StatelessWidget {
             StatusPill(conversationStatusLabel(c), color: conversationStatusColor(context, c)),
             if (c.needsAttention)
               StatusPill(c.urgency == 'High' ? 'Urgent' : 'Unhappy', color: Theme.of(context).colorScheme.error),
+            if (c.highPriority) StatusPill(c.priority, color: Theme.of(context).colorScheme.error),
+            for (final t in c.tags.take(3)) Text('#$t', style: Theme.of(context).textTheme.bodySmall),
             if (c.assignee != null) Text(c.assignee!.name, style: Theme.of(context).textTheme.bodySmall),
             if (c.queue != null) Text('· ${c.queue}', style: Theme.of(context).textTheme.bodySmall),
           ]),

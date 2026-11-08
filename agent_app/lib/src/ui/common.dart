@@ -111,6 +111,16 @@ class Bubble extends StatelessWidget {
   final bool failed;
   final List<String> files;
   final void Function(int index)? onOpenFile;
+  // 1.14
+  final ReplyRef? quote;
+  final bool edited;
+  final bool removed;
+  final String? removedBy;
+  final List<Reaction> reactions;
+  final void Function(String emoji)? onReact;
+  final Widget? media;
+  final VoidCallback? onMenu;
+  final Key? menuKey;
   const Bubble(
       {super.key,
       required this.direction,
@@ -120,7 +130,16 @@ class Bubble extends StatelessWidget {
       this.footer,
       this.failed = false,
       this.files = const [],
-      this.onOpenFile});
+      this.onOpenFile,
+      this.quote,
+      this.edited = false,
+      this.removed = false,
+      this.removedBy,
+      this.reactions = const [],
+      this.onReact,
+      this.media,
+      this.onMenu,
+      this.menuKey});
 
   @override
   Widget build(BuildContext context) {
@@ -129,7 +148,7 @@ class Bubble extends StatelessWidget {
     final mine = direction == MessageDirection.outbound;
     final bg = note ? Colors.amber.shade100 : (mine ? s.primaryContainer : s.surfaceContainerHighest);
     final fg = note ? Colors.brown.shade900 : (mine ? s.onPrimaryContainer : s.onSurface);
-    return Align(
+    final bubble = Align(
       alignment: note ? Alignment.center : (mine ? Alignment.centerRight : Alignment.centerLeft),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: note ? 720 : 560),
@@ -151,9 +170,37 @@ class Bubble extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(clock(at), style: TextStyle(fontSize: 11, color: fg.withValues(alpha: .7))),
+              if (edited) Text(' · edited', style: TextStyle(fontSize: 11, color: fg.withValues(alpha: .7))),
+              if (onMenu != null)
+                InkWell(
+                  key: menuKey,
+                  onTap: onMenu,
+                  customBorder: const CircleBorder(),
+                  child: Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: Icon(Icons.more_horiz, size: 16, color: fg.withValues(alpha: .7), semanticLabel: 'Message actions')),
+                ),
             ]),
             const SizedBox(height: 4),
-            if (text.isNotEmpty) SelectableText(text, style: TextStyle(color: fg)),
+            if (quote != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsets.fromLTRB(8, 2, 8, 2),
+                decoration: BoxDecoration(
+                    border: Border(left: BorderSide(color: s.primary, width: 3)),
+                    color: fg.withValues(alpha: .06),
+                    borderRadius: BorderRadius.circular(4)),
+                child: Text('${quote!.author}: ${quote!.excerpt}',
+                    maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: fg.withValues(alpha: .8))),
+              ),
+            if (text.isNotEmpty)
+              SelectableText(text,
+                  style: TextStyle(
+                      color: removed ? fg.withValues(alpha: .5) : fg, decoration: removed ? TextDecoration.lineThrough : null)),
+            if (removed)
+              Text('Removed${removedBy == null ? '' : ' by $removedBy'}: the customer sees "Message removed"',
+                  key: const Key('removed-label'), style: TextStyle(fontSize: 11, color: s.error)),
+            if (media != null) Padding(padding: const EdgeInsets.only(top: 4), child: media!),
             for (var i = 0; i < files.length; i++)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
@@ -164,6 +211,24 @@ class Bubble extends StatelessWidget {
                   onPressed: onOpenFile == null ? null : () => onOpenFile!(i),
                 ),
               ),
+            if (reactions.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Wrap(spacing: 4, runSpacing: 4, children: [
+                  for (final r in reactions)
+                    InkWell(
+                      onTap: onReact == null ? null : () => onReact!(r.emoji),
+                      borderRadius: BorderRadius.circular(999),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(color: r.mine ? s.primary : fg.withValues(alpha: .25))),
+                        child: Text('${r.emoji} ${r.count}', style: const TextStyle(fontSize: 12)),
+                      ),
+                    ),
+                ]),
+              ),
             if (footer != null) ...[
               const SizedBox(height: 4),
               Text(footer!, style: TextStyle(fontSize: 11, color: failed ? s.error : fg.withValues(alpha: .7))),
@@ -172,5 +237,7 @@ class Bubble extends StatelessWidget {
         ),
       ),
     );
+    if (onMenu == null) return bubble;
+    return GestureDetector(onLongPress: onMenu, onSecondaryTap: onMenu, child: bubble);
   }
 }

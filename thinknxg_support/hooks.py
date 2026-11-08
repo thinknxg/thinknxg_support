@@ -96,7 +96,8 @@ doc_events = {
 scheduler_events = {
     "cron": {
         # overdue escalations: flag and alert
-        "*/5 * * * *": ["thinknxg_support.integrations.escalations.check_overdue"],
+        "*/5 * * * *": ["thinknxg_support.integrations.escalations.check_overdue",
+                        "thinknxg_support.integrations.automation.check_quiet"],
     },
     "hourly": [
         "thinknxg_support.integrations.alerts.expire_and_purge",

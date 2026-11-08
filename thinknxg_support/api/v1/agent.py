@@ -58,7 +58,8 @@ def inbox(status="active", channel=None, mine=0, search=None, queue=None):
                            fields=["name", "subject", "status", "channel", "customer", "is_guest", "guest_name",
                                    "whatsapp_number", "whatsapp_profile_name", "started_by", "unread_agent",
                                    "assigned_agent", "last_activity_at", "last_message_reference",
-                                   "whatsapp_window_expires", "helpdesk_ticket", "handling", "queue", "handoff_at"])
+                                   "whatsapp_window_expires", "helpdesk_ticket", "handling", "queue", "handoff_at",
+                                   "priority", "_user_tags"])
     previews = {}
     refs = [r.last_message_reference for r in rows if r.last_message_reference]
     if refs:
@@ -70,6 +71,7 @@ def inbox(status="active", channel=None, mine=0, search=None, queue=None):
         r["preview"] = previews.get(r.last_message_reference, "")
         r["window_open"] = bool(r.whatsapp_window_expires and get_datetime(r.whatsapp_window_expires) > now_datetime())
         r["customer_typing"] = bool(realtime.typing(r.name, "customer"))
+        r["tags"] = [t for t in (r.pop("_user_tags", None) or "").split(",") if t.strip()]
         r.pop("last_message_reference", None)
     return rows
 
@@ -80,28 +82,44 @@ def thread(name):
     msgs = frappe.get_all(MSG, filters={"conversation": name}, order_by="creation asc", limit=1000,
                           fields=["name", "direction", "sender", "sender_name", "content", "attachment", "is_internal",
                                   "creation", "delivery_status", "delivery_error", "sender_type", "response_source",
-                                  "confidence", "feedback", "actions_json", "read_by_customer", "read_by_agent"])
+                                  "confidence", "feedback", "actions_json", "read_by_customer", "read_by_agent",
+                                  "conversation", "channel", "reply_to", "edited_on", "hidden", "hidden_by",
+                                  "reactions_json", "voice_seconds"])
     unread = [m.name for m in msgs if m.direction == "Inbound" and not m.read_by_agent]
     if unread:
         frappe.db.sql("update `tabSupport Portal Message` set read_by_agent=1 where name in %s", (tuple(unread),))
         realtime.bump(name)
     if cint(doc.unread_agent):
         frappe.db.set_value(CONV, name, "unread_agent", 0, update_modified=False)
+    from thinknxg_support.integrations import messaging
+
+    me, closed = messaging.staff(), doc.status == "Closed"
     for m in msgs:
         try:
-            m["actions"] = json.loads(m.pop("actions_json") or "{}")
+            m["actions"] = json.loads(m.get("actions_json") or "{}")
         except ValueError:
             m["actions"] = {}
+        m["reply"] = messaging.reply_view(m.reply_to) if m.reply_to else None
+        m["reactions"] = messaging.reactions_view(m.pop("reactions_json"), me.key)
+        m["attachment_kind"] = messaging.attachment_kind(m.attachment)
+        m["can_edit"], m["can_remove"] = messaging.can_edit(m, me, closed), messaging.can_remove(m, me, closed)
+        m.pop("actions_json", None)
     meta = {k: doc.get(k) for k in ("name", "subject", "status", "channel", "customer", "contact", "is_guest",
                                     "guest_name", "guest_email", "guest_phone", "source_page", "whatsapp_number",
                                     "whatsapp_profile_name", "whatsapp_window_expires", "assigned_agent",
                                     "helpdesk_ticket", "chat_rating", "guest_last_seen", "creation", "handling", "queue",
-                                    "handoff_reason", "ai_replies")}
+                                    "handoff_reason", "ai_replies", "priority", "lead_score")}
+    meta["tags"] = [t for t in (frappe.db.get_value(CONV, name, "_user_tags") or "").split(",") if t.strip()]
+    from thinknxg_support.integrations import crm
+
+    meta["lead"] = crm.lead_view(doc)
+    meta["leads_on"] = bool(crm.target())
     meta["display_name"] = _display_name(doc.as_dict())
     meta["window_open"] = whatsapp.window_open(doc) if doc.channel == "WhatsApp" else None
     meta["customer_name"] = frappe.db.get_value("Customer", doc.customer, "customer_name") if doc.customer else None
     meta["assigned_name"] = frappe.db.get_value("User", doc.assigned_agent, "full_name") if doc.assigned_agent else None
     meta.update(_live_state(name))
+    meta["messaging"] = messaging.capabilities()
     return {"conversation": meta, "messages": msgs}
 
 
@@ -122,11 +140,50 @@ def _live_state(name):
 
 
 @frappe.whitelist(methods=["POST"])
-def reply(name, content, internal=0):
+def reply(name, content=None, internal=0, reply_to=None, voice_seconds=None):
+    from thinknxg_support.integrations import messaging
+    from thinknxg_support.utils import uploaded_files
+
     doc = _doc(name, "write")
-    if not strip_html(content or "").strip():
+    files = uploaded_files()[:1]
+    if not strip_html(content or "").strip() and not files:
         frappe.throw(_("Write a message first."))
-    return conversations.post_agent_message(doc, content, internal=cint(internal), source="desk")
+    messaging.check_upload("staff", files, voice_seconds)
+    return conversations.post_agent_message(doc, content or "", internal=cint(internal), source="desk", files=files,
+                                            reply_to=reply_to, voice_seconds=voice_seconds)
+
+
+# 1.14: change messages after sending (same rules as the apps and the widget)
+@frappe.whitelist(methods=["POST"])
+def edit_message(name, message, text):
+    from thinknxg_support.integrations import messaging
+
+    _doc(name, "write")
+    return messaging.edit(message, text, messaging.staff(), name)
+
+
+@frappe.whitelist(methods=["POST"])
+def remove_message(name, message):
+    from thinknxg_support.integrations import messaging
+
+    _doc(name, "write")
+    return messaging.remove(message, messaging.staff(), name)
+
+
+@frappe.whitelist(methods=["POST"])
+def react(name, message, emoji):
+    from thinknxg_support.integrations import messaging
+
+    _doc(name)
+    return messaging.react(message, emoji, messaging.staff(), name)
+
+
+@frappe.whitelist(methods=["GET"])
+def message_history(name, message):
+    from thinknxg_support.integrations import messaging
+
+    _doc(name)
+    return messaging.history(message, name)
 
 
 @frappe.whitelist(methods=["POST"])
@@ -138,10 +195,88 @@ def typing(name):
 
 
 @frappe.whitelist(methods=["POST"])
-def heartbeat():
+def heartbeat(active=None):
     frappe.only_for(STAFF)
     realtime.heartbeat(frappe.session.user)
-    return {"ok": True}
+    from thinknxg_support.integrations import presence
+
+    presence.heartbeat(frappe.session.user, active)
+    return presence.effective(frappe.session.user)
+
+
+# 1.14: agent status, priority and tags in the web console (same rules as the apps)
+@frappe.whitelist(methods=["POST"])
+def set_agent_status(status, note=None):
+    frappe.only_for(STAFF)
+    from thinknxg_support.integrations import presence
+
+    return presence.set_status(frappe.session.user, status, note)
+
+
+@frappe.whitelist(methods=["GET"])
+def team_status():
+    frappe.only_for(STAFF)
+    from thinknxg_support.integrations import presence
+
+    return presence.team()
+
+
+@frappe.whitelist(methods=["POST"])
+def set_priority(name, priority):
+    doc = _doc(name, "write")
+    if priority not in ("Low", "Normal", "High", "Urgent"):
+        frappe.throw(_("Choose Low, Normal, High or Urgent."))
+    doc.db_set("priority", priority)
+    realtime.bump(name)
+    return priority
+
+
+@frappe.whitelist(methods=["POST"])
+def set_tags(name, add=None, remove=None):
+    _doc(name, "write")
+    from thinknxg_support.integrations import tags
+
+    def as_list(v):
+        if isinstance(v, str):
+            v = json.loads(v) if v.strip().startswith("[") else [v]
+        return [str(x) for x in (v or [])]
+
+    return tags.update(name, as_list(add), as_list(remove))
+
+
+@frappe.whitelist(methods=["POST"])
+def create_lead(name, person_name=None, email=None, phone=None, company=None):
+    doc = _doc(name, "write")
+    from thinknxg_support.integrations import crm
+
+    return crm.create_lead(doc, {"name": person_name, "email": email, "phone": phone, "company": company},
+                           actor=frappe.session.user)
+
+
+@frappe.whitelist(methods=["GET"])
+def lead_details(name):
+    doc = _doc(name)
+    from thinknxg_support.integrations import crm
+
+    return crm.details(doc)
+
+
+@frappe.whitelist(methods=["POST"])
+def collect_lead_details(name):
+    doc = _doc(name, "write")
+    from thinknxg_support.integrations import lead_capture
+
+    if not lead_capture.start(doc, source="agent"):
+        frappe.throw(_("This chat already has a lead, details are already being collected, or leads are off."))
+    return True
+
+
+@frappe.whitelist(methods=["GET"])
+def tag_suggestions():
+    frappe.only_for(STAFF)
+    from thinknxg_support.integrations import tags
+
+    return tags.suggestions()
 
 
 @frappe.whitelist(methods=["POST"])

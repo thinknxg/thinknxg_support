@@ -147,7 +147,10 @@ def erase(convs) -> dict:
             total_files += 1
         for m in msgs:
             frappe.db.set_value(MSG, m, {"content": f"<p>{ERASED}</p>", "attachment": None, "ai_entities": None,
-                                         "ai_intent": None, "actions_json": None}, update_modified=False)
+                                         "ai_intent": None, "actions_json": None, "reactions_json": None},
+                                update_modified=False)
+        if msgs and frappe.db.exists("DocType", "Support Message Revision"):  # 1.14: earlier versions of messages
+            frappe.db.delete("Support Message Revision", {"message": ["in", msgs]})
         frappe.db.set_value(MSG, {"conversation": name, "direction": "Inbound"}, "sender_name", _("Customer"),
                             update_modified=False)
         total_msgs += len(msgs)

@@ -50,6 +50,12 @@ class SupportChatConsole {
 		frappe.realtime.on("thinknxg_support_chat", (d) => this.onEvent(d));
 		this.timer = setInterval(() => !document.hidden && this.refresh(true), 15000);
 		this.liveTimer = setInterval(() => !document.hidden && this.active && this.pollLive(), 2000);
+		// 1.14: my status (only Available agents get new chats), and whether I am using the console
+		this.activeSinceBeat = true;
+		["mousemove", "keydown", "click", "scroll"].forEach((ev) => document.addEventListener(ev, () => { this.activeSinceBeat = true; }, { passive: true }));
+		this.statusField = this.page.add_field({ fieldname: "agent_status", label: __("My status"), fieldtype: "Select",
+			options: ["Available", "Away", "Busy", "Offline"].map((v) => ({ value: v, label: __(v) })), default: "Available",
+			change: () => this.setStatus(this.statusField.get_value()) });
 		this.beat();
 		this.beatTimer = setInterval(() => this.beat(), 30000);
 		frappe.call({ method: API + "queues", type: "GET" }).then((r) => this.fillQueues(r.message || []));
@@ -57,7 +63,28 @@ class SupportChatConsole {
 	}
 
 	beat() {
-		if (!document.hidden) frappe.call({ method: API + "heartbeat", quiet: true });
+		if (document.hidden) return;
+		const active = this.activeSinceBeat ? 1 : 0;
+		this.activeSinceBeat = false;
+		frappe.call({ method: API + "heartbeat", args: { active }, quiet: true }).then((r) => this.showStatus(r.message));
+	}
+
+	setStatus(status) {
+		if (!status || this.settingStatus || (this.myStatus && this.myStatus.set_status === status)) return;
+		frappe.call({ method: API + "set_agent_status", args: { status }, quiet: true }).then((r) => {
+			this.showStatus(r.message);
+			frappe.show_alert({ message: status === "Available" ? __("You get new chats.") : __("You keep your chats and get no new ones."), indicator: status === "Available" ? "green" : "orange" });
+		});
+	}
+
+	showStatus(s) {
+		if (!s || !s.status || !this.statusField) return;
+		this.myStatus = s;
+		this.settingStatus = true;
+		this.statusField.set_value(s.set_status || s.status).finally(() => { this.settingStatus = false; });
+		const colour = { Available: "green", Away: "orange", Busy: "red", Offline: "grey" }[s.status];
+		const label = s.reason ? `${__(s.status)} (${__(s.reason)})` : __(s.status);
+		this.page.set_indicator(label, colour);
 	}
 
 	build() {
@@ -116,6 +143,23 @@ class SupportChatConsole {
 				.tx-console .txk-suggest button.on, .tx-console .txk-suggest button:hover { background:var(--control-bg); }
 				.tx-console .txk-suggest b { margin-inline-end:6px; }
 				.tx-console .txk-empty { margin:auto; color:var(--text-muted); text-align:center; padding:40px; }
+				.tx-console .txk-quote { font-size:11px; color:var(--text-muted); border-inline-start:3px solid var(--primary); padding:1px 6px; margin:2px 0 4px; background:var(--subtle-fg); border-radius:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+				.tx-console .txk-thumb { max-width:220px; max-height:220px; border-radius:6px; display:block; margin-top:4px; background:var(--subtle-fg); min-width:80px; min-height:40px; }
+				.tx-console .txk-audio { height:32px; max-width:240px; margin-top:4px; }
+				.tx-console .txk-reacts { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; }
+				.tx-console .txk-reacts button, .tx-console .txk-picker button { border:1px solid var(--border-color); background:var(--card-bg); border-radius:999px; padding:0 7px; font-size:12px; }
+				.tx-console .txk-reacts button.on { border-color:var(--primary); }
+				.tx-console .txk-picker { display:flex; gap:4px; margin-top:4px; }
+				.tx-console .txk-acts { margin-inline-start:8px; opacity:0; } .tx-console .txk-m:hover .txk-acts { opacity:1; }
+				.tx-console .txk-acts a { margin-inline-start:4px; color:var(--text-muted); }
+				.tx-console .txk-m.gone > :not(small):not(.txk-removed) { opacity:.5; text-decoration:line-through; }
+				.tx-console .txk-removed { font-size:11px; color:var(--orange-600, #c2410c); margin-top:4px; }
+				.tx-console .txk-replybar { display:flex; justify-content:space-between; font-size:12px; border-inline-start:3px solid var(--primary); padding:2px 8px; background:var(--subtle-fg); border-radius:4px; }
+				.tx-console .txk-file { font-size:12px; }
+				.tx-console .txk-org { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:4px; font-size:12px; }
+				.tx-console .txk-priority { height:24px; padding:0 6px; font-size:12px; border-radius:6px; border:1px solid var(--border-color); background:var(--card-bg); }
+				.tx-console .txk-tag { display:inline-block; background:var(--subtle-fg); border-radius:999px; padding:0 8px; font-size:11px; }
+				.tx-console .txk-tag a { color:var(--text-muted); }
 				@media (max-width: 900px) { .tx-console .txk { grid-template-columns:1fr; height:auto; }
 					.tx-console .txk-side { max-height:40vh; } .tx-console .txk-main { min-height:60vh; } }
 			</style>
@@ -214,6 +258,7 @@ class SupportChatConsole {
 					<div class="txk-name">${esc(r.display_name || r.subject)}</div>
 					<div class="txk-prev">${r.customer_typing ? `<i>${__("typing…")}</i>` : esc(r.preview || "")}</div>
 					<div class="txk-prev">${esc(CHANNEL_LABEL[r.channel] || "")}${who ? " · " + who : ""}${r.queue ? " · " + esc(r.queue) : ""}</div>
+					${(r.priority === "High" || r.priority === "Urgent" || (r.tags || []).length) ? `<div class="txk-prev">${r.priority === "Urgent" || r.priority === "High" ? `<span class="indicator-pill ${r.priority === "Urgent" ? "red" : "orange"}">${__(r.priority)}</span> ` : ""}${(r.tags || []).map((t) => `<span class="txk-tag">${esc(t)}</span>`).join(" ")}</div>` : ""}
 				</div>
 				<div class="txk-meta">
 					<span>${r.last_activity_at ? frappe.datetime.comment_when(r.last_activity_at, true) : ""}</span>
@@ -261,7 +306,22 @@ class SupportChatConsole {
 		const fail = m.delivery_status === "Failed"
 			? `<div class="txk-fail">${esc(m.delivery_error || __("Not delivered"))} <a href="#" data-retry="${esc(m.name)}">${__("Retry")}</a></div>`
 			: m.delivery_error ? `<div class="text-muted small">${esc(m.delivery_error)}</div>` : "";
-		const att = m.attachment ? `<div><a href="${esc(m.attachment)}" target="_blank" rel="noopener">${__("Attachment")}</a></div>` : "";
+		const fileUrl = `/api/method/thinknxg_support.api.staff.v1.attachment?message=${encodeURIComponent(m.name)}`;
+		const att = !m.attachment ? "" : m.attachment_kind === "image"
+			? `<div><a href="${fileUrl}" target="_blank" rel="noopener"><img class="txk-thumb" data-img="${esc(m.name)}" alt="${__("Photo")}"></a></div>`
+			: m.attachment_kind === "audio"
+				? `<div><audio class="txk-audio" data-audio="${esc(m.name)}" controls preload="none"></audio>${m.voice_seconds ? ` <small>${__("Voice note")} · ${m.voice_seconds}s</small>` : ""}</div>`
+				: `<div><a href="${fileUrl}" target="_blank" rel="noopener">📎 ${esc((m.attachment || "").split("/").pop() || __("Attachment"))}</a></div>`;
+		const quote = m.reply ? `<div class="txk-quote"><b>${esc(m.reply.author || "")}</b> ${esc(m.reply.excerpt || "")}</div>` : "";
+		const reacts = (m.reactions || []).length ? `<div class="txk-reacts">${m.reactions.map((r) =>
+			`<button class="${r.mine ? "on" : ""}" data-react="${esc(m.name)}" data-emoji="${esc(r.emoji)}">${esc(r.emoji)} ${r.count}</button>`).join("")}</div>` : "";
+		const removed = m.hidden ? `<div class="txk-removed">${__("Removed by {0}; the customer sees \"Message removed\"", [esc(m.hidden_by || "")])}</div>` : "";
+		const acts = m.hidden ? "" : `<span class="txk-acts">
+			<a href="#" data-reply="${esc(m.name)}" title="${__("Reply")}">↩</a>
+			<a href="#" data-pick="${esc(m.name)}" title="${__("React")}">☺</a>
+			${m.can_edit ? `<a href="#" data-edit="${esc(m.name)}" title="${__("Edit")}">✎</a>` : ""}
+			${m.can_remove ? `<a href="#" data-remove="${esc(m.name)}" title="${__("Remove")}">🗑</a>` : ""}
+			${m.edited_on ? `<a href="#" data-history="${esc(m.name)}" title="${__("Earlier versions")}">${__("edited")}</a>` : ""}</span>`;
 		const a = m.actions || {};
 		const extra = [];
 		if (st === "AI" && m.confidence) extra.push(`<span>${__("Confidence")}: ${esc(__(m.confidence))}</span>`);
@@ -270,7 +330,7 @@ class SupportChatConsole {
 		if (a.follow_ups && a.follow_ups.length) extra.push(`<span>${__("Suggested")}: ${a.follow_ups.map((f) => esc(f)).join(" | ")}</span>`);
 		if (m.feedback) extra.push(`<span>${__("Customer rated")}: ${esc(__(m.feedback))}</span>`);
 		if (m.response_source && st === "Bot") extra.push(`<span>${__("Rule")}: ${esc(m.response_source)}</span>`);
-		return `<div class="txk-m ${cls}"><small>${tag}${esc(m.sender_name || "")}${m.is_internal ? " · " + __("Internal note") : ""} · ${frappe.datetime.comment_when(m.creation, true)}${status}</small>${m.content || ""}${att}${fail}${extra.length ? `<div class="txk-extra">${extra.join("")}</div>` : ""}</div>`;
+		return `<div class="txk-m ${cls}${m.hidden ? " gone" : ""}" data-msg="${esc(m.name)}"><small>${tag}${esc(m.sender_name || "")}${m.is_internal ? " · " + __("Internal note") : ""} · ${frappe.datetime.comment_when(m.creation, true)}${status}${acts}</small>${quote}${m.content || ""}${att}${removed}${reacts}${fail}${extra.length ? `<div class="txk-extra">${extra.join("")}</div>` : ""}</div>`;
 	}
 
 	renderThread(data) {
@@ -310,7 +370,14 @@ class SupportChatConsole {
 
 		this.$main.html(`
 			<div class="txk-head">
-				<div><h4>${esc(c.display_name || c.subject)}</h4><div>${pills.join("")}</div><small>${who.join(" · ")}</small></div>
+				<div><h4>${esc(c.display_name || c.subject)}</h4><div>${pills.join("")}</div><small>${who.join(" · ")}</small>
+					<div class="txk-org">
+						<select class="txk-priority input-xs" title="${__("Priority")}">${["Low", "Normal", "High", "Urgent"].map((p) => `<option value="${p}" ${(c.priority || "Normal") === p ? "selected" : ""}>${__("Priority")}: ${__(p)}</option>`).join("")}</select>
+						${(c.tags || []).map((t) => `<span class="txk-tag">${esc(t)} <a href="#" data-untag="${esc(t)}" title="${__("Remove tag")}">×</a></span>`).join(" ")}
+						<a href="#" class="txk-addtag">+ ${__("Tag")}</a>
+						${c.lead ? `<a href="${esc(c.lead.url)}" target="_blank" rel="noopener" class="txk-tag" title="${esc(c.lead.doctype)}">${__("Lead")}: ${esc(c.lead.title)}${c.lead_score != null && c.lead_score !== undefined && c.lead_score !== 0 ? ` · ${__("score")} ${c.lead_score}` : ""}</a>`
+							: c.leads_on ? `<a href="#" class="txk-lead">+ ${__("Lead")}</a> <a href="#" class="txk-collect" title="${__("The assistant asks the visitor for their name, e-mail, phone and company")}">${__("Collect details")}</a>` : ""}
+					</div></div>
 				<div class="btn-group">
 					${c.handling !== "Bot" && c.assigned_agent !== frappe.session.user ? `<button class="btn btn-default btn-xs" data-act="assign">${__("Assign to me")}</button>` : ""}
 					${c.handling === "Agent" && c.status !== "Closed" ? `<button class="btn btn-default btn-xs" data-act="tobot">${__("Return to assistant")}</button>` : ""}
@@ -328,6 +395,8 @@ class SupportChatConsole {
 			<div class="txk-compose txk-canned ${this.internal ? "note" : ""}">
 				<div class="txk-suggest" hidden></div>
 				${banner}
+				<div class="txk-replybar" hidden><span></span><a href="#" class="txk-replycancel">×</a></div>
+				<div class="txk-file" hidden><span></span> <a href="#" class="txk-filecancel">${__("Remove")}</a></div>
 				<textarea class="form-control" placeholder="${this.internal ? __("Internal note: only agents see this") : __("Reply to the customer. Enter sends, Shift+Enter adds a line.")}"></textarea>
 				<div class="txk-bar">
 					<label class="small"><input type="checkbox" class="txk-internal" ${this.internal ? "checked" : ""}> ${__("Internal note")}</label>
@@ -348,6 +417,8 @@ class SupportChatConsole {
 							</ul>
 						</span>
 						<button class="btn btn-default btn-sm txk-canned-btn" title="${__("Insert a canned response (or type / in the box)")}">${__("Canned responses")}</button>
+						<label class="btn btn-default btn-sm" title="${__("Attach a file")}" style="margin:0">📎<input type="file" class="txk-attach" hidden></label>
+						${(c.messaging || {}).voice && window.MediaRecorder ? `<button class="btn btn-default btn-sm txk-voice" title="${__("Record a voice note")}">🎤</button>` : ""}
 						<button class="btn btn-primary btn-sm txk-send">${__("Send")}</button>
 					</span>
 				</div>
@@ -378,7 +449,143 @@ class SupportChatConsole {
 			frappe.call({ method: API + "retry", args: { message: e.currentTarget.dataset.retry } }).then(() => this.loadThread(true));
 		});
 		this.$main.find("[data-act]").on("click", (e) => this.action(e.currentTarget.dataset.act, c));
+		this.bindMessageActions(c, data);
+		this.bindOrganise(c);
 		this.pollLive();
+	}
+
+	// ---------------------------------------------------------------- 1.14: reply, edit, remove, react, files, voice
+	bindMessageActions(c, data) {
+		const esc = frappe.utils.escape_html;
+		const byName = Object.fromEntries((data.messages || []).map((m) => [m.name, m]));
+		const $m = this.$main;
+		const text = (m) => $("<div>").html(m.content || "").text().trim();
+		this.replyTo = null;
+		this.file = null;
+		$m.find("[data-reply]").on("click", (e) => {
+			e.preventDefault();
+			const m = byName[e.currentTarget.dataset.reply];
+			this.replyTo = m.name;
+			$m.find(".txk-replybar").prop("hidden", false).find("span").html(`<b>${__("Replying to")} ${esc(m.sender_name || "")}</b> ${esc(text(m).slice(0, 80))}`);
+			$m.find("textarea").trigger("focus");
+		});
+		$m.find(".txk-replycancel").on("click", (e) => { e.preventDefault(); this.replyTo = null; $m.find(".txk-replybar").prop("hidden", true); });
+		const call = (method, args) => frappe.call({ method: API + method, args: Object.assign({ name: c.name }, args) }).then(() => this.loadThread(true));
+		$m.find("[data-edit]").on("click", (e) => {
+			e.preventDefault();
+			const m = byName[e.currentTarget.dataset.edit];
+			frappe.prompt({ fieldname: "text", fieldtype: "Small Text", label: __("Message"), reqd: 1, default: text(m) },
+				(v) => call("edit_message", { message: m.name, text: v.text }), __("Edit message"), __("Save"));
+		});
+		$m.find("[data-remove]").on("click", (e) => {
+			e.preventDefault();
+			const id = e.currentTarget.dataset.remove;
+			frappe.confirm(__("Remove this message? The customer will see \"Message removed\"; you keep the text."), () => call("remove_message", { message: id }));
+		});
+		$m.find("[data-react]").on("click", (e) => call("react", { message: e.currentTarget.dataset.react, emoji: e.currentTarget.dataset.emoji }));
+		$m.find("[data-pick]").on("click", (e) => {
+			e.preventDefault();
+			const id = e.currentTarget.dataset.pick;
+			const $bubble = $m.find(`[data-msg="${CSS.escape(id)}"]`);
+			$m.find(".txk-picker").remove();
+			const set = (c.messaging || {}).reactions || [];
+			$bubble.append(`<div class="txk-picker">${set.map((r) => `<button data-emoji="${esc(r)}">${esc(r)}</button>`).join("")}</div>`);
+			$bubble.find(".txk-picker button").on("click", (ev) => call("react", { message: id, emoji: ev.currentTarget.dataset.emoji }));
+		});
+		$m.find("[data-history]").on("click", (e) => {
+			e.preventDefault();
+			frappe.call({ method: API + "message_history", args: { name: c.name, message: e.currentTarget.dataset.history }, type: "GET" }).then((r) => {
+				const rows = (r.message || []).map((h) => `<div style="border-bottom:1px solid var(--border-color);padding:6px 0">
+					<div class="small text-muted">${esc(h.edited_by || "")} · ${frappe.datetime.str_to_user(h.edited_on)}</div><div style="white-space:pre-wrap">${esc(h.text)}</div></div>`).join("");
+				frappe.msgprint({ title: __("Earlier versions"), message: rows || __("No earlier versions.") });
+			});
+		});
+		// previews: images and voice notes load through the authorised staff download
+		$m.find("[data-img], [data-audio]").each((_i, el) => {
+			const id = el.dataset.img || el.dataset.audio;
+			fetch(`/api/method/thinknxg_support.api.staff.v1.attachment?message=${encodeURIComponent(id)}`, { credentials: "same-origin" })
+				.then((res) => (res.ok ? res.blob() : null)).then((b) => { if (b) el.src = URL.createObjectURL(b); });
+		});
+		$m.find(".txk-attach").on("change", (e) => {
+			this.file = e.target.files[0] || null;
+			this.voiceSeconds = null;
+			e.target.value = "";
+			$m.find(".txk-file").prop("hidden", !this.file).find("span").text(this.file ? this.file.name : "");
+		});
+		$m.find(".txk-filecancel").on("click", (e) => { e.preventDefault(); this.file = null; $m.find(".txk-file").prop("hidden", true); });
+		$m.find(".txk-voice").on("click", (e) => this.toggleVoice(c, $(e.currentTarget)));
+	}
+
+	// 1.14: priority and tags
+	bindOrganise(c) {
+		const reload = () => { this.loadThread(true); this.refresh(true); };
+		this.$main.find(".txk-lead").on("click", (e) => {
+			e.preventDefault();
+			frappe.call({ method: API + "lead_details", args: { name: c.name }, type: "GET" }).then((r) => {
+				const v = r.message || {};
+				frappe.prompt([
+					{ fieldname: "person_name", fieldtype: "Data", label: __("Name"), default: v.name },
+					{ fieldname: "email", fieldtype: "Data", options: "Email", label: __("E-mail"), default: v.email },
+					{ fieldname: "phone", fieldtype: "Data", label: __("Phone"), default: v.phone },
+					{ fieldname: "company", fieldtype: "Data", label: __("Company"), default: v.company },
+				], (vals) => frappe.call({ method: API + "create_lead", args: Object.assign({ name: c.name }, vals) }).then((res) => {
+					frappe.show_alert({ message: res.message.created ? __("Lead created") : __("Linked to the existing lead"), indicator: "green" });
+					reload();
+				}), __("Create lead"), __("Create"));
+			});
+		});
+		this.$main.find(".txk-collect").on("click", (e) => {
+			e.preventDefault();
+			frappe.call({ method: API + "collect_lead_details", args: { name: c.name } }).then(reload);
+		});
+		this.$main.find(".txk-priority").on("change", (e) =>
+			frappe.call({ method: API + "set_priority", args: { name: c.name, priority: e.target.value } }).then(reload));
+		this.$main.find("[data-untag]").on("click", (e) => {
+			e.preventDefault();
+			frappe.call({ method: API + "set_tags", args: { name: c.name, remove: JSON.stringify([e.currentTarget.dataset.untag]) } }).then(reload);
+		});
+		this.$main.find(".txk-addtag").on("click", (e) => {
+			e.preventDefault();
+			frappe.call({ method: API + "tag_suggestions", type: "GET", quiet: true }).then((r) => {
+				const d = new frappe.ui.Dialog({ title: __("Add a tag"), fields: [{ fieldname: "tag", fieldtype: "Autocomplete", label: __("Tag"),
+					options: (r.message || []).filter((t) => !(c.tags || []).includes(t)), reqd: 1 }],
+					primary_action_label: __("Add"),
+					primary_action: (v) => { d.hide(); frappe.call({ method: API + "set_tags", args: { name: c.name, add: JSON.stringify([v.tag]) } }).then(reload); } });
+				d.show();
+			});
+		});
+	}
+
+	async toggleVoice(c, $btn) {
+		if (this.recorder) {
+			this.recorder.stop();
+			return;
+		}
+		try {
+			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+			const type = ["audio/ogg;codecs=opus", "audio/webm;codecs=opus", "audio/mp4"].find((x) => MediaRecorder.isTypeSupported(x)) || "";
+			const rec = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+			const chunks = [];
+			const started = Date.now();
+			rec.ondataavailable = (ev) => ev.data && ev.data.size && chunks.push(ev.data);
+			rec.onstop = () => {
+				stream.getTracks().forEach((t) => t.stop());
+				this.recorder = null;
+				$btn.removeClass("btn-danger").text("🎤");
+				const mime = (rec.mimeType || "audio/webm").split(";")[0];
+				const ext = mime.includes("ogg") ? "ogg" : mime.includes("mp4") ? "m4a" : "webm";
+				this.file = new File(chunks, `voice-note-${Date.now()}.${ext}`, { type: mime });
+				this.voiceSeconds = Math.max(1, Math.round((Date.now() - started) / 1000));
+				this.send(c);
+			};
+			rec.start(250);
+			this.recorder = rec;
+			$btn.addClass("btn-danger").text(__("Stop and send"));
+			const max = ((c.messaging || {}).max_voice_seconds || 120) * 1000;
+			setTimeout(() => this.recorder === rec && rec.stop(), max);
+		} catch (err) {
+			frappe.msgprint(__("Allow the microphone to record a voice note."));
+		}
 	}
 
 	// ---------------------------------------------------------------- AI copilot (1.10): drafts only
@@ -458,18 +665,38 @@ class SupportChatConsole {
 	send(c) {
 		const $ta = this.$main.find("textarea");
 		const text = ($ta.val() || "").trim();
-		if (!text) return;
+		const file = this.file;
+		if (!text && !file) return;
 		const go = () => {
 			const html = text.split(/\n{2,}/).map((p) => `<p>${frappe.utils.escape_html(p).replace(/\n/g, "<br>")}</p>`).join("");
 			$ta.val("").prop("disabled", true);
-			frappe.call({ method: API + "reply", args: { name: this.active, content: html, internal: this.internal } })
-				.then(() => this.loadThread(true))
+			const args = { name: this.active, content: html, internal: this.internal, reply_to: this.replyTo || "",
+				voice_seconds: file && this.voiceSeconds ? this.voiceSeconds : "" };
+			const done = () => { this.replyTo = null; this.file = null; this.voiceSeconds = null; this.loadThread(true); };
+			const request = file ? this.upload(args, file) : frappe.call({ method: API + "reply", args });
+			Promise.resolve(request)
+				.then(done)
 				.catch(() => $ta.val(text))
 				.finally(() => $ta.prop("disabled", false).trigger("focus"));
 		};
 		if (!this.internal && c.handling === "Bot") {
 			frappe.call({ method: API + "take_over", args: { name: c.name } }).then(go);
 		} else go();
+	}
+
+	upload(args, file) {
+		const fd = new FormData();
+		Object.entries(args).forEach(([k, v]) => v !== "" && v != null && fd.append(k, v));
+		fd.append("file", file, file.name);
+		return fetch(`/api/method/${API}reply`, { method: "POST", body: fd, credentials: "same-origin",
+			headers: { "X-Frappe-CSRF-Token": frappe.csrf_token, Accept: "application/json" } })
+			.then(async (res) => {
+				if (!res.ok) {
+					const body = await res.json().catch(() => ({}));
+					frappe.msgprint(JSON.parse(body._server_messages || "[]").map((m) => JSON.parse(m).message).join("<br>") || __("The file could not be sent."));
+					throw new Error("upload failed");
+				}
+			});
 	}
 
 	// ---------------------------------------------------------------- canned responses

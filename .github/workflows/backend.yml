@@ -64,9 +64,9 @@ jobs:
         run: |
           cd ~/frappe-bench
           # server tests only: skip front-end builds (an upstream Helpdesk UI build failure must not block them)
-          bench get-app --skip-assets --branch version-16 erpnext
-          bench get-app --skip-assets telephony  # Helpdesk requires it
-          bench get-app --skip-assets helpdesk
+          bench get-app --skip-assets --branch version-16 https://github.com/frappe/erpnext
+          bench get-app --skip-assets https://github.com/frappe/telephony  # Helpdesk requires it (URL: no name lookup)
+          bench get-app --skip-assets https://github.com/frappe/helpdesk
           bench get-app --skip-assets thinknxg_support "$GITHUB_WORKSPACE/app"
       - name: Create site
         run: |
@@ -80,3 +80,69 @@ jobs:
         run: |
           cd ~/frappe-bench
           bench --site test.localhost run-tests --app thinknxg_support
+
+  crm:
+    # 1.14: the lead tests again with thinkNXG CRM's upstream (Frappe CRM) installed, so CRM Lead is used
+    name: With thinkNXG CRM (CRM Lead)
+    needs: lint
+    runs-on: ubuntu-latest
+    continue-on-error: true  # depends on the upstream CRM app installing on v16; the main job is the gate
+    timeout-minutes: 75
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+        ports: ["3306:3306"]
+        options: --health-cmd="healthcheck.sh --connect --innodb_initialized" --health-interval=5s --health-timeout=2s --health-retries=20
+      redis-cache:
+        image: redis:7
+        ports: ["13000:6379"]
+      redis-queue:
+        image: redis:7
+        ports: ["11000:6379"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: app
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install bench
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq libmariadb-dev mariadb-client wkhtmltopdf >/dev/null || true
+          pip install frappe-bench
+          npm install -g yarn
+      - name: Init bench (Frappe v16)
+        run: |
+          bench init --skip-redis-config-generation --frappe-branch version-16 --python "$(which python)" ~/frappe-bench
+          cd ~/frappe-bench
+          bench set-config -g db_host 127.0.0.1
+          bench set-config -g redis_cache redis://127.0.0.1:13000
+          bench set-config -g redis_queue redis://127.0.0.1:11000
+          bench set-config -g redis_socketio redis://127.0.0.1:13000
+      - name: Get apps
+        run: |
+          cd ~/frappe-bench
+          bench get-app --skip-assets --branch version-16 https://github.com/frappe/erpnext
+          bench get-app --skip-assets https://github.com/frappe/telephony
+          bench get-app --skip-assets https://github.com/frappe/helpdesk
+          bench get-app --skip-assets https://github.com/frappe/whatsapp  # Frappe CRM requires it
+          bench get-app --skip-assets https://github.com/frappe/crm
+          bench get-app --skip-assets thinknxg_support "$GITHUB_WORKSPACE/app"
+      - name: Create site
+        run: |
+          cd ~/frappe-bench
+          bench new-site test.localhost --db-root-password root --admin-password admin --no-mariadb-socket
+          bench --site test.localhost install-app erpnext
+          bench --site test.localhost install-app helpdesk
+          bench --site test.localhost install-app crm
+          bench --site test.localhost install-app thinknxg_support
+          bench --site test.localhost set-config allow_tests true
+      - name: Run lead tests with CRM Lead
+        run: |
+          cd ~/frappe-bench
+          bench --site test.localhost run-tests --app thinknxg_support --module thinknxg_support.tests.test_crm

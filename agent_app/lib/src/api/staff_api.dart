@@ -19,6 +19,9 @@ class StaffApi {
     String? q,
     String? cursor,
     int limit = 30,
+    String? sort,
+    String? priority,
+    String? tag,
   }) async {
     final r = _map(await client.get('conversations', {
       'view': view,
@@ -28,6 +31,9 @@ class StaffApi {
       'q': q,
       'cursor': cursor,
       'limit': '$limit',
+      'sort': sort,
+      'priority': priority,
+      'tag': tag,
     }));
     return Page([for (final c in _list(r['items'])) ConversationSummary.fromJson(_map(c))], r['next_cursor'] as String?);
   }
@@ -35,8 +41,22 @@ class StaffApi {
   Future<ConversationSummary> conversation(String id) async =>
       ConversationSummary.fromJson(_map(await client.get('conversation', {'name': id})));
 
-  Future<MessagePage> messages(String id, {String? before, String? after, int limit = 30}) async =>
-      MessagePage.fromJson(_map(await client.get('messages', {'name': id, 'before': before, 'after': after, 'limit': '$limit'})));
+  Future<MessagePage> messages(String id, {String? before, String? after, int limit = 30, String? changedSince}) async =>
+      MessagePage.fromJson(_map(await client.get('messages',
+          {'name': id, 'before': before, 'after': after, 'limit': '$limit', 'changed_since': changedSince})));
+
+  // 1.14: change messages after sending
+  Future<ChatMessage> editMessage(String id, String messageId, String text) async =>
+      ChatMessage.fromJson(_map(await client.post('edit_message', {'name': id, 'message': messageId, 'text': text})));
+
+  Future<ChatMessage> removeMessage(String id, String messageId) async =>
+      ChatMessage.fromJson(_map(await client.post('remove_message', {'name': id, 'message': messageId})));
+
+  Future<ChatMessage> react(String id, String messageId, String emoji) async =>
+      ChatMessage.fromJson(_map(await client.post('react', {'name': id, 'message': messageId, 'emoji': emoji})));
+
+  Future<List<Map<String, dynamic>>> messageHistory(String id, String messageId) async =>
+      [for (final h in _list(await client.get('message_history', {'name': id, 'message': messageId}))) _map(h)];
 
   Future<void> markRead(String id, String messageId) => client.post('mark_read', {'name': id, 'message': messageId});
 
@@ -71,8 +91,15 @@ class StaffApi {
 
   /// Reply to the customer, or (internal) a staff-only note. Retrying with the same [clientRequestId] never sends twice.
   Future<({ChatMessage message, bool duplicate})> reply(String id, String text,
-      {required String clientRequestId, bool internal = false, UploadFile? file}) async {
-    final fields = {'name': id, 'text': text, 'client_request_id': clientRequestId, 'internal': internal ? 1 : 0};
+      {required String clientRequestId, bool internal = false, UploadFile? file, String? replyTo, int? voiceSeconds}) async {
+    final fields = {
+      'name': id,
+      'text': text,
+      'client_request_id': clientRequestId,
+      'internal': internal ? 1 : 0,
+      if (replyTo != null) 'reply_to': replyTo,
+      if (voiceSeconds != null) 'voice_seconds': voiceSeconds,
+    };
     final r = _map(file == null ? await client.post('reply', fields) : await client.postFile('reply', fields, file));
     return (message: ChatMessage.fromJson(_map(r['message'])), duplicate: r['duplicate'] == true);
   }
@@ -99,7 +126,34 @@ class StaffApi {
 
   Future<void> typing(String id) => client.post('typing', {'name': id});
 
-  Future<void> heartbeat() => client.post('heartbeat', {});
+  /// 1.14: `active` says whether the person used the app since the last heartbeat (drives Away after idle minutes).
+  Future<AgentStatus?> heartbeat({bool? active}) async {
+    final r = await client.post('heartbeat', {if (active != null) 'active': active ? 1 : 0});
+    return r is Map ? AgentStatus.fromJson(r['status']) : null;
+  }
+
+  Future<AgentStatus?> setStatus(String status, {String? note}) async =>
+      AgentStatus.fromJson(await client.post('set_status', {'status': status, if (note != null) 'note': note}));
+
+  Future<ConversationSummary> setPriority(String id, String priority) async =>
+      ConversationSummary.fromJson(_map(await client.post('set_priority', {'name': id, 'priority': priority})));
+
+  Future<ConversationSummary> setTags(String id, {List<String> add = const [], List<String> remove = const []}) async =>
+      ConversationSummary.fromJson(_map(await client.post('set_tags', {'name': id, 'add': add, 'remove': remove})));
+
+  Future<ConversationSummary> createLead(String id, {String? name, String? email, String? phone, String? company}) async =>
+      ConversationSummary.fromJson(_map(await client.post('create_lead', {
+        'name': id,
+        if (name != null && name.isNotEmpty) 'person_name': name,
+        if (email != null && email.isNotEmpty) 'email': email,
+        if (phone != null && phone.isNotEmpty) 'phone': phone,
+        if (company != null && company.isNotEmpty) 'company': company,
+      })));
+
+  Future<ConversationSummary> collectLeadDetails(String id) async =>
+      ConversationSummary.fromJson(_map(await client.post('collect_lead_details', {'name': id})));
+
+  Future<List<String>> tagSuggestions() async => [for (final t in _list(await client.get('tag_suggestions'))) '$t'];
 
   Future<AlertConfig> alertConfig() async => AlertConfig.fromJson(_map(await client.get('alert_config')));
 

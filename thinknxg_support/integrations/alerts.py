@@ -330,6 +330,10 @@ def on_new_chat(conv, reason: str | None = None):
         q = routing.pick_queue(conv.get("channel"))
         users = queue_members(q.name) if q else []
     users = users or all_agents()
+    if not conv.get("assigned_agent"):  # 1.14: a queue broadcast does not ring agents who are Offline or off shift
+        from thinknxg_support.integrations import presence
+
+        users = [u for u in users if presence.rung_for_queue(u)] or users
     raise_alert("New Chat", users, _("New chat: {0}").format(_chat_label(conv)), _last_inbound(conv.name),
                 reference_doctype=CONV, reference_name=conv.name, route=_chat_route(conv.name),
                 group_key=f"chat:{conv.name}", lines=[x for x in (conv.get("channel"), reason) if x])

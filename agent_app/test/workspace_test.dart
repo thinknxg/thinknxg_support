@@ -9,6 +9,7 @@ import 'package:thinknxg_agent/src/api/staff_api.dart';
 import 'package:thinknxg_agent/src/auth/token_store.dart';
 import 'package:thinknxg_agent/src/platform/files.dart';
 import 'package:thinknxg_agent/src/platform/services.dart';
+import 'package:thinknxg_agent/src/platform/voice.dart';
 import 'package:thinknxg_agent/src/state/controllers.dart';
 import 'package:thinknxg_agent/src/state/session.dart';
 
@@ -19,6 +20,19 @@ class Tokens implements TokenProvider {
   Future<String?> accessToken() async => 'token-1';
   @override
   Future<bool> refresh() async => false;
+}
+
+class FakeRecorder implements VoiceRecorder {
+  static bool allowed = true;
+  bool started = false;
+  @override
+  Future<bool> start() async => started = allowed;
+  @override
+  Future<UploadFile?> stop() async => const UploadFile('voice-note-1.m4a', [0, 0, 0, 32, 102, 116, 121, 112]);
+  @override
+  Future<void> cancel() async {}
+  @override
+  void dispose() {}
 }
 
 class FakeFiles implements FileService {
@@ -354,6 +368,168 @@ void main() {
 
       expect(server.messages['CONV-100']!.length, sentBefore, reason: 'the copilot never sends');
       expect(server.copilotCalls.map((c) => c['action']), ['suggest', 'rewrite', 'translate']);
+    });
+
+    testWidgets('message menu: react, reply with a quote, edit and remove', (tester) async {
+      final (_, server) = await signedIn(tester, const Size(1440, 900));
+      await tester.tap(find.byKey(const Key('conv-CONV-100')));
+      await tester.pumpAndSettle();
+      final first = server.messages['CONV-100']!.first['id'] as String;
+
+      // react to the customer's message
+      await tester.tap(find.byKey(Key('msg-menu-$first')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('react-👍')));
+      await tester.pumpAndSettle();
+      expect(server.messageCalls.last, containsPair('emoji', '👍'));
+      expect(find.text('👍 1'), findsOneWidget);
+
+      // reply to it: the quote goes with the reply
+      await tester.tap(find.byKey(Key('msg-menu-$first')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('msg-edit')), findsNothing); // not the agent's own message
+      await tester.tap(find.byKey(const Key('msg-reply')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('reply-bar')), findsOneWidget);
+      await tester.enterText(find.byKey(const Key('composer-field')), 'Which invoice number?');
+      await tester.tap(find.byKey(const Key('composer-send')));
+      await tester.pumpAndSettle();
+      final sent = server.messages['CONV-100']!.last;
+      expect(sent['reply_to']['id'], first);
+      expect(find.byKey(const Key('reply-bar')), findsNothing);
+      expect(find.text('Customer: My invoice is wrong'), findsOneWidget); // the quote in the bubble
+
+      // edit the agent's own reply
+      await tester.tap(find.byKey(Key('msg-menu-${sent['id']}')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('msg-edit')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('edit-field')), 'Which invoice number, please?');
+      await tester.tap(find.byKey(const Key('edit-save')));
+      await tester.pumpAndSettle();
+      expect(find.text('Which invoice number, please?'), findsOneWidget);
+      expect(find.textContaining('edited'), findsWidgets);
+
+      // remove it
+      await tester.tap(find.byKey(Key('msg-menu-${sent['id']}')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('msg-remove')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('confirm-remove')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('removed-label')), findsOneWidget);
+      expect(server.messageCalls.map((c) => c['action']), ['react', 'edit', 'remove']);
+    });
+
+    testWidgets('a voice note is recorded and sent; no microphone shows a hint', (tester) async {
+      VoiceRecorder.factory = FakeRecorder.new;
+      addTearDown(() => VoiceRecorder.factory = DeviceVoiceRecorder.new);
+      final (_, server) = await signedIn(tester, const Size(1440, 900));
+      await tester.tap(find.byKey(const Key('conv-CONV-100')));
+      await tester.pumpAndSettle();
+      FakeRecorder.allowed = false;
+      await tester.tap(find.byKey(const Key('composer-voice')));
+      await tester.pumpAndSettle();
+      expect(find.text('Allow the microphone to record a voice note.'), findsOneWidget);
+      FakeRecorder.allowed = true;
+      await tester.tap(find.byKey(const Key('composer-voice')));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byKey(const Key('recording')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('recording-send')));
+      await tester.pumpAndSettle();
+      final m = server.messages['CONV-100']!.last;
+      expect(m['attachment']['name'], 'voice-note-1.m4a');
+      expect(m['voice_seconds'], greaterThanOrEqualTo(1));
+      expect(find.byKey(Key('voice-${m['id']}')), findsOneWidget);
+    });
+
+    testWidgets('agents set their status; heartbeats report activity', (tester) async {
+      final (_, server) = await signedIn(tester, const Size(1440, 900));
+      expect(find.byKey(const Key('my-status-label')), findsOneWidget);
+      expect(server.heartbeatActive.first, 1); // just opened: active
+      await tester.tap(find.byKey(const Key('my-status')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('status-Busy')));
+      await tester.pumpAndSettle();
+      expect(server.agentStatus, 'Busy');
+      expect(find.text('Busy'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 46)); // reports the taps above
+      expect(server.heartbeatActive.last, 1);
+      await tester.pump(const Duration(seconds: 46)); // nothing touched since
+      expect(server.heartbeatActive.last, 0);
+    });
+
+    testWidgets('priority and tags from the conversation menu', (tester) async {
+      final (_, server) = await signedIn(tester, const Size(1440, 900));
+      await tester.tap(find.byKey(const Key('conv-CONV-100')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('More actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('menu-priority')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('priority-Urgent')));
+      await tester.pumpAndSettle();
+      expect(server.conversations.first['priority'], 'Urgent');
+      expect(find.byKey(const Key('priority-pill')), findsOneWidget);
+
+      await tester.tap(find.byTooltip('More actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('menu-tags')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('tag-field')), 'late delivery');
+      await tester.tap(find.byKey(const Key('tag-add')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('refund')); // a suggestion
+      await tester.pumpAndSettle();
+      expect(server.conversations.first['tags'], ['late delivery', 'refund']);
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('tag-late delivery')), findsOneWidget);
+    });
+
+    testWidgets('create a lead from the chat, or let the assistant ask for details', (tester) async {
+      final (_, server) = await signedIn(tester, const Size(1440, 900));
+      await tester.tap(find.byKey(const Key('conv-CONV-099')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('More actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('menu-collect')));
+      await tester.pumpAndSettle();
+      expect(server.leadCalls.last, {'collect': 'CONV-099'});
+      expect(find.text('May I have your name?'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('More actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('menu-lead')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('lead-email')), '');
+      await tester.enterText(find.byKey(const Key('lead-phone')), '');
+      await tester.tap(find.byKey(const Key('lead-save')));
+      await tester.pumpAndSettle();
+      expect(find.text('A lead needs an e-mail address or a phone number.'), findsOneWidget);
+      await tester.enterText(find.byKey(const Key('lead-name')), 'Maya Haddad');
+      await tester.enterText(find.byKey(const Key('lead-email')), 'maya@acme.example');
+      await tester.enterText(find.byKey(const Key('lead-company')), 'Acme');
+      await tester.tap(find.byKey(const Key('lead-save')));
+      await tester.pumpAndSettle();
+      expect(server.leadCalls.last, containsPair('email', 'maya@acme.example'));
+      expect(server.leadCalls.last, containsPair('company', 'Acme'));
+      expect(find.byKey(const Key('lead-pill')), findsOneWidget);
+      await tester.tap(find.byTooltip('More actions'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('menu-lead')), findsNothing); // one lead per chat
+    });
+
+    testWidgets('edits by others appear on the next poll', (tester) async {
+      final (_, server) = await signedIn(tester, const Size(1440, 900));
+      final first = server.messages['CONV-100']!.first['id'] as String;
+      final c = ConversationController(apiFor(server), 'CONV-100', onExpired: () {});
+      await c.load();
+      server.changeMessage('CONV-100', first, 'My invoice INV-7 is wrong');
+      await c.poll();
+      expect(c.messages.first.text, 'My invoice INV-7 is wrong');
+      expect(c.messages.first.edited, isTrue);
+      c.dispose();
     });
 
     testWidgets('offline banner, then everything refreshes on reconnect', (tester) async {

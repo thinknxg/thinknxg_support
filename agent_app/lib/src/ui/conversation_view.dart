@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
@@ -8,7 +10,9 @@ import 'chat_actions.dart';
 import 'common.dart';
 import 'composer.dart';
 import 'copilot_sheet.dart';
+import 'message_actions.dart';
 import 'pickers.dart';
+import '../platform/voice.dart';
 
 /// Pick a file for the composer and report problems inline (size, cancelled picker).
 Future<void> pickInto(BuildContext context, void Function(UploadFile) attach) async {
@@ -42,6 +46,8 @@ class ConversationView extends StatefulWidget {
   final bool showDetailsPanel;
   final FocusNode? composerFocus;
   final bool copilot;
+  final MessagingCaps messaging;
+  final bool leads;
 
   const ConversationView({
     super.key,
@@ -52,6 +58,8 @@ class ConversationView extends StatefulWidget {
     this.showDetailsPanel = false,
     this.composerFocus,
     this.copilot = false,
+    this.messaging = const MessagingCaps(),
+    this.leads = false,
   });
 
   @override
@@ -97,6 +105,7 @@ class _ConversationViewState extends State<ConversationView> {
               d: d,
               c: c,
               me: widget.me,
+              leads: widget.leads,
               onOpenTicket: widget.onOpenTicket,
               onDetails: widget.showDetailsPanel
                   ? null
@@ -123,14 +132,26 @@ class _ConversationViewState extends State<ConversationView> {
                 }
                 final m = c.messages[i - 1];
                 final failed = m.deliveryStatus == 'Failed';
+                final caps = widget.messaging;
+                final system = m.senderType == 'System' && !m.internal;
                 return Bubble(
+                  key: Key('msg-${m.id}'),
                   direction: m.internal ? MessageDirection.internal : m.direction,
                   author: m.author.isEmpty ? (m.senderType == 'System' ? 'System' : '') : m.author,
-                  text: m.text,
+                  text: m.isVoice && m.text.isEmpty ? '' : m.text,
                   at: m.createdAt,
                   failed: failed,
-                  files: [if (m.attachmentName != null) m.attachmentName!],
+                  files: [if (m.attachmentName != null && !m.isImage && !m.isVoice) m.attachmentName!],
                   onOpenFile: (_) => openDownload(context, () => c.api.attachment(m.id)),
+                  quote: m.replyTo,
+                  edited: m.edited,
+                  removed: m.removed,
+                  removedBy: m.removedBy,
+                  reactions: m.reactions,
+                  onReact: caps.reactions.isEmpty ? null : (e) => c.react(m, e),
+                  media: m.attachmentName == null ? null : (m.isImage ? _Thumb(c: c, m: m) : m.isVoice ? _VoiceNote(c: c, m: m) : null),
+                  onMenu: system ? null : () => showMessageActions(context, c, m, caps),
+                  menuKey: Key('msg-menu-${m.id}'),
                   footer: failed
                       ? 'Not delivered: ${m.deliveryError ?? 'unknown error'}'
                       : (m.deliveryStatus != null && !m.internal ? m.deliveryStatus : null),
@@ -138,6 +159,18 @@ class _ConversationViewState extends State<ConversationView> {
               },
             ),
           ),
+          if (c.replyingTo != null)
+            Material(
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
+              child: ListTile(
+                key: const Key('reply-bar'),
+                dense: true,
+                leading: const Icon(Icons.reply, size: 18),
+                title: Text('Replying to ${c.replyingTo!.author}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text(c.replyingTo!.text, maxLines: 1, overflow: TextOverflow.ellipsis),
+                trailing: IconButton(tooltip: 'Cancel reply', icon: const Icon(Icons.close), onPressed: c.cancelReply),
+              ),
+            ),
           Composer(
             draft: c.draft,
             focusNode: widget.composerFocus,
@@ -153,6 +186,8 @@ class _ConversationViewState extends State<ConversationView> {
             onAttach: () => pickInto(context, c.attach),
             onRemoveFile: () => c.attach(null),
             onAi: widget.copilot ? () => CopilotSheet.show(context, c) : null,
+            onVoice: widget.messaging.voice && d.actions.reply ? (f, s) => c.sendVoice(f, s) : null,
+            maxVoiceSeconds: widget.messaging.maxVoiceSeconds,
             onCanned: () async {
               final picked = await CannedPicker.show(context, () => c.api.cannedResponses(channel: d.channel));
               if (picked != null) await c.insertCanned(picked);
@@ -178,7 +213,8 @@ class _Header extends StatelessWidget {
   final String me;
   final void Function(String)? onOpenTicket;
   final VoidCallback? onDetails;
-  const _Header({required this.d, required this.c, required this.me, this.onOpenTicket, this.onDetails});
+  final bool leads;
+  const _Header({required this.d, required this.c, required this.me, this.onOpenTicket, this.onDetails, this.leads = false});
 
   @override
   Widget build(BuildContext context) {
@@ -213,6 +249,11 @@ class _Header extends StatelessWidget {
                 if (a.returnToAssistant) const PopupMenuItem(value: 'return', child: Text('Return to assistant')),
                 if (d.ticket != null && onOpenTicket != null) PopupMenuItem(value: 'ticket', child: Text('Open ticket #${d.ticket}')),
                 if (onDetails != null) const PopupMenuItem(value: 'details', child: Text('Details and history')),
+                if (!d.isClosed) const PopupMenuItem(key: Key('menu-priority'), value: 'priority', child: Text('Priority…')),
+                const PopupMenuItem(key: Key('menu-tags'), value: 'tags', child: Text('Tags…')),
+                if (leads && d.lead == null) const PopupMenuItem(key: Key('menu-lead'), value: 'lead', child: Text('Create lead…')),
+                if (leads && d.lead == null && !d.isClosed)
+                  const PopupMenuItem(key: Key('menu-collect'), value: 'collect', child: Text('Ask the visitor for their details')),
               ],
             ),
           ]),
@@ -220,6 +261,19 @@ class _Header extends StatelessWidget {
           if (!(compact && typing))
           Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
             StatusPill(conversationStatusLabel(d), color: conversationStatusColor(context, d)),
+            if (d.priority != 'Normal')
+              StatusPill('${d.priority} priority',
+                  key: const Key('priority-pill'),
+                  color: d.highPriority ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.outline),
+            for (final t in d.tags) Chip(key: Key('tag-$t'), label: Text(t), visualDensity: VisualDensity.compact),
+            if (d.lead != null)
+              Tooltip(
+                message: [d.lead!.doctype, if (d.lead!.reasons != null) d.lead!.reasons!].join('\n'),
+                child: StatusPill(
+                    d.lead!.score == null ? 'Lead: ${d.lead!.title}' : 'Lead: ${d.lead!.title} · ${d.lead!.score}',
+                    key: const Key('lead-pill'),
+                    color: Theme.of(context).colorScheme.tertiary),
+              ),
             if (d.urgency == 'High') StatusPill('Urgent', color: Theme.of(context).colorScheme.error),
             if (d.sentiment != null)
               Tooltip(
@@ -306,6 +360,32 @@ class _Header extends StatelessWidget {
       case 'transfer':
         final r = await TransferPicker.show(context, c.transferTargets);
         if (r != null) await c.transfer(user: r.user, queue: r.queue);
+      case 'priority':
+        final p = await showDialog<String>(
+          context: context,
+          builder: (ctx) => SimpleDialog(title: const Text('Priority'), children: [
+            for (final p in const ['Low', 'Normal', 'High', 'Urgent'])
+              SimpleDialogOption(
+                key: Key('priority-$p'),
+                onPressed: () => Navigator.pop(ctx, p),
+                child: Row(children: [
+                  Icon(p == d.priority ? Icons.radio_button_checked : Icons.radio_button_unchecked, size: 18),
+                  const SizedBox(width: 8),
+                  Text(p),
+                ]),
+              ),
+          ]),
+        );
+        if (p != null && p != d.priority) await c.setPriority(p);
+      case 'tags':
+        await _TagsDialog.show(context, c);
+      case 'lead':
+        final v = await _LeadDialog.show(context, d);
+        if (v != null && await c.createLead(name: v.$1, email: v.$2, phone: v.$3, company: v.$4) && context.mounted) {
+          ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(content: Text('Lead saved.')));
+        }
+      case 'collect':
+        await c.collectLeadDetails();
     }
   }
 
@@ -500,4 +580,234 @@ class _DetailsState extends State<_Details> {
       },
     );
   }
+}
+
+
+/// 1.14: photo preview (downloaded through the server's access check; tap opens the full file).
+class _Thumb extends StatelessWidget {
+  final ConversationController c;
+  final ChatMessage m;
+  const _Thumb({required this.c, required this.m});
+
+  @override
+  Widget build(BuildContext context) {
+    final chip = ActionChip(
+        avatar: const Icon(Icons.image_outlined, size: 16),
+        label: Text(m.attachmentName ?? 'Photo', overflow: TextOverflow.ellipsis),
+        onPressed: () => openDownload(context, () => c.api.attachment(m.id)));
+    return FutureBuilder<DownloadedFile?>(
+      future: c.fileOf(m),
+      builder: (context, snap) {
+        final f = snap.data;
+        if (f == null) return snap.connectionState == ConnectionState.done ? chip : const SizedBox(height: 40, width: 40, child: CircularProgressIndicator(strokeWidth: 2));
+        return InkWell(
+          onTap: () => openDownload(context, () async => f),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.memory(Uint8List.fromList(f.bytes),
+                key: Key('thumb-${m.id}'),
+                height: 180,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => chip),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// 1.14: a voice note: tap to play (inline), with its length.
+class _VoiceNote extends StatefulWidget {
+  final ConversationController c;
+  final ChatMessage m;
+  const _VoiceNote({required this.c, required this.m});
+  @override
+  State<_VoiceNote> createState() => _VoiceNoteState();
+}
+
+class _VoiceNoteState extends State<_VoiceNote> {
+  bool _loading = false;
+
+  String get _length {
+    final s = widget.m.voiceSeconds ?? 0;
+    return s == 0 ? '' : ' · ${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _play() async {
+    setState(() => _loading = true);
+    final f = await widget.c.fileOf(widget.m);
+    if (!mounted) return;
+    setState(() => _loading = false);
+    if (f == null) return;
+    try {
+      await VoicePlayer.instance.play(f);
+    } catch (_) {
+      if (mounted) await openDownload(context, () async => f); // no inline player on this device: system player
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => ActionChip(
+        key: Key('voice-${widget.m.id}'),
+        avatar: _loading
+            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+            : const Icon(Icons.play_arrow, size: 18),
+        label: Text('Voice note$_length'),
+        onPressed: _loading ? null : _play,
+      );
+}
+
+
+/// 1.14: tags on the conversation (Frappe's own tags, shared with the desk). Suggestions are tags already in use.
+class _TagsDialog extends StatefulWidget {
+  final ConversationController c;
+  final List<String> suggestions;
+  const _TagsDialog(this.c, this.suggestions);
+
+  static Future<void> show(BuildContext context, ConversationController c) async {
+    List<String> s = const [];
+    try {
+      s = await c.api.tagSuggestions();
+    } catch (_) {}
+    if (!context.mounted) return;
+    await showDialog<void>(context: context, builder: (_) => _TagsDialog(c, s));
+  }
+
+  @override
+  State<_TagsDialog> createState() => _TagsDialogState();
+}
+
+class _TagsDialogState extends State<_TagsDialog> {
+  final _ctl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _add(String t) async {
+    if (t.trim().isEmpty) return;
+    await widget.c.addTag(t.trim());
+    _ctl.clear();
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tags = widget.c.detail?.tags ?? const <String>[];
+    final more = widget.suggestions.where((s) => !tags.contains(s)).take(12).toList();
+    return AlertDialog(
+      title: const Text('Tags'),
+      content: SizedBox(
+        width: 420,
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            for (final t in tags)
+              InputChip(
+                key: Key('tagchip-$t'),
+                label: Text(t),
+                onDeleted: () async {
+                  await widget.c.removeTag(t);
+                  if (mounted) setState(() {});
+                },
+              ),
+            if (tags.isEmpty) const Text('No tags yet.'),
+          ]),
+          const SizedBox(height: 12),
+          TextField(
+            key: const Key('tag-field'),
+            controller: _ctl,
+            decoration: const InputDecoration(labelText: 'Add a tag', isDense: true),
+            onSubmitted: _add,
+          ),
+          if (more.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(spacing: 6, runSpacing: 6, children: [
+              for (final t in more) ActionChip(label: Text(t), onPressed: () => _add(t)),
+            ]),
+          ],
+          if (widget.c.actionError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(widget.c.actionError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            ),
+        ]),
+      ),
+      actions: [
+        TextButton(key: const Key('tag-add'), onPressed: () => _add(_ctl.text), child: const Text('Add')),
+        FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Done')),
+      ],
+    );
+  }
+}
+
+
+/// 1.14: the lead's details, filled in from the chat; the server links an existing lead with the same e-mail or phone.
+class _LeadDialog extends StatefulWidget {
+  final ConversationSummary d;
+  const _LeadDialog(this.d);
+
+  static Future<(String, String, String, String)?> show(BuildContext context, ConversationSummary d) =>
+      showDialog<(String, String, String, String)>(context: context, builder: (_) => _LeadDialog(d));
+
+  @override
+  State<_LeadDialog> createState() => _LeadDialogState();
+}
+
+class _LeadDialogState extends State<_LeadDialog> {
+  late final _name = TextEditingController(text: widget.d.contactName ?? widget.d.displayName);
+  late final _email = TextEditingController(text: widget.d.contactEmail ?? '');
+  late final _phone = TextEditingController(text: widget.d.contactPhone ?? '');
+  late final _company = TextEditingController(text: widget.d.customerName ?? '');
+  String? _error;
+
+  @override
+  void dispose() {
+    for (final c in [_name, _email, _phone, _company]) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  void _save() {
+    final email = _email.text.trim();
+    final phone = _phone.text.trim();
+    if (email.isEmpty && phone.isEmpty) {
+      setState(() => _error = 'A lead needs an e-mail address or a phone number.');
+      return;
+    }
+    Navigator.pop(context, (_name.text.trim(), email, phone, _company.text.trim()));
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: const Text('Create lead'),
+        content: SizedBox(
+          width: 420,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(key: const Key('lead-name'), controller: _name, decoration: const InputDecoration(labelText: 'Name')),
+            TextField(
+                key: const Key('lead-email'),
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: 'E-mail')),
+            TextField(
+                key: const Key('lead-phone'),
+                controller: _phone,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: 'Phone')),
+            TextField(key: const Key('lead-company'), controller: _company, decoration: const InputDecoration(labelText: 'Company')),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              ),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(key: const Key('lead-save'), onPressed: _save, child: const Text('Create')),
+        ],
+      );
 }

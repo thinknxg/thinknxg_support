@@ -17,6 +17,10 @@ if ! grep -q 'flutter_web_auth_2.CallbackActivity' "$MANIFEST"; then
   perl -0pi -e 's#</application>#    <activity android:name="com.linusu.flutter_web_auth_2.CallbackActivity" android:exported="true">\n            <intent-filter android:label="flutter_web_auth_2">\n                <action android:name="android.intent.action.VIEW" />\n                <category android:name="android.intent.category.DEFAULT" />\n                <category android:name="android.intent.category.BROWSABLE" />\n                <data android:scheme="com.thinknxg.agent" />\n            </intent-filter>\n        </activity>\n    </application>#' "$MANIFEST"
 fi
 perl -pi -e 's#android:label="thinknxg_agent"#android:label="thinkNXG Agent"#' "$MANIFEST"
+# voice notes (1.14)
+if ! grep -q 'android.permission.RECORD_AUDIO' "$MANIFEST"; then
+  perl -0pi -e 's#<application#<uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <application#' "$MANIFEST"
+fi
 
 # flutter_secure_storage needs API 23+ for its encrypted preferences
 for GRADLE in android/app/build.gradle.kts android/app/build.gradle; do
@@ -72,6 +76,9 @@ fi
 PLIST=ios/Runner/Info.plist
 if [ -f "$PLIST" ]; then
   perl -pi -e 's#<string>Thinknxg Agent</string>#<string>thinkNXG Agent</string>#' "$PLIST"
+  if ! grep -q 'NSMicrophoneUsageDescription' "$PLIST"; then  # voice notes (1.14)
+    perl -0pi -e 's#<dict>#<dict>\n\t<key>NSMicrophoneUsageDescription</key>\n\t<string>Record voice notes for customers.</string>#' "$PLIST"
+  fi
 fi
 
 # flutter_local_notifications' Windows code still uses <experimental/coroutine>, which newer MSVC rejects

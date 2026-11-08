@@ -65,13 +65,17 @@ def bootstrap():
                  "app_version": frappe.get_attr("thinknxg_support.__version__")},
         "agent": {"user": user, "full_name": u.get("full_name") or user, "email": u.get("email") or user,
                   "image": u.get("user_image"), "is_manager": staff_auth.is_manager(),
-                  "helpdesk_agent": helpdesk_agent.is_hd_agent() if helpdesk_agent.available() else False},
+                  "helpdesk_agent": helpdesk_agent.is_hd_agent() if helpdesk_agent.available() else False,
+                  "status": _presence().effective(user)},  # 1.14
         "capabilities": {
             "conversations": True, "live_chat": bool(ps.get("enable_live_chat")),
             "whatsapp": bool(ps.get("enable_whatsapp")), "raven": bool(ps.get("enable_raven")),
             "helpdesk": helpdesk_agent.available(), "assistant": _assistant_on(),
             "wrap_up": True, "canned_responses": True, "alerts": True, "push": bool(s.push_enabled),
             "copilot": _copilot_on(),
+            "messaging": _messaging_caps(),  # 1.14: reply, edit, remove, reactions, voice notes
+            "status": True, "priority": True, "tags": True,  # 1.14 increment 2
+            "leads": bool(_crm().target()),  # 1.14 increment 3
             "realtime": False,  # first release: authenticated polling (see docs/agent-api.md)
             "integrations": {k: bool((v or {}).get("installed")) for k, v in (caps.get("apps") or {}).items()}
             if isinstance(caps, dict) else {},
@@ -80,6 +84,12 @@ def bootstrap():
         "poll": {"inbox_seconds": s.inbox_poll_seconds or 10, "thread_seconds": s.thread_poll_seconds or 4,
                  "alerts_seconds": s.alerts_poll_seconds or 15},
     }
+
+
+def _messaging_caps() -> dict:
+    from thinknxg_support.integrations import messaging
+
+    return {**messaging.capabilities(), "reply_to": True, "edit": True, "remove": True, "changed_since": True}
 
 
 def _copilot_on() -> bool:
@@ -157,7 +167,7 @@ def _unread_counts(user: str, names: list[str]) -> dict:
 
 
 CONV_FIELDS = ("c.name, c.subject, c.status, c.channel, c.customer, c.is_guest, c.guest_name, c.whatsapp_number, "
-               "c.sentiment, c.urgency, "
+               "c.sentiment, c.urgency, c.priority, c._user_tags, "
                "c.whatsapp_profile_name, c.started_by, c.assigned_agent, c.last_activity_at, c.last_message_reference, "
                "c.whatsapp_window_expires, c.helpdesk_ticket, c.handling, c.queue, c.modified")
 
@@ -171,14 +181,17 @@ def _summary(r, unread: int, preview: str = "") -> dict:
         "whatsapp_window_open": bool(r.whatsapp_window_expires and get_datetime(r.whatsapp_window_expires) > now_datetime())
         if r.channel == "WhatsApp" else None,
         "sentiment": r.get("sentiment"), "urgency": r.get("urgency"),
+        "priority": r.get("priority") or "Normal", "tags": [t for t in (r.get("_user_tags") or "").split(",") if t.strip()],
         "version": str(r.modified),
     }
 
 
 @frappe.whitelist(methods=["GET"])
 def conversations(view: str = "all", channel: str | None = None, status: str = "open", queue: str | None = None,
-                  q: str | None = None, cursor: str | None = None, limit: int = 30):
-    """Paginated inbox, newest activity first. view: all | mine | unassigned | waiting (handed to people, nobody yet)."""
+                  q: str | None = None, cursor: str | None = None, limit: int = 30, sort: str = "recent",
+                  priority: str | None = None, tag: str | None = None):
+    """Paginated inbox, newest activity first. view: all | mine | unassigned | waiting (handed to people, nobody yet).
+    1.14: sort=priority (Urgent first, then newest), and filters priority and tag."""
     staff_auth.require_staff()
     if not frappe.has_permission(CONV, "read"):
         raise frappe.PermissionError
@@ -200,18 +213,29 @@ def conversations(view: str = "all", channel: str | None = None, status: str = "
         where.append("c.status = 'Closed'")
     if queue:
         where.append("c.queue = %s"); args.append(queue)
+    if priority in ("Low", "Normal", "High", "Urgent"):
+        where.append("coalesce(nullif(c.priority, ''), 'Normal') = %s"); args.append(priority)
+    if tag:
+        where.append("concat(',', coalesce(c._user_tags, ''), ',') like %s"); args.append(f"%,{strip_html(tag)[:40]},%")
     if q:
         like = f"%{strip_html(q)[:60]}%"
         where.append("(c.subject like %s or c.guest_name like %s or c.guest_email like %s or c.whatsapp_number like %s "
                      "or c.whatsapp_profile_name like %s or c.customer like %s or c.name like %s)")
         args += [like] * 7
     after = cursors.decode(cursor)
+    rank = ("(case c.priority when 'Urgent' then 4 when 'High' then 3 when 'Low' then 1 else 2 end)")
+    by_priority = sort == "priority"
     if after:
-        where.append("(coalesce(c.last_activity_at, c.modified), c.name) < (%s, %s)")
-        args += [after["t"], after["n"]]
-    rows = frappe.db.sql(f"""select {CONV_FIELDS}, coalesce(c.last_activity_at, c.modified) as sort_at
+        if by_priority and "p" in after:
+            where.append(f"({rank} < %s or ({rank} = %s and (coalesce(c.last_activity_at, c.modified), c.name) < (%s, %s)))")
+            args += [after["p"], after["p"], after["t"], after["n"]]
+        else:
+            where.append("(coalesce(c.last_activity_at, c.modified), c.name) < (%s, %s)")
+            args += [after["t"], after["n"]]
+    order = f"{rank} desc, sort_at desc, c.name desc" if by_priority else "sort_at desc, c.name desc"
+    rows = frappe.db.sql(f"""select {CONV_FIELDS}, coalesce(c.last_activity_at, c.modified) as sort_at, {rank} as prio
         from `tab{CONV}` c where {' and '.join(where)}
-        order by sort_at desc, c.name desc limit %s""", (*args, limit + 1), as_dict=True)
+        order by {order} limit %s""", (*args, limit + 1), as_dict=True)
     page = rows[:limit]
     refs = [r.last_message_reference for r in page if r.last_message_reference]
     previews = {}
@@ -221,7 +245,9 @@ def conversations(view: str = "all", channel: str | None = None, status: str = "
             prefix = "" if m.direction == "Inbound" else ((m.sender_type or "") + ": ")
             previews[m.name] = (prefix + strip_html(m.content or ""))[:120]
     unread = _unread_counts(user, [r.name for r in page])
-    nxt = cursors.encode(str(page[-1].sort_at), page[-1].name) if len(rows) > limit and page else None
+    nxt = None
+    if len(rows) > limit and page:
+        nxt = cursors.encode(str(page[-1].sort_at), page[-1].name, page[-1].prio if by_priority else None)
     return {"items": [_summary(r, unread.get(r.name, 0), previews.get(r.last_message_reference, "")) for r in page],
             "next_cursor": nxt}
 
@@ -260,6 +286,8 @@ def conversation_detail(doc) -> dict:
         "read_up_to": _iso(_read_marker(frappe.session.user, [doc.name]).get(doc.name)),
         "insight": {k: doc.get(f) for k, f in (("sentiment", "sentiment"), ("urgency", "urgency"), ("intent", "intent"),
                                                ("language", "customer_language"), ("summary", "summary"))},
+        "tags": [t for t in (frappe.db.get_value(CONV, doc.name, "_user_tags") or "").split(",") if t.strip()],
+        "lead": _crm().lead_view(doc),  # 1.14
     })
     return out
 
@@ -269,11 +297,25 @@ def conversation(name: str):
     return conversation_detail(_conv(name))
 
 
-def _message(m) -> dict:
+def _message(m, actor=None, closed=None) -> dict:
+    from thinknxg_support.integrations import messaging
+
     try:
         actions = json.loads(m.get("actions_json") or "{}")
     except ValueError:
         actions = {}
+    actor = actor or messaging.staff()
+    return {**_message_base(m, actions), **{
+        "reply_to": messaging.reply_view(m.get("reply_to")) if m.get("reply_to") else None,
+        "edited": bool(m.get("edited_on")), "removed": bool(cint(m.get("hidden"))), "removed_by": m.get("hidden_by"),
+        "reactions": messaging.reactions_view(m.get("reactions_json"), actor.key),
+        "attachment_kind": messaging.attachment_kind(m.attachment),
+        "voice_seconds": cint(m.get("voice_seconds")) or None,
+        "can_edit": messaging.can_edit(m, actor, closed), "can_remove": messaging.can_remove(m, actor, closed),
+    }}
+
+
+def _message_base(m, actions) -> dict:
     return {"id": m.name, "direction": "inbound" if m.direction == "Inbound" else ("internal" if cint(m.is_internal) else "outbound"),
             "internal": bool(cint(m.is_internal)), "sender_type": m.sender_type, "author": m.sender_name or m.sender,
             "author_user": m.sender, "html": m.content or "", "created_at": _iso(m.creation),
@@ -284,13 +326,21 @@ def _message(m) -> dict:
 
 
 MSG_FIELDS = ["name", "direction", "sender", "sender_name", "content", "attachment", "is_internal", "creation",
-              "delivery_status", "delivery_error", "sender_type", "client_message_id", "read_by_customer", "actions_json"]
+              "delivery_status", "delivery_error", "sender_type", "client_message_id", "read_by_customer", "actions_json",
+              "conversation", "channel", "reply_to", "edited_on", "hidden", "hidden_by", "reactions_json", "voice_seconds"]
 
 
 @frappe.whitelist(methods=["GET"])
-def messages(name: str, before: str | None = None, after: str | None = None, limit: int = 30):
-    """Timeline page, oldest first within the page. `before` pages back; `after` returns newer messages (polling)."""
-    _conv(name)
+def messages(name: str, before: str | None = None, after: str | None = None, limit: int = 30,
+             changed_since: str | None = None):
+    """Timeline page, oldest first within the page. `before` pages back; `after` returns newer messages (polling).
+    1.14: with `changed_since` (the `server_time` of the previous response), `updated` lists older messages that were
+    edited, removed or reacted to since then."""
+    from thinknxg_support.integrations import messaging
+
+    doc = _conv(name)
+    actor, closed = messaging.staff(), doc.status == "Closed"
+    server_time = frappe.utils.now_datetime()
     limit = max(1, min(cint(limit) or 30, 100))
     b, a = cursors.decode(before), cursors.decode(after)
     cond, args = ["conversation = %s"], [name]
@@ -307,11 +357,20 @@ def messages(name: str, before: str | None = None, after: str | None = None, lim
         rows = list(reversed(rows))  # oldest first within the page
     first, last = (rows[0], rows[-1]) if rows else (None, None)
     older = bool(more and not a)  # pages back exist only when paging backwards ran out of room
-    return {"items": [_message(m) for m in rows],
-            "before_cursor": cursors.encode(str(first.creation), first.name) if first and older else None,
-            "has_more_before": older,
-            # when paging back, the newest row of the conversation is not on this page: keep the caller's cursor
-            "latest_cursor": (cursors.encode(str(last.creation), last.name) if last and not b else after)}
+    out = {"items": [_message(m, actor, closed) for m in rows],
+           "before_cursor": cursors.encode(str(first.creation), first.name) if first and older else None,
+           "has_more_before": older,
+           # when paging back, the newest row of the conversation is not on this page: keep the caller's cursor
+           "latest_cursor": (cursors.encode(str(last.creation), last.name) if last and not b else after),
+           "server_time": _iso(server_time)}
+    if changed_since:
+        seen = {m.name for m in rows}
+        since = frappe.utils.get_datetime(str(changed_since).replace("T", " ").rstrip("Z").split("+")[0])
+        changed = frappe.db.sql(f"select {', '.join(MSG_FIELDS)} from `tab{MSG}` where conversation=%s and modified > %s "
+                                f"and modified <= %s order by creation asc limit 100", (name, since, server_time),
+                                as_dict=True)
+        out["updated"] = [_message(m, actor, closed) for m in changed if m.name not in seen]
+    return out
 
 
 @frappe.whitelist(methods=["POST"])
@@ -454,7 +513,8 @@ def _text_html(text: str) -> str:
 
 
 @frappe.whitelist(methods=["POST"])
-def reply(name: str, text: str, client_request_id: str, internal: int = 0):
+def reply(name: str, text: str, client_request_id: str, internal: int = 0, reply_to: str | None = None,
+          voice_seconds: int | None = None):
     """Reply to the customer (internal=0) or add a staff-only note (internal=1). Retrying with the same
     client_request_id returns the first message instead of sending again."""
     doc = _conv(name, "write")
@@ -470,9 +530,9 @@ def reply(name: str, text: str, client_request_id: str, internal: int = 0):
     from thinknxg_support.utils import uploaded_files
 
     files = uploaded_files()[:1]
-    if files and doc.channel == "WhatsApp" and not internal:
-        raise ChannelActionRequired(_("Files cannot be sent over WhatsApp from the app yet. Share a link instead, or "
-                                      "attach the file to an internal note."), "attachments_unsupported", [])
+    from thinknxg_support.integrations import messaging
+
+    messaging.check_upload("staff", files, voice_seconds)  # 1.14: WhatsApp files are sent through the Cloud API
     if not internal and doc.status == "Closed":
         raise ChannelActionRequired(_("This conversation is closed."), "conversation_closed", [])
     if not internal and doc.channel == "WhatsApp":
@@ -486,10 +546,47 @@ def reply(name: str, text: str, client_request_id: str, internal: int = 0):
     from thinknxg_support.integrations import conversations
 
     out = conversations.post_agent_message(doc, _text_html(text) if (text or "").strip() else "", internal=internal,
-                                           source="app", client_message_id=cid, files=files)
+                                           source="app", client_message_id=cid, files=files, reply_to=reply_to,
+                                           voice_seconds=voice_seconds)
     msg = frappe.db.get_value(MSG, out.get("name") or {"conversation": doc.name, "client_message_id": cid}, MSG_FIELDS,
                               as_dict=True)
     return {"message": _message(msg), "duplicate": bool(out.get("duplicate"))}
+
+
+# ------------------------------------------------------------------ 1.14: edit, remove, react, history
+@frappe.whitelist(methods=["POST"])
+def edit_message(name: str, message: str, text: str):
+    from thinknxg_support.integrations import messaging
+
+    doc = _conv(name, "write")
+    messaging.edit(message, text, messaging.staff(), doc.name)
+    return _message(frappe.db.get_value(MSG, message, MSG_FIELDS, as_dict=True), closed=doc.status == "Closed")
+
+
+@frappe.whitelist(methods=["POST"])
+def remove_message(name: str, message: str):
+    from thinknxg_support.integrations import messaging
+
+    doc = _conv(name, "write")
+    messaging.remove(message, messaging.staff(), doc.name)
+    return _message(frappe.db.get_value(MSG, message, MSG_FIELDS, as_dict=True), closed=doc.status == "Closed")
+
+
+@frappe.whitelist(methods=["POST"])
+def react(name: str, message: str, emoji: str):
+    from thinknxg_support.integrations import messaging
+
+    doc = _conv(name)
+    messaging.react(message, emoji, messaging.staff(), doc.name)
+    return _message(frappe.db.get_value(MSG, message, MSG_FIELDS, as_dict=True), closed=doc.status == "Closed")
+
+
+@frappe.whitelist(methods=["GET"])
+def message_history(name: str, message: str):
+    from thinknxg_support.integrations import messaging
+
+    doc = _conv(name)
+    return messaging.history(message, doc.name)
 
 
 # ------------------------------------------------------------------ tickets (Helpdesk)
@@ -736,7 +833,8 @@ def transfer_targets(name: str):
             f"select assigned_agent, count(*) n from `tab{CONV}` where status != 'Closed' and assigned_agent in %s "
             "group by assigned_agent", (tuple(users),), as_dict=True)}
     agents = [{"user": u, "name": frappe.utils.get_fullname(u), "online": bool(realtime.is_online(u)),
-               "open_chats": int(load.get(u, 0)), "in_queue": u in in_queue} for u in users]
+               "open_chats": int(load.get(u, 0)), "in_queue": u in in_queue,
+               "status": _presence().effective(u)["status"]} for u in users]
     agents.sort(key=lambda a: (not a["online"], not a["in_queue"], a["open_chats"], (a["name"] or "").lower()))
     queues = frappe.get_all("Support Chat Queue", filters={"enabled": 1}, pluck="name", order_by="priority desc")
     return {"agents": agents[:200], "queues": queues, "current": {"user": doc.assigned_agent, "queue": doc.queue}}
@@ -799,13 +897,97 @@ def typing(name: str):
 
 
 @frappe.whitelist(methods=["POST"])
-def heartbeat():
-    """The app is open: count the agent as online for routing and the transfer list."""
+def heartbeat(active: int | None = None):
+    """The app is open: count the agent as online for routing and the transfer list. 1.14: `active` (1 used the
+    app since the last heartbeat, 0 not) drives Away after idle minutes; older apps send nothing and are never made
+    Away. Returns the agent's status now."""
     staff_auth.require_staff()
     from thinknxg_support.integrations import realtime
 
     realtime.heartbeat(frappe.session.user)
-    return {"ok": True}
+    _presence().heartbeat(frappe.session.user, active)
+    return {"ok": True, "status": _presence().effective(frappe.session.user)}
+
+
+def _presence():
+    from thinknxg_support.integrations import presence
+
+    return presence
+
+
+# ------------------------------------------------------------------ 1.14: status, priority, tags
+@frappe.whitelist(methods=["POST"])
+def set_status(status: str, note: str | None = None):
+    staff_auth.require_staff()
+    return _presence().set_status(frappe.session.user, status, note)
+
+
+@frappe.whitelist(methods=["GET"])
+def team_status():
+    staff_auth.require_staff()
+    return _presence().team()
+
+
+@frappe.whitelist(methods=["POST"])
+def set_priority(name: str, priority: str):
+    doc = _conv(name, "write")
+    if priority not in ("Low", "Normal", "High", "Urgent"):
+        frappe.throw(_("Choose Low, Normal, High or Urgent."))
+    doc.db_set("priority", priority)
+    from thinknxg_support.integrations import conversations, realtime
+
+    realtime.bump(doc.name)
+    conversations.publish_agent_event(doc, "status")
+    return conversation_detail(frappe.get_doc(CONV, doc.name))
+
+
+@frappe.whitelist(methods=["POST"])
+def set_tags(name: str, add: list | str | None = None, remove: list | str | None = None):
+    doc = _conv(name, "write")
+    from thinknxg_support.integrations import tags
+
+    def as_list(v):
+        if isinstance(v, str):
+            v = json.loads(v) if v.strip().startswith("[") else [v]
+        return [str(x) for x in (v or [])]
+
+    tags.update(doc.name, as_list(add), as_list(remove))
+    return conversation_detail(frappe.get_doc(CONV, doc.name))
+
+
+def _crm():
+    from thinknxg_support.integrations import crm
+
+    return crm
+
+
+@frappe.whitelist(methods=["POST"])
+def create_lead(name: str, person_name: str | None = None, email: str | None = None, phone: str | None = None,
+                company: str | None = None):
+    """1.14: create (or link) the lead for this chat in thinkNXG CRM or ERPNext; returns ConversationDetail."""
+    doc = _conv(name, "write")
+    _crm().create_lead(doc, {"name": person_name, "email": email, "phone": phone, "company": company},
+                       actor=frappe.session.user)
+    return conversation_detail(frappe.get_doc(CONV, doc.name))
+
+
+@frappe.whitelist(methods=["POST"])
+def collect_lead_details(name: str):
+    """1.14: let the assistant ask the visitor for their details (name, e-mail, phone, company)."""
+    doc = _conv(name, "write")
+    from thinknxg_support.integrations import lead_capture
+
+    if not lead_capture.start(doc, source="agent"):
+        frappe.throw(_("This chat already has a lead, details are already being collected, or leads are off."))
+    return conversation_detail(frappe.get_doc(CONV, doc.name))
+
+
+@frappe.whitelist(methods=["GET"])
+def tag_suggestions():
+    staff_auth.require_staff()
+    from thinknxg_support.integrations import tags
+
+    return tags.suggestions()
 
 
 # ------------------------------------------------------------------ alerts and push for the apps

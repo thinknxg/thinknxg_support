@@ -39,7 +39,16 @@
   "column_break_ai1",
   "ai_intent",
   "ai_language",
-  "ai_entities"
+  "ai_entities",
+  "changes_section",
+  "reply_to",
+  "edited_on",
+  "voice_seconds",
+  "column_break_chg",
+  "hidden",
+  "hidden_by",
+  "hidden_on",
+  "reactions_json"
  ],
  "fields": [
   {
@@ -283,6 +292,70 @@
    "options": "JSON",
    "read_only": 1,
    "idx": 33
+  },
+  {
+   "fieldname": "changes_section",
+   "fieldtype": "Section Break",
+   "label": "Replies, Edits and Reactions",
+   "collapsible": 1,
+   "idx": 34
+  },
+  {
+   "fieldname": "reply_to",
+   "fieldtype": "Link",
+   "label": "Reply To",
+   "options": "Support Portal Message",
+   "read_only": 1,
+   "idx": 35
+  },
+  {
+   "fieldname": "edited_on",
+   "fieldtype": "Datetime",
+   "label": "Edited On",
+   "read_only": 1,
+   "idx": 36
+  },
+  {
+   "fieldname": "voice_seconds",
+   "fieldtype": "Int",
+   "label": "Voice Note (seconds)",
+   "read_only": 1,
+   "idx": 37
+  },
+  {
+   "fieldname": "column_break_chg",
+   "fieldtype": "Column Break",
+   "idx": 38
+  },
+  {
+   "fieldname": "hidden",
+   "fieldtype": "Check",
+   "label": "Removed",
+   "read_only": 1,
+   "description": "Hidden from the customer; the text is kept for staff and audit",
+   "idx": 39
+  },
+  {
+   "fieldname": "hidden_by",
+   "fieldtype": "Data",
+   "label": "Removed By",
+   "read_only": 1,
+   "idx": 40
+  },
+  {
+   "fieldname": "hidden_on",
+   "fieldtype": "Datetime",
+   "label": "Removed On",
+   "read_only": 1,
+   "idx": 41
+  },
+  {
+   "fieldname": "reactions_json",
+   "fieldtype": "Code",
+   "label": "Reactions",
+   "options": "JSON",
+   "read_only": 1,
+   "idx": 42
   }
  ],
  "index_web_pages_for_search": 0,

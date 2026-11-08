@@ -94,10 +94,21 @@ def uploaded_files() -> list[tuple[str, bytes]]:
     return files
 
 
+def file_bytes(f) -> bytes:
+    """The file exactly as stored. File.get_content() decodes anything that decodes as text (also as
+    Windows-1252), which corrupts binary files such as images and PDFs on the way out."""
+    try:
+        with open(f.get_full_path(), "rb") as fh:
+            return fh.read()
+    except Exception:
+        content = f.get_content()
+        return content.encode("utf-8") if isinstance(content, str) else content
+
+
 def stream_file(file_name: str, as_download: bool = True):
     f = frappe.get_doc("File", file_name)
     frappe.local.response.filename = f.file_name
-    frappe.local.response.filecontent = f.get_content()
+    frappe.local.response.filecontent = file_bytes(f)
     frappe.local.response.type = "download" if as_download else "binary"
 
 

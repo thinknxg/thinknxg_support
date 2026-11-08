@@ -27,6 +27,9 @@ def pick_agent(queue) -> str | None:
     members = [m for m in queue.members if m.active and frappe.db.get_value("User", m.user, "enabled")]
     if queue.only_online_agents:
         members = [m for m in members if realtime.is_online(m.user)]
+    from thinknxg_support.integrations import presence  # 1.14: Available and on shift (no status = Available)
+
+    members = [m for m in members if presence.takes_new_chats(m.user)]
     members = [m for m in members if open_load(m.user) < (cint(m.max_chats) or 5)]
     if not members:
         return None
@@ -78,6 +81,11 @@ def handoff(conv, reason: str, message: str | None = None, announce: bool = True
     from thinknxg_support.integrations import alerts
 
     alerts.on_new_chat(conv, reason)
+    if announce and not message and not live_chat.is_online():
+        from thinknxg_support.integrations import automation  # 1.14: a rule may answer instead of the offline text
+
+        if automation.outside_hours(frappe.get_doc(CONV, conv.name)):
+            announce = False
     if announce:
         if message:
             text = message
@@ -145,3 +153,8 @@ def on_closed(conv):
     from thinknxg_support.integrations import feedback
 
     feedback.on_chat_closed(conv)
+    for hook in ("crm", "automation"):  # 1.14: lead timeline and follow-up rules; never block closing
+        try:
+            frappe.get_attr(f"thinknxg_support.integrations.{hook}.on_closed")(conv)
+        except Exception:
+            frappe.log_error(title=f"thinkNXG Support: {hook} on chat close failed")

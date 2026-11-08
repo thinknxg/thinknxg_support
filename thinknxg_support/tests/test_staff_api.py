@@ -320,17 +320,19 @@ class TestStaffApi(BaseTestCase):
         as_user(self.outsider)
         self.assertRaises(frappe.PermissionError, v1.attachment, msg)
 
-    def test_whatsapp_attachments_are_refused_with_a_reason(self):
+    def test_whatsapp_attachments_are_queued_for_sending(self):
+        """1.14: files go out through the WhatsApp Cloud API (until 1.13 they were refused with a reason)."""
         r, name = self._chat()
         frappe.db.set_value(CONV, name, {"channel": "WhatsApp", "whatsapp_number": "96890000000",
                                          "whatsapp_window_expires": frappe.utils.add_to_date(None, hours=5)},
                             update_modified=False)
         as_user(self.a1)
-        from thinknxg_support.api.staff.errors import ChannelActionRequired
-
-        with patch("thinknxg_support.utils.uploaded_files", return_value=[("a.pdf", b"%PDF-1.4")]):
-            with self.assertRaises(ChannelActionRequired):
-                v1.reply(name, "file", client_request_id="33333333-aaaa-bbbb-cccc-000000000002")
+        png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+        with patch("thinknxg_support.utils.uploaded_files", return_value=[("a.png", png)]):
+            out = v1.reply(name, "file", client_request_id="33333333-aaaa-bbbb-cccc-000000000002")
+        self.assertEqual(out["message"]["attachment_kind"], "image")
+        # accepted and handed to WhatsApp (switched off in this test, so the delivery itself fails with that reason)
+        self.assertIn("not enabled", out["message"]["delivery"]["error"] or "WhatsApp is not enabled")
 
     def test_transfer_targets_and_customer_history(self):
         r1, first = self._chat()

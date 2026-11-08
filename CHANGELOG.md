@@ -1,5 +1,50 @@
 # Changelog
 
+## 1.14.1, 2026-11-08
+* Fix: **Log out** in the support portal gave "Not Permitted" (Frappe v16 only accepts logout as a POST). The portal
+  now posts to `/api/method/logout` and returns to the portal home.
+
+## 1.14.0 — increment 3 of 3, 2026-11-08
+* **Leads from chats**: in thinkNXG CRM (CRM Lead) when it is installed, otherwise ERPNext Lead (Support Portal
+  Settings > Leads; "Off" switches it off). From the web console, the apps, lead capture or automation rules. An
+  existing lead with the same e-mail or phone is linked, not duplicated. The chat and, later, its outcome appear on
+  the lead's timeline.
+* **Lead capture** in the chat: the assistant asks for name, e-mail, phone and company one question at a time
+  (chatbot rule action "Collect Details", automation rule, or an agent's "Collect details"); "cancel" stops it, and
+  agents who have taken the chat are never interrupted.
+* **AI lead score** (Support AI Settings > Score Leads, off by default): 0 to 100 with reasons, on the chat.
+* **Automation rules** (*Support Automation Rule*): a message on a page after N seconds (website chat), a quiet
+  customer (nudge, close, or notify / escalate), a chat closed needing follow-up (a to-do or an escalation), a new
+  chat outside chat hours (a message or lead capture instead of the offline message). Runs are logged
+  (*Support Automation Run*) and counted on the analytics page with leads from chats and conversions.
+* Staff API: `create_lead`, `collect_lead_details`; `lead` on conversations; `capabilities.leads`.
+
+## 1.14.0 (in progress) — increment 2 of 3, 2026-11-08
+* **Agent status**: Available, Away, Busy or Offline, set in the web console and the apps. Only Available agents get
+  new chats; Away and Busy agents keep theirs; Offline agents are also not rung for queue chats. Away also comes
+  automatically after idle minutes (Support Portal Settings > Agent Status, default 10; older apps never go Away).
+* **Shifts** (*Support Agent Shift*): a weekly schedule per agent, overnight shifts included; off shift counts as
+  Offline. Agents without a status or a shift work exactly as before.
+* **Priority** (Low, Normal, High, Urgent) set by people, separate from the AI's urgency; inbox "Priority first".
+* **Tags** on conversations, using Frappe's own tags (desk list filters and the sidebar work with them).
+* Staff API: `set_status`, `team_status`, `heartbeat(active)`, `set_priority`, `set_tags`, `tag_suggestions`,
+  `conversations(sort, priority, tag)`; `priority` and `tags` on conversations; `status` in bootstrap.
+
+## 1.14.0 (in progress) — increment 1 of 3, 2026-11-08
+* **Reply to a message** with a quote, in the chat widget, the web console and the agent apps; also on WhatsApp.
+* **Edit and remove messages**: staff their own while the chat is open; customers and visitors their own within the
+  edit window (5 minutes by default). Every earlier version is kept for staff; removed messages show "Message
+  removed" to customers and stay in the record. WhatsApp messages cannot be changed once sent.
+* **Reactions** (👍 ❤️ 😂 😮 😢 🙏), also to and from WhatsApp.
+* **Files for visitors** (off by default) and **voice notes** (widget, console and apps), with photo previews and
+  inline playback. Downloads are checked again every time.
+* **WhatsApp media**: images, documents and AAC / MP3 / OGG voice notes go out through the Cloud API, with the reply
+  context.
+* **Fix**: file downloads (portal documents, chat and ticket attachments) are now sent exactly as stored; before,
+  some binary files (such as PNG images) could arrive damaged.
+* Settings: Support Portal Settings > Chat Messages. New DocType Support Message Revision. Staff API: `edit_message`,
+  `remove_message`, `react`, `message_history`, `reply(reply_to, voice_seconds)`, `messages(changed_since)`.
+
 ## 1.13.0 — 2026-11-08
 * **Support Analytics** page: live waiting, active chats and visitors; AI resolved vs human, AI resolution rate,
   first response and resolution times, satisfaction, AI usage, mood, intents, languages, handoff reasons and agent
