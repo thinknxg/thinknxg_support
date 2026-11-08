@@ -143,6 +143,7 @@
    "default": "Open",
    "in_list_view": 1,
    "in_standard_filter": 1,
+   "search_index": 1,
    "idx": 8
   },
   {
@@ -167,6 +168,7 @@
    "fieldtype": "Link",
    "label": "Assigned Agent",
    "options": "User",
+   "search_index": 1,
    "idx": 11
   },
   {
@@ -182,6 +184,7 @@
    "options": "\nBot\nQueued\nAgent",
    "in_list_view": 1,
    "in_standard_filter": 1,
+   "search_index": 1,
    "description": "Bot: the assistant answers. Queued: waiting for an agent. Agent: a person is handling it",
    "idx": 13
   },
@@ -217,6 +220,7 @@
    "fieldtype": "Datetime",
    "label": "Handoff At",
    "read_only": 1,
+   "search_index": 1,
    "idx": 18
   },
   {
@@ -399,6 +403,7 @@
    "fieldtype": "Datetime",
    "label": "Closed On",
    "read_only": 1,
+   "search_index": 1,
    "idx": 43
   },
   {
@@ -548,6 +553,7 @@
    "fieldtype": "Datetime",
    "label": "Last Activity At",
    "read_only": 1,
+   "search_index": 1,
    "idx": 63
   },
   {

@@ -20,6 +20,7 @@ class SupportAISettings(Document):
             frappe.throw(_("Temperature must be between 0 and 2."))
         self.top_k = min(max(self.top_k or 4, 1), 10)
         self.chunk_size = min(max(self.chunk_size or 900, 300), 3000)
+        self.knowledge_language = ((self.get("knowledge_language") or "en").strip().lower()[:8]) or "en"
         self.timeout_seconds = min(max(self.timeout_seconds or 30, 5), 120)
         if self.provider == "Anthropic" and (self.api_base_url or "").rstrip("/") in ("", "https://api.openai.com/v1"):
             self.api_base_url = "https://api.anthropic.com"

@@ -68,24 +68,50 @@ def _html_text(html: str) -> str:
     return strip_html(html)
 
 
-def sources():
-    """Yield (doctype, name, title, text, audience, route) for everything that should be indexed."""
+def sources(only=None):
+    """Yield (doctype, name, title, text, audience, route) for everything that should be indexed.
+
+    only=(doctype, name) limits it to one document (used when a single source changes)."""
     conf = s()
+
+    def want(doctype):
+        return only is None or only[0] == doctype
+
+    def flt(base):
+        return {**base, "name": only[1]} if only else base
+
     hd = capabilities.get().get("helpdesk", {})
-    if conf.index_helpdesk_articles and hd.get("article_doctype"):
+    if conf.index_helpdesk_articles and hd.get("article_doctype") and want("HD Article"):
         af = hd.get("article_fields", {})
         filters = {"status": "Published"} if af.get("status") else ({"published": 1} if af.get("published") else {})
-        for a in frappe.get_all("HD Article", filters=filters, fields=["name", "title", "content"], limit=5000):
+        for a in frappe.get_all("HD Article", filters=flt(filters), fields=["name", "title", "content"], limit=5000):
             yield "HD Article", a.name, a.title, _html_text(a.content), "Everyone", f"knowledge/{a.name}"
-    if conf.index_helpdesk_articles and frappe.db.exists("DocType", "Support Knowledge Article"):
-        for a in frappe.get_all("Support Knowledge Article", filters={"status": "Published"},
+    if conf.index_helpdesk_articles and want("Support Knowledge Article") \
+            and frappe.db.exists("DocType", "Support Knowledge Article"):
+        for a in frappe.get_all("Support Knowledge Article", filters=flt({"status": "Published"}),
                                 fields=["name", "title", "content", "audience"], limit=10000):
             yield ("Support Knowledge Article", a.name, a.title, _html_text(a.content), a.audience or "Everyone",
                    f"knowledge/{a.name}")
-    if conf.index_snippets:
-        for n in frappe.get_all("Support Knowledge Snippet", filters={"enabled": 1},
+    if conf.index_snippets and want("Support Knowledge Snippet"):
+        for n in frappe.get_all("Support Knowledge Snippet", filters=flt({"enabled": 1}),
                                 fields=["name", "question", "answer", "audience", "link"], limit=5000):
             yield "Support Knowledge Snippet", n.name, n.question, _html_text(n.answer), n.audience or "Everyone", n.link
+    # 1.11: uploaded documents (private files: no link is cited) and crawled website pages
+    if conf.get("index_documents") and want("Support Knowledge Document") \
+            and frappe.db.exists("DocType", "Support Knowledge Document"):
+        for d in frappe.get_all("Support Knowledge Document", filters=flt({"enabled": 1, "status": "Ready"}),
+                                fields=["name", "title", "extracted_text", "audience"], limit=10000):
+            yield "Support Knowledge Document", d.name, d.title, d.extracted_text or "", d.audience or "Staff", None
+    if conf.get("index_websites") and want("Support Knowledge Web Page") \
+            and frappe.db.exists("DocType", "Support Knowledge Web Page"):
+        sites = {w.name: w for w in frappe.get_all("Support Knowledge Website", filters={"enabled": 1},
+                                                   fields=["name", "audience"])}
+        if sites:
+            for p in frappe.get_all("Support Knowledge Web Page",
+                                    filters=flt({"status": "Active", "website": ["in", list(sites)]}),
+                                    fields=["name", "title", "text", "url", "website"], limit=20000):
+                yield ("Support Knowledge Web Page", p.name, p.title, p.text or "", sites[p.website].audience or "Everyone",
+                       p.url)
 
 
 def _index_one(doctype, name, title, text, audience, route, existing: dict):
@@ -150,7 +176,7 @@ def rebuild():
 
 
 def index_source(doctype: str, name: str):
-    row = next((x for x in sources() if x[0] == doctype and x[1] == name), None)
+    row = next(iter(sources(only=(doctype, name))), None)
     if not row:
         frappe.db.delete(CHUNK, {"source_doctype": doctype, "source_name": name})
     else:
@@ -191,10 +217,12 @@ def _corpus(audiences: tuple):
 
 
 def search(query: str, audience: str = "Everyone", k: int | None = None) -> list[dict]:
-    """audience: Everyone (guests) or Customers (verified customers; also sees Everyone)."""
+    """audience: Everyone (guests), Customers (verified customers; also sees Everyone) or Staff (the agent copilot:
+    sees everything, including staff-only documents)."""
     conf = s()
     k = int(k or conf.top_k or 4)
-    audiences = ("Everyone", "Customers") if audience == "Customers" else ("Everyone",)
+    audiences = {"Customers": ("Everyone", "Customers"),
+                 "Staff": ("Everyone", "Customers", "Staff")}.get(audience, ("Everyone",))
     rows = _corpus(audiences)
     if not rows or not (query or "").strip():
         return []

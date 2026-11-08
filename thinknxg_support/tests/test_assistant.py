@@ -38,7 +38,9 @@ class TestAssistant(BaseTestCase):
                   "handoff_on": "Low", "max_ai_replies": 15, "daily_token_budget": 0, "index_snippets": 1,
                   "index_helpdesk_articles": 0,
                   # these tests count assistant model calls; the handoff summary has its own tests (test_copilot)
-                  "summary_on_handoff": 0, "analyze_messages": 0})
+                  "summary_on_handoff": 0, "analyze_messages": 0,
+                  # model-call counts: no cross-language search or message translation in these tests (test_knowledge)
+                  "translate_questions": 0, "localize_messages": 0})
         s.flags.ignore_permissions = True
         s.save()
         frappe.db.set_value("Support Chatbot", {"enabled": 1}, "enabled", 0)

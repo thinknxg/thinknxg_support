@@ -97,6 +97,7 @@
    "fieldtype": "Datetime",
    "label": "Submitted On",
    "read_only": 1,
+   "search_index": 1,
    "idx": 8
   },
   {

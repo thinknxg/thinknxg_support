@@ -112,6 +112,7 @@ scheduler_events = {
     ],
     "daily_long": [
         "thinknxg_support.integrations.ai.retrieval.daily_refresh",
+        "thinknxg_support.integrations.ai.crawler.scheduled",
     ],
 }
 
