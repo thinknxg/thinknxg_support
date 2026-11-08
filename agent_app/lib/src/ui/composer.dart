@@ -135,6 +135,7 @@ class _ComposerState extends State<Composer> {
               if (widget.onAi != null)
                 IconButton(
                   key: const Key('composer-ai'),
+                  visualDensity: VisualDensity.compact,
                   tooltip: 'AI copilot (Ctrl+I): suggest, rewrite, translate, summarise',
                   onPressed: sending ? null : widget.onAi,
                   icon: const Icon(Icons.auto_awesome),
@@ -142,6 +143,7 @@ class _ComposerState extends State<Composer> {
               if (widget.onCanned != null)
                 IconButton(
                   key: const Key('composer-canned'),
+                  visualDensity: VisualDensity.compact,
                   tooltip: widget.cannedTooltip,
                   onPressed: sending || replyBlocked ? null : widget.onCanned,
                   icon: const Icon(Icons.bolt_outlined),
@@ -149,6 +151,7 @@ class _ComposerState extends State<Composer> {
               if (widget.onAttach != null)
                 IconButton(
                   key: const Key('composer-attach'),
+                  visualDensity: VisualDensity.compact,
                   tooltip: 'Attach a file',
                   onPressed: sending || replyBlocked ? null : widget.onAttach,
                   icon: const Icon(Icons.attach_file),
@@ -173,6 +176,7 @@ class _ComposerState extends State<Composer> {
                     onChanged: widget.onChanged,
                     decoration: InputDecoration(
                       hintText: note ? 'Write an internal note…' : 'Write a reply…',
+                      hintMaxLines: 1,
                       filled: true,
                       fillColor: note ? Colors.amber.shade100 : s.surfaceContainerHighest,
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),

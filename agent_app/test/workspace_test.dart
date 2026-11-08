@@ -327,6 +327,8 @@ void main() {
       await tester.tap(find.byKey(const Key('copilot-suggest')));
       await tester.pumpAndSettle();
       expect(find.text('Sorry about the delay with your order.'), findsOneWidget);
+      await tester.ensureVisible(find.text('Use this').first);
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Use this').first);
       await tester.pumpAndSettle();
       expect(find.text('Sorry about the delay with your order.'), findsOneWidget); // now in the composer
@@ -334,6 +336,8 @@ void main() {
       await tester.tap(find.byKey(const Key('composer-ai')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('copilot-professional')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Use in reply'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Use in reply'));
       await tester.pumpAndSettle();
@@ -343,6 +347,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('copilot-translate-draft')));
       await tester.pumpAndSettle();
+      expect(find.text('نص مترجم'), findsOneWidget);
       expect(server.copilotCalls.last['target'], 'ar'); // the customer's language
       await tester.tap(find.byTooltip('Close'));
       await tester.pumpAndSettle();

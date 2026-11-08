@@ -170,9 +170,10 @@ class _CopilotSheetState extends State<CopilotSheet> {
           onPressed: _busy ? null : onTap,
         );
     final d = c.detail;
+    // one scroll view for actions and result, so a long answer (and its "Use" buttons) is always reachable
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      child: ListView(shrinkWrap: true, children: [
         Row(children: [
           const Icon(Icons.auto_awesome),
           const SizedBox(width: 8),
@@ -209,13 +210,12 @@ class _CopilotSheetState extends State<CopilotSheet> {
         const Divider(height: 24),
         if (_title != null) Text(_title!, style: t.titleSmall),
         const SizedBox(height: 8),
-        Expanded(
-          child: _busy
-              ? const Center(child: CircularProgressIndicator())
-              : _error != null
-                  ? Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))
-                  : SingleChildScrollView(child: _result ?? Text('Pick an action above.', style: t.bodySmall)),
-        ),
+        if (_busy)
+          const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
+        else if (_error != null)
+          Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))
+        else
+          _result ?? Text('Pick an action above.', style: t.bodySmall),
       ]),
     );
   }
