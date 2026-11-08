@@ -53,7 +53,7 @@ index on (conversation, client_message_id). Tickets: *Support Agent Request* log
 | `bootstrap` | GET | | `api_version, server_time, site{url,name,app_version}, agent{user,full_name,email,image,is_manager,helpdesk_agent}, capabilities{conversations,live_chat,whatsapp,raven,helpdesk,assistant,wrap_up,canned_responses,alerts,push,realtime,integrations}, queues[{name,member}], poll{inbox_seconds,thread_seconds,alerts_seconds}` |
 | `conversations` | GET | `view` all\|mine\|unassigned\|waiting, `channel` Portal\|Live Chat\|WhatsApp, `status` open\|closed\|all, `queue`, `q`, `cursor`, `limit` | page of ConversationSummary |
 | `conversation` | GET | `name` | ConversationDetail (summary + `contact`, `customer_name`, `created_at`, `handoff_reason`, `actions{claim,transfer,reply,note,close,take_over,return_to_assistant,whatsapp_window_open}`, `read_up_to`) |
-| `messages` | GET | `name`, `before` \| `after` cursor, `limit` | `items` (oldest first), `before_cursor`, `has_more_before`, `latest_cursor` |
+| `messages` | GET | `name`, `before` \| `after` cursor, `limit`, `changed_since` (the previous `server_time`) | `items` (oldest first), `before_cursor`, `has_more_before`, `latest_cursor`, `server_time`, and with `changed_since`: `updated` (older messages edited, removed or reacted to since) |
 | `mark_read` | POST | `name`, `message` | `read_up_to` — per agent, only moves forward |
 | `claim` | POST | `name` | ConversationDetail · 409 if another agent has it (row lock: one winner) |
 | `transfer` | POST | `name`, `user` \| `queue`, `expected_assignee` | ConversationDetail · 409 if the owner changed |
@@ -61,7 +61,7 @@ index on (conversation, client_message_id). Tickets: *Support Agent Request* log
 | `closing_form` | GET | | `reasons, require_reason, questions[{idx,question,answer_type,required,options}], closing_message` |
 | `close` | POST | `name`, `reason`, `notes`, `answers{idx: answer}`, `send_closing_message`, `expected_status` | ConversationDetail (wrap-up saved, as in the web console) |
 | `canned_responses` | GET | `channel` | canned responses the agent may use |
-| `reply` | POST | `name`, `text`, `client_request_id`, `internal` 0\|1 | `{message, duplicate}` · 422 `whatsapp_window_closed` |
+| `reply` | POST | `name`, `text`, `client_request_id`, `internal` 0\|1, `reply_to` (message id), `voice_seconds` (with an audio file) | `{message, duplicate}` · 422 `whatsapp_window_closed` |
 | `tickets` | GET | `view` mine\|unassigned\|all, `status` open\|closed\|<status>, `priority`, `q`, `cursor`, `limit` | page of Ticket |
 | `ticket` | GET | `name` | Ticket + `description, linked_conversation, can_write, statuses[{name,label,category,color}], priorities` (marks it seen) |
 | `ticket_timeline` | GET | `name`, `cursor`, `limit` | `items[{id, kind email\|note, internal, direction, author, author_email, html, to, cc, delivery, created_at}]` |
@@ -91,6 +91,10 @@ index on (conversation, client_message_id). Tickets: *Support Agent Request* log
 | `create_ticket` | POST | `name`, `client_request_id`, `subject`, `priority`, `team`, `ticket_type`, `reply` | `{ticket, duplicate}` — transcript in the description, chat linked, assigned to the agent, optional first reply by e-mail |
 | `saved_replies` | GET | `q`, `ticket` | Helpdesk saved replies this agent may use (scope: global, my teams, mine) |
 | `saved_reply_render` | POST | `name`, `ticket` \| `conversation` | `{text, html}` rendered like Helpdesk does |
+| `edit_message` | POST | `name`, `message`, `text` | the message · your own messages while the chat is open; WhatsApp messages cannot be changed once sent; earlier versions kept |
+| `remove_message` | POST | `name`, `message` | the message (`removed`) · the customer sees "Message removed"; managers may remove any customer-visible message |
+| `react` | POST | `name`, `message`, `emoji` (one of `capabilities.messaging.reactions`) | the message · toggles your reaction; on WhatsApp it is sent to the customer |
+| `message_history` | GET | `name`, `message` | earlier versions `[{text, html, edited_by, edited_on}]` |
 | `copilot` | POST | `name`, `action` suggest\|rewrite\|translate\|summarize\|recommend\|note, `text`, `style` professional\|friendly\|concise\|empathetic\|fix, `target` (language code) | suggest `{suggestions[{label,text}], sources}` · rewrite / translate `{text}` · summarize `{summary}` · recommend `{solution, follow_ups, articles}` · note `{summary, message}` (internal note). Drafts only: nothing is sent to the customer. **422** `copilot_unavailable` when switched off or over budget |
 
 `reply` and `ticket_reply` also accept one file (multipart/form-data, field `file`, same size and type rules as the

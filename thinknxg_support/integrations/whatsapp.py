@@ -146,8 +146,9 @@ def _media_payload(msg, caption: str) -> dict | None:
     if not fname:
         return None
     f = frappe.get_doc("File", fname)
-    content = f.get_content()
-    content = content.encode() if isinstance(content, str) else content
+    from thinknxg_support.utils import file_bytes
+
+    content = file_bytes(f)
     kind = messaging.attachment_kind(msg.attachment)
     wa_type = {"image": "image", "audio": "audio"}.get(kind, "document")
     if wa_type == "image" and not messaging.image_ok(content, msg.attachment):

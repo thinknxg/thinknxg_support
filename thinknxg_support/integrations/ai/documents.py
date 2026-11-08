@@ -208,9 +208,9 @@ def process(name: str):
         fname = _file_name(doc.file)
         if not fname:
             raise ExtractError(_("The attached file is missing. Attach it again."))
-        content = frappe.get_doc("File", fname).get_content()
-        if isinstance(content, str):
-            content = content.encode()
+        from thinknxg_support.utils import file_bytes
+
+        content = file_bytes(frappe.get_doc("File", fname))
         text, pages = extract(content, ext_of(doc.file))
         values.update({"status": "Ready", "extracted_text": text, "pages": pages, "characters": len(text),
                        "error": None})

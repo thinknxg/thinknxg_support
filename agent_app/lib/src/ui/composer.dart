@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../api/api_client.dart';
+import '../platform/voice.dart';
 import '../state/controllers.dart';
 
 /// Reply-or-note composer. The mode is always visible and the field changes colour for internal notes,
@@ -20,6 +24,8 @@ class Composer extends StatefulWidget {
   final VoidCallback? onCanned;
   final String cannedTooltip;
   final VoidCallback? onAi;
+  final Future<void> Function(UploadFile file, int seconds)? onVoice;
+  final int maxVoiceSeconds;
 
   const Composer({
     super.key,
@@ -37,6 +43,8 @@ class Composer extends StatefulWidget {
     this.onCanned,
     this.cannedTooltip = 'Canned responses (Ctrl+/)',
     this.onAi,
+    this.onVoice,
+    this.maxVoiceSeconds = 120,
   });
 
   @override
@@ -45,6 +53,50 @@ class Composer extends StatefulWidget {
 
 class _ComposerState extends State<Composer> {
   late final TextEditingController _text = TextEditingController(text: widget.draft.text);
+  VoiceRecorder? _rec;
+  DateTime? _recStart;
+  Timer? _recTimer;
+  String? _recError;
+
+  Future<void> _startRecording() async {
+    final rec = VoiceRecorder.factory();
+    if (!await rec.start()) {
+      rec.dispose();
+      setState(() => _recError = 'Allow the microphone to record a voice note.');
+      return;
+    }
+    setState(() {
+      _rec = rec;
+      _recError = null;
+      _recStart = DateTime.now();
+    });
+    _recTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
+      if (!mounted) return;
+      if (_recSeconds >= widget.maxVoiceSeconds) {
+        _stopRecording(send: true);
+      } else {
+        setState(() {});
+      }
+    });
+  }
+
+  int get _recSeconds => _recStart == null ? 0 : DateTime.now().difference(_recStart!).inSeconds;
+
+  Future<void> _stopRecording({required bool send}) async {
+    final rec = _rec;
+    if (rec == null) return;
+    _recTimer?.cancel();
+    final seconds = _recSeconds < 1 ? 1 : _recSeconds;
+    setState(() => _rec = null);
+    if (!send) {
+      await rec.cancel();
+      rec.dispose();
+      return;
+    }
+    final file = await rec.stop();
+    rec.dispose();
+    if (file != null && widget.onVoice != null) await widget.onVoice!(file, seconds);
+  }
 
   @override
   void didUpdateWidget(covariant Composer old) {
@@ -57,6 +109,9 @@ class _ComposerState extends State<Composer> {
 
   @override
   void dispose() {
+    _recTimer?.cancel();
+    _rec?.cancel();
+    _rec?.dispose();
     _text.dispose();
     super.dispose();
   }
@@ -117,6 +172,24 @@ class _ComposerState extends State<Composer> {
                   ]),
                 ),
               ),
+            if (_recError != null) Text(_recError!, style: TextStyle(fontSize: 12, color: s.error)),
+            if (_rec != null)
+              Padding(
+                key: const Key('recording'),
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(children: [
+                  Icon(Icons.fiber_manual_record, color: s.error, size: 16),
+                  const SizedBox(width: 6),
+                  Text('Recording ${_recSeconds ~/ 60}:${(_recSeconds % 60).toString().padLeft(2, '0')}'),
+                  const Spacer(),
+                  TextButton(onPressed: () => _stopRecording(send: false), child: const Text('Cancel')),
+                  FilledButton.icon(
+                      key: const Key('recording-send'),
+                      onPressed: () => _stopRecording(send: true),
+                      icon: const Icon(Icons.send, size: 16),
+                      label: const Text('Send')),
+                ]),
+              ),
             if (d.file != null)
               Align(
                 alignment: Alignment.centerLeft,
@@ -147,6 +220,14 @@ class _ComposerState extends State<Composer> {
                   tooltip: widget.cannedTooltip,
                   onPressed: sending || replyBlocked ? null : widget.onCanned,
                   icon: const Icon(Icons.bolt_outlined),
+                ),
+              if (widget.onVoice != null && _rec == null)
+                IconButton(
+                  key: const Key('composer-voice'),
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Record a voice note',
+                  onPressed: sending || replyBlocked ? null : _startRecording,
+                  icon: const Icon(Icons.mic_none),
                 ),
               if (widget.onAttach != null)
                 IconButton(

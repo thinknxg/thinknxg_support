@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.14.0 (in progress) — increment 1 of 3, 2026-11-08
+* **Reply to a message** with a quote, in the chat widget, the web console and the agent apps; also on WhatsApp.
+* **Edit and remove messages**: staff their own while the chat is open; customers and visitors their own within the
+  edit window (5 minutes by default). Every earlier version is kept for staff; removed messages show "Message
+  removed" to customers and stay in the record. WhatsApp messages cannot be changed once sent.
+* **Reactions** (👍 ❤️ 😂 😮 😢 🙏), also to and from WhatsApp.
+* **Files for visitors** (off by default) and **voice notes** (widget, console and apps), with photo previews and
+  inline playback. Downloads are checked again every time.
+* **WhatsApp media**: images, documents and AAC / MP3 / OGG voice notes go out through the Cloud API, with the reply
+  context.
+* **Fix**: file downloads (portal documents, chat and ticket attachments) are now sent exactly as stored; before,
+  some binary files (such as PNG images) could arrive damaged.
+* Settings: Support Portal Settings > Chat Messages. New DocType Support Message Revision. Staff API: `edit_message`,
+  `remove_message`, `react`, `message_history`, `reply(reply_to, voice_seconds)`, `messages(changed_since)`.
+
 ## 1.13.0 — 2026-11-08
 * **Support Analytics** page: live waiting, active chats and visitors; AI resolved vs human, AI resolution rate,
   first response and resolution times, satisfaction, AI usage, mood, intents, languages, handoff reasons and agent

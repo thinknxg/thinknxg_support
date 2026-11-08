@@ -59,6 +59,7 @@ class Bootstrap {
   });
 
   bool can(String capability) => _b(capabilities[capability]);
+  MessagingCaps get messaging => MessagingCaps.fromJson(capabilities['messaging']);
 
   factory Bootstrap.fromJson(Map<String, dynamic> j) {
     final site = _m(j['site']);
@@ -235,6 +236,16 @@ class ChatMessage {
   final String? deliveryError;
   final String? clientRequestId;
   final String? attachmentName;
+  // 1.14
+  final ReplyRef? replyTo;
+  final bool edited;
+  final bool removed;
+  final String? removedBy;
+  final List<Reaction> reactions;
+  final String? attachmentKind; // image | audio | file
+  final int? voiceSeconds;
+  final bool canEdit;
+  final bool canRemove;
 
   const ChatMessage({
     required this.id,
@@ -248,9 +259,20 @@ class ChatMessage {
     this.deliveryError,
     this.clientRequestId,
     this.attachmentName,
+    this.replyTo,
+    this.edited = false,
+    this.removed = false,
+    this.removedBy,
+    this.reactions = const [],
+    this.attachmentKind,
+    this.voiceSeconds,
+    this.canEdit = false,
+    this.canRemove = false,
   });
 
   String get text => htmlToText(html);
+  bool get isVoice => attachmentKind == 'audio';
+  bool get isImage => attachmentKind == 'image';
 
   factory ChatMessage.fromJson(Map<String, dynamic> j) {
     final d = _s(j['direction']);
@@ -271,6 +293,47 @@ class ChatMessage {
       deliveryError: delivery['error'] == null ? null : _s(delivery['error']),
       clientRequestId: j['client_request_id'] == null ? null : _s(j['client_request_id']),
       attachmentName: j['attachment'] is Map ? _s((j['attachment'] as Map)['name']) : null,
+      replyTo: j['reply_to'] is Map ? ReplyRef.fromJson(_m(j['reply_to'])) : null,
+      edited: _b(j['edited']),
+      removed: _b(j['removed']),
+      removedBy: j['removed_by'] == null ? null : _s(j['removed_by']),
+      reactions: [for (final r in _l(j['reactions'])) Reaction.fromJson(_m(r))],
+      attachmentKind: j['attachment_kind'] == null ? null : _s(j['attachment_kind']),
+      voiceSeconds: j['voice_seconds'] == null ? null : _i(j['voice_seconds']),
+      canEdit: _b(j['can_edit']),
+      canRemove: _b(j['can_remove']),
+    );
+  }
+}
+
+class ReplyRef {
+  final String id, author, excerpt;
+  const ReplyRef(this.id, this.author, this.excerpt);
+  factory ReplyRef.fromJson(Map<String, dynamic> j) => ReplyRef(_s(j['id']), _s(j['author']), _s(j['excerpt']));
+}
+
+class Reaction {
+  final String emoji;
+  final int count;
+  final bool mine;
+  const Reaction(this.emoji, this.count, this.mine);
+  factory Reaction.fromJson(Map<String, dynamic> j) => Reaction(_s(j['emoji']), _i(j['count']), _b(j['mine']));
+}
+
+/// 1.14: what the site allows (reactions, voice notes); empty on older servers, which hides those actions.
+class MessagingCaps {
+  final List<String> reactions;
+  final bool voice;
+  final int maxVoiceSeconds;
+  final bool edit;
+  const MessagingCaps({this.reactions = const [], this.voice = false, this.maxVoiceSeconds = 120, this.edit = false});
+  factory MessagingCaps.fromJson(Object? raw) {
+    final j = raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+    return MessagingCaps(
+      reactions: [for (final r in _l(j['reactions'])) '$r'],
+      voice: _b(j['voice']),
+      maxVoiceSeconds: j['max_voice_seconds'] == null ? 120 : _i(j['max_voice_seconds']),
+      edit: _b(j['edit']),
     );
   }
 }
@@ -280,12 +343,17 @@ class MessagePage {
   final String? beforeCursor;
   final bool hasMoreBefore;
   final String? latestCursor;
-  const MessagePage(this.items, this.beforeCursor, this.hasMoreBefore, this.latestCursor);
+  final List<ChatMessage> updated;
+  final String? serverTime;
+  const MessagePage(this.items, this.beforeCursor, this.hasMoreBefore, this.latestCursor,
+      {this.updated = const [], this.serverTime});
   factory MessagePage.fromJson(Map<String, dynamic> j) => MessagePage(
         [for (final m in _l(j['items'])) ChatMessage.fromJson(_m(m))],
         j['before_cursor'] as String?,
         _b(j['has_more_before']),
         j['latest_cursor'] as String?,
+        updated: [for (final m in _l(j['updated'])) ChatMessage.fromJson(_m(m))],
+        serverTime: j['server_time'] as String?,
       );
 }
 

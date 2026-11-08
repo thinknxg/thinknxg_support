@@ -80,7 +80,33 @@
 									<span v-else-if="m.sender_type === 'Bot'" class="txc-tag">{{ t("bot_badge") }}</span>
 									{{ m.author || t("support") }}
 								</small>
-								<div class="txc-bubble" :class="{ 'txc-bubble--ai': m.sender_type === 'AI' }" v-html="m.content"></div>
+								<div v-if="m.reply_to" class="txc-quote" :class="{ 'txc-quote--me': m.from_customer }">
+									<b>{{ m.reply_to.author || t("support") }}</b> {{ m.reply_to.excerpt }}</div>
+								<div v-if="editing && editing.id === m.id" class="txc-edit">
+									<textarea v-model="editing.text" rows="2" :maxlength="cfg.max_length" :aria-label="t('edit')"
+										@keydown.enter.exact.prevent="saveEdit" @keydown.esc="editing = null"></textarea>
+									<div><button type="button" class="txc-link" @click="editing = null">{{ t("cancel") }}</button>
+										<button type="button" class="txc-btn txc-btn--sm" :disabled="!editing.text.trim()" @click="saveEdit">{{ t("save") }}</button></div>
+								</div>
+								<div v-else class="txc-bubble" :class="{ 'txc-bubble--ai': m.sender_type === 'AI', 'txc-bubble--removed': m.removed }">
+									<div v-if="m.content && !(m.attachment_kind === 'audio' && !strip(m.content))" v-html="m.content"></div>
+									<template v-if="m.has_attachment">
+										<button v-if="m.attachment_kind === 'image'" type="button" class="txc-thumb" :aria-label="t('photo')" @click="openFile(m)">
+											<img v-if="blobs[m.id]" :src="blobs[m.id]" alt="" />
+											<span v-else class="txc-spin"></span>
+										</button>
+										<audio v-else-if="m.attachment_kind === 'audio' && blobs[m.id]" :src="blobs[m.id]" controls preload="metadata" class="txc-audio"></audio>
+										<button v-else-if="m.attachment_kind === 'audio'" type="button" class="txc-file" @click="loadBlob(m)">▶ {{ t("voice_note") }}<template v-if="m.voice_seconds"> · {{ secs(m.voice_seconds) }}</template></button>
+										<button v-else type="button" class="txc-file" @click="openFile(m)">📎 {{ m.attachment_name || t("download") }}</button>
+									</template>
+								</div>
+								<div v-if="m.reactions && m.reactions.length" class="txc-reactions">
+									<button v-for="r in m.reactions" :key="r.emoji" type="button" :class="{ on: r.mine }" :aria-pressed="r.mine"
+										@click="react(m, r.emoji)">{{ r.emoji }} {{ r.count }}</button>
+								</div>
+								<div v-if="picker === m.id" class="txc-picker" role="menu">
+									<button v-for="e in reactionSet" :key="e" type="button" role="menuitem" @click="react(m, e)">{{ e }}</button>
+								</div>
 								<div v-if="m.sources && m.sources.length" class="txc-sources">
 									<span>{{ t("sources") }}:</span>
 									<template v-for="(s, i) in m.sources" :key="i">
@@ -95,7 +121,13 @@
 									</template>
 									<span v-else class="txc-muted">{{ t("thanks_fb") }}</span>
 								</div>
-								<small class="txc-time">{{ time(m.created) }}<template v-if="m.from_customer && m.seen"> · {{ t("seen") }}</template></small>
+								<small class="txc-time">{{ time(m.created) }}<template v-if="m.edited"> · {{ t("edited") }}</template><template v-if="m.from_customer && m.seen"> · {{ t("seen") }}</template>
+									<span v-if="!m.removed && phase === 'chat'" class="txc-acts">
+										<button type="button" :title="t('reply')" :aria-label="t('reply')" @click="startReply(m)">↩</button>
+										<button v-if="reactionSet.length" type="button" :title="t('react')" :aria-label="t('react')" @click="picker = picker === m.id ? null : m.id">☺</button>
+										<button v-if="m.can_edit" type="button" :title="t('edit')" :aria-label="t('edit')" @click="startEdit(m)">✎</button>
+										<button v-if="m.can_remove" type="button" :title="t('remove')" :aria-label="t('remove')" @click="removeMsg(m)">🗑</button>
+									</span></small>
 							</div>
 						</template>
 						<div v-for="p in pending" :key="p.cid" class="txc-msg txc-msg--me">
@@ -169,8 +201,17 @@
 					<button type="button" class="txc-btn txc-btn--ghost" @click="confirmEnd = false">{{ t("no") }}</button>
 					<button type="button" class="txc-btn" @click="endChat">{{ t("yes") }}</button>
 				</div>
-				<form v-else class="txc-compose" @submit.prevent="send">
-					<label v-if="mode === 'customer'" class="txc-iconbtn" :title="t('attach')">
+				<div v-if="replyTo && !confirmEnd" class="txc-replybar">
+					<span><b>{{ t("replying_to") }} {{ replyTo.from_customer ? t("you") : (replyTo.author || t("support")) }}</b> {{ excerpt(replyTo) }}</span>
+					<button type="button" :aria-label="t('cancel')" @click="replyTo = null">×</button>
+				</div>
+				<div v-if="recording" class="txc-recording" role="status">
+					<span class="txc-rec-dot"></span>{{ t("recording") }} {{ secs(recording.seconds) }}
+					<button type="button" class="txc-link" @click="stopRecording(false)">{{ t("cancel") }}</button>
+					<button type="button" class="txc-btn txc-btn--sm" @click="stopRecording(true)">{{ t("send") }}</button>
+				</div>
+				<form v-else-if="!confirmEnd" class="txc-compose" @submit.prevent="send">
+					<label v-if="canUpload" class="txc-iconbtn" :title="t('attach')">
 						<input type="file" hidden @change="pickFile" />
 						<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2"
 							stroke-linecap="round" d="M21.4 11.1l-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5" /></svg>
@@ -180,6 +221,9 @@
 						<textarea id="txc-draft" v-model="draft" rows="1" :placeholder="t('type')" :maxlength="cfg.max_length"
 							:aria-label="t('type')" @keydown.enter.exact.prevent="send" @input="onType"></textarea>
 					</div>
+					<button v-if="canVoice && !draft.trim() && !file" type="button" class="txc-iconbtn" :title="t('record')" :aria-label="t('record')" @click="startRecording">
+						<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-2.1a7 7 0 0 0 6-6.9z" /></svg>
+					</button>
 					<button class="txc-send" :disabled="!draft.trim() && !file" :aria-label="t('send')">
 						<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3 20l18-8L3 4v6l12 2-12 2z" /></svg>
 					</button>
@@ -191,7 +235,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
-import { ChatError, chatCall, newId, session, textToHtml } from "./client";
+import { ChatError, chatBlob, chatCall, newId, session, textToHtml } from "./client";
 import { STRINGS } from "./strings";
 
 const props = defineProps({
@@ -219,6 +263,17 @@ const commentRequired = computed(() => !!(survey.value && survey.value.ask_comme
 const canSendSurvey = computed(() => sv.rating > 0 && (!survey.value.ask_resolution || sv.resolved)
 	&& (!commentRequired.value || sv.comment.trim()));
 const expired = ref(false);
+// 1.14: reply-to, edit, remove, reactions, previews, voice notes
+const replyTo = ref(null);
+const editing = ref(null);
+const picker = ref(null);
+const blobs = reactive({});
+const recording = ref(null);
+const caps = computed(() => (cfg.value && cfg.value.messaging) || {});
+const reactionSet = computed(() => caps.value.reactions || []);
+const canUpload = computed(() => mode.value === "customer" || !!caps.value.uploads);
+const canVoice = computed(() => !!caps.value.voice && typeof window !== "undefined" && !!window.MediaRecorder
+	&& !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
 const unread = ref(0);
 const scroller = ref(null);
 const form = reactive({ name: "", email: "", phone: "", message: "", website: "" });
@@ -288,6 +343,148 @@ function time(v) {
 	return new Intl.DateTimeFormat(lang.value === "ar" ? "ar-OM" : "en-GB", { hour: "2-digit", minute: "2-digit" }).format(d);
 }
 
+function strip(html) {
+	const d = document.createElement("div");
+	d.innerHTML = html || "";
+	return (d.textContent || "").trim();
+}
+
+function excerpt(m) {
+	const s = strip(m.content);
+	if (s) return s.length > 80 ? s.slice(0, 80) + "…" : s;
+	return m.attachment_kind === "audio" ? t("voice_note") : m.attachment_kind === "image" ? t("photo") : t("download");
+}
+
+function secs(n) {
+	n = Math.max(0, Math.round(n || 0));
+	return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, "0")}`;
+}
+
+function guestArgs(extra) {
+	const s = session.get() || {};
+	return [{ conversation: s.conversation, ...extra }, s.token];
+}
+
+async function act(kind, args) {
+	if (mode.value === "customer") return chatCall("customer_" + kind, { ...args, organization: props.organization }, { post: kind !== "attachment" });
+	const [a, token] = guestArgs(args);
+	return chatCall(kind, a, { post: true, token });
+}
+
+function startReply(m) {
+	replyTo.value = m;
+	picker.value = null;
+	nextTick(() => document.getElementById("txc-draft")?.focus());
+}
+
+function startEdit(m) {
+	picker.value = null;
+	editing.value = { id: m.id, text: strip(m.content) };
+}
+
+async function saveEdit() {
+	const e = editing.value;
+	if (!e || !e.text.trim()) return;
+	editing.value = null;
+	try {
+		await act("edit", { message: e.id, text: e.text.trim() });
+	} catch (err) {
+		error.value = err.message;
+	}
+	await refresh(true);
+}
+
+async function removeMsg(m) {
+	if (!window.confirm(t("remove_confirm"))) return;
+	try {
+		await act("remove", { message: m.id });
+	} catch (err) {
+		error.value = err.message;
+	}
+	await refresh(true);
+}
+
+async function react(m, emoji) {
+	picker.value = null;
+	try {
+		await act("react", { message: m.id, emoji });
+	} catch (err) {
+		/* best effort */
+	}
+	await refresh(true);
+}
+
+async function loadBlob(m) {
+	if (blobs[m.id] || !m.has_attachment) return blobs[m.id];
+	try {
+		const blob = mode.value === "customer"
+			? await chatBlob("customer_attachment", { message: m.id, organization: props.organization })
+			: await chatBlob("attachment", ...guestArgs({ message: m.id }));
+		blobs[m.id] = URL.createObjectURL(blob);
+	} catch (e) {
+		/* shown as a download button instead */
+	}
+	return blobs[m.id];
+}
+
+async function openFile(m) {
+	const url = await loadBlob(m);
+	if (!url) return;
+	const a = document.createElement("a");
+	a.href = url;
+	a.download = m.attachment_name || "file";
+	a.target = "_blank";
+	a.rel = "noopener";
+	document.body.appendChild(a);
+	a.click();
+	a.remove();
+}
+
+let recorder = null;
+let chunks = [];
+let recTimer = null;
+async function startRecording() {
+	try {
+		const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+		const type = ["audio/webm;codecs=opus", "audio/ogg;codecs=opus", "audio/mp4"].find((x) => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(x)) || "";
+		recorder = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+		chunks = [];
+		recorder.ondataavailable = (e) => e.data && e.data.size && chunks.push(e.data);
+		recorder.start(250);
+		recording.value = { seconds: 0, started: Date.now(), send: false };
+		recTimer = setInterval(() => {
+			recording.value.seconds = (Date.now() - recording.value.started) / 1000;
+			if (recording.value.seconds >= (caps.value.max_voice_seconds || 120)) stopRecording(true);
+		}, 250);
+	} catch (e) {
+		error.value = t("mic_denied");
+	}
+}
+
+function stopRecording(sendIt) {
+	if (!recorder || !recording.value) return;
+	const rec = recording.value;
+	clearInterval(recTimer);
+	recorder.onstop = () => {
+		recorder.stream.getTracks().forEach((tr) => tr.stop());
+		const mime = (recorder.mimeType || "audio/webm").split(";")[0];
+		const ext = mime.includes("ogg") ? "ogg" : mime.includes("mp4") ? "m4a" : "webm";
+		const seconds = Math.max(1, Math.round(rec.seconds));
+		recorder = null;
+		recording.value = null;
+		if (!sendIt || !chunks.length) return;
+		const f = new File(chunks, `voice-note-${Date.now()}.${ext}`, { type: mime });
+		const p = reactive({ cid: newId(), text: `🎤 ${secs(seconds)}`, payload: null, file: f, voice: seconds,
+			reply_to: replyTo.value ? replyTo.value.id : null, failed: false });
+		replyTo.value = null;
+		pending.value.push(p);
+		scrollDown();
+		deliver(p);
+		schedule();
+	};
+	recorder.stop();
+}
+
 function scrollDown() {
 	nextTick(() => scroller.value && (scroller.value.scrollTop = scroller.value.scrollHeight));
 }
@@ -321,6 +518,7 @@ function applyState(s) {
 function applyMessages(list) {
 	const before = messages.value.length;
 	messages.value = list || [];
+	messages.value.forEach((m) => { if (m.has_attachment && m.attachment_kind === "image") loadBlob(m); });
 	const replies = messages.value.filter((m) => !m.from_customer).length;
 	if (open.value || props.inline) seenReplies = replies;
 	else unread.value = Math.max(0, replies - seenReplies);
@@ -413,13 +611,15 @@ async function startGuest() {
 async function deliver(p) {
 	p.failed = false;
 	try {
+		const body = p.voice ? "" : textToHtml(p.text);
+		const extra = { reply_to: p.reply_to || null, voice_seconds: p.voice || null };
 		if (mode.value === "customer") {
-			await chatCall("customer_send", { message: textToHtml(p.text), organization: props.organization,
-				client_message_id: p.cid, payload: p.payload }, { post: true, files: p.file ? [p.file] : [] });
+			await chatCall("customer_send", { message: body, organization: props.organization,
+				client_message_id: p.cid, payload: p.payload, ...extra }, { post: true, files: p.file ? [p.file] : [] });
 		} else {
 			const s = session.get();
-			await chatCall("send", { conversation: s.conversation, message: textToHtml(p.text), client_message_id: p.cid,
-				payload: p.payload }, { post: true, token: s.token });
+			await chatCall("send", { conversation: s.conversation, message: body, client_message_id: p.cid,
+				payload: p.payload, ...extra }, { post: true, token: s.token, files: p.file ? [p.file] : [] });
 		}
 		pending.value = pending.value.filter((x) => x.cid !== p.cid);
 		lastSend = Date.now();
@@ -437,9 +637,11 @@ async function deliver(p) {
 }
 
 function queue(text, payload = null) {
-	const p = reactive({ cid: newId(), text, payload, file: file.value, failed: false });
+	const p = reactive({ cid: newId(), text, payload, file: file.value, failed: false,
+		reply_to: replyTo.value ? replyTo.value.id : null });
 	pending.value.push(p);
 	file.value = null;
+	replyTo.value = null;
 	scrollDown();
 	deliver(p);
 	schedule();
@@ -609,6 +811,8 @@ onMounted(() => {
 });
 onBeforeUnmount(() => {
 	clearTimeout(timer);
+	Object.values(blobs).forEach((u) => URL.revokeObjectURL(u));
+	if (recorder) stopRecording(false);
 	document.removeEventListener("visibilitychange", onVisible);
 	window.removeEventListener("thinknxg-support:open-chat", openFromPage);
 });

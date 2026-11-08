@@ -94,7 +94,24 @@ class FakeServer {
         'html': '<p>$text</p>',
         'created_at': DateTime.utc(2026, 11, 6, 12, 0, _seq).toIso8601String(),
         'client_request_id': rid,
+        'can_edit': direction != 'inbound',
+        'can_remove': direction != 'inbound',
+        'reactions': <Map<String, dynamic>>[],
+        '_changed': 0,
       };
+
+  /// 1.14: a message changed by someone else (another agent, the customer); the next poll returns it in `updated`.
+  void changeMessage(String conv, String id, String text) {
+    final m = messages[conv]!.firstWhere((x) => x['id'] == id);
+    m['html'] = '<p>$text</p>';
+    m['edited'] = true;
+    m['_changed'] = ++_changeSeq;
+  }
+
+  int _changeSeq = 0;
+  final List<Map<String, dynamic>> messageCalls = [];
+
+  Map<String, dynamic> _find(String conv, String id) => messages[conv]!.firstWhere((x) => x['id'] == id);
 
   Map<String, dynamic> _conv(String id) => conversations.firstWhere((c) => c['id'] == id);
 
@@ -180,7 +197,10 @@ class FakeServer {
           'api_version': 1,
           'site': {'url': 'https://support.example.com', 'name': 'support.example.com', 'app_version': '1.9.0'},
           'agent': {'user': user, 'full_name': 'Agent One', 'email': user, 'is_manager': false, 'helpdesk_agent': true},
-          'capabilities': {'conversations': true, 'helpdesk': true, 'live_chat': true, 'whatsapp': true, 'copilot': true},
+          'capabilities': {
+            'conversations': true, 'helpdesk': true, 'live_chat': true, 'whatsapp': true, 'copilot': true,
+            'messaging': {'reactions': ['👍', '❤️', '🙏'], 'voice': true, 'max_voice_seconds': 120, 'edit': true},
+          },
           'queues': [
             {'name': 'Billing', 'member': true},
           ],
@@ -199,12 +219,49 @@ class FakeServer {
         return _ok(_detail(q['name']!));
       case 'messages':
         final all = messages[q['name']]!;
+        final now = '$_changeSeq';
         if (q['after'] != null) {
           final i = all.indexWhere((m) => m['id'] == q['after']);
           final newer = all.skip(i + 1).toList();
-          return _ok({'items': newer, 'latest_cursor': newer.isEmpty ? q['after'] : newer.last['id'], 'has_more_before': false});
+          final since = int.tryParse(q['changed_since'] ?? '');
+          return _ok({
+            'items': newer,
+            'latest_cursor': newer.isEmpty ? q['after'] : newer.last['id'],
+            'has_more_before': false,
+            'server_time': now,
+            if (since != null) 'updated': all.take(i + 1).where((m) => (m['_changed'] as int) > since).toList(),
+          });
         }
-        return _ok({'items': all, 'latest_cursor': all.isEmpty ? null : all.last['id'], 'has_more_before': false});
+        return _ok({'items': all, 'latest_cursor': all.isEmpty ? null : all.last['id'], 'has_more_before': false, 'server_time': now});
+      case 'edit_message':
+        messageCalls.add({'action': 'edit', ...b});
+        final m = _find(b['name'], b['message']);
+        m['html'] = '<p>${b['text']}</p>';
+        m['edited'] = true;
+        return _ok(m);
+      case 'remove_message':
+        messageCalls.add({'action': 'remove', ...b});
+        final m = _find(b['name'], b['message']);
+        m['removed'] = true;
+        m['removed_by'] = 'Agent One';
+        m['can_edit'] = false;
+        m['can_remove'] = false;
+        return _ok(m);
+      case 'react':
+        messageCalls.add({'action': 'react', ...b});
+        final m = _find(b['name'], b['message']);
+        final list = (m['reactions'] as List).cast<Map<String, dynamic>>();
+        final r = list.where((x) => x['emoji'] == b['emoji']).toList();
+        if (r.isEmpty) {
+          list.add({'emoji': b['emoji'], 'count': 1, 'mine': true});
+        } else {
+          list.remove(r.first);
+        }
+        return _ok(m);
+      case 'message_history':
+        return _ok([
+          {'text': 'first version', 'edited_by': 'Agent One', 'edited_on': '2026-11-06 12:00:00'},
+        ]);
       case 'mark_read':
         _conv(b['name'])['unread'] = 0;
         return _ok({'read_up_to': '2026-11-06T12:00:00'});
@@ -227,10 +284,18 @@ class FakeServer {
               {'error_code': 'whatsapp_window_closed', 'actions': [{'action': 'open_web_console', 'label': 'Open in the web console'}]});
         }
         final m = _msg(b['internal'] == 1 ? 'internal' : 'outbound', b['text'] as String, internal: b['internal'] == 1, rid: rid);
+        if (b['reply_to'] != null) {
+          final target = _find(id, '${b['reply_to']}');
+          m['reply_to'] = {'id': target['id'], 'author': target['author'], 'excerpt': '${target['html']}'.replaceAll(RegExp('<[^>]+>'), '')};
+        }
         if (b['__file'] != null) {
           final f = b['__file'] as (String, List<int>);
           m['attachment'] = {'name': f.$1};
           files[m['id'] as String] = f.$2;
+          if (b['voice_seconds'] != null) {
+            m['attachment_kind'] = 'audio';
+            m['voice_seconds'] = int.parse('${b['voice_seconds']}');
+          }
         }
         messages[id]!.add(m);
         return _ok({'message': m, 'duplicate': false});

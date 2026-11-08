@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
@@ -8,7 +10,9 @@ import 'chat_actions.dart';
 import 'common.dart';
 import 'composer.dart';
 import 'copilot_sheet.dart';
+import 'message_actions.dart';
 import 'pickers.dart';
+import '../platform/voice.dart';
 
 /// Pick a file for the composer and report problems inline (size, cancelled picker).
 Future<void> pickInto(BuildContext context, void Function(UploadFile) attach) async {
@@ -42,6 +46,7 @@ class ConversationView extends StatefulWidget {
   final bool showDetailsPanel;
   final FocusNode? composerFocus;
   final bool copilot;
+  final MessagingCaps messaging;
 
   const ConversationView({
     super.key,
@@ -52,6 +57,7 @@ class ConversationView extends StatefulWidget {
     this.showDetailsPanel = false,
     this.composerFocus,
     this.copilot = false,
+    this.messaging = const MessagingCaps(),
   });
 
   @override
@@ -123,14 +129,26 @@ class _ConversationViewState extends State<ConversationView> {
                 }
                 final m = c.messages[i - 1];
                 final failed = m.deliveryStatus == 'Failed';
+                final caps = widget.messaging;
+                final system = m.senderType == 'System' && !m.internal;
                 return Bubble(
+                  key: Key('msg-${m.id}'),
                   direction: m.internal ? MessageDirection.internal : m.direction,
                   author: m.author.isEmpty ? (m.senderType == 'System' ? 'System' : '') : m.author,
-                  text: m.text,
+                  text: m.isVoice && m.text.isEmpty ? '' : m.text,
                   at: m.createdAt,
                   failed: failed,
-                  files: [if (m.attachmentName != null) m.attachmentName!],
+                  files: [if (m.attachmentName != null && !m.isImage && !m.isVoice) m.attachmentName!],
                   onOpenFile: (_) => openDownload(context, () => c.api.attachment(m.id)),
+                  quote: m.replyTo,
+                  edited: m.edited,
+                  removed: m.removed,
+                  removedBy: m.removedBy,
+                  reactions: m.reactions,
+                  onReact: caps.reactions.isEmpty ? null : (e) => c.react(m, e),
+                  media: m.attachmentName == null ? null : (m.isImage ? _Thumb(c: c, m: m) : m.isVoice ? _VoiceNote(c: c, m: m) : null),
+                  onMenu: system ? null : () => showMessageActions(context, c, m, caps),
+                  menuKey: Key('msg-menu-${m.id}'),
                   footer: failed
                       ? 'Not delivered: ${m.deliveryError ?? 'unknown error'}'
                       : (m.deliveryStatus != null && !m.internal ? m.deliveryStatus : null),
@@ -138,6 +156,18 @@ class _ConversationViewState extends State<ConversationView> {
               },
             ),
           ),
+          if (c.replyingTo != null)
+            Material(
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
+              child: ListTile(
+                key: const Key('reply-bar'),
+                dense: true,
+                leading: const Icon(Icons.reply, size: 18),
+                title: Text('Replying to ${c.replyingTo!.author}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text(c.replyingTo!.text, maxLines: 1, overflow: TextOverflow.ellipsis),
+                trailing: IconButton(tooltip: 'Cancel reply', icon: const Icon(Icons.close), onPressed: c.cancelReply),
+              ),
+            ),
           Composer(
             draft: c.draft,
             focusNode: widget.composerFocus,
@@ -153,6 +183,8 @@ class _ConversationViewState extends State<ConversationView> {
             onAttach: () => pickInto(context, c.attach),
             onRemoveFile: () => c.attach(null),
             onAi: widget.copilot ? () => CopilotSheet.show(context, c) : null,
+            onVoice: widget.messaging.voice && d.actions.reply ? (f, s) => c.sendVoice(f, s) : null,
+            maxVoiceSeconds: widget.messaging.maxVoiceSeconds,
             onCanned: () async {
               final picked = await CannedPicker.show(context, () => c.api.cannedResponses(channel: d.channel));
               if (picked != null) await c.insertCanned(picked);
@@ -500,4 +532,79 @@ class _DetailsState extends State<_Details> {
       },
     );
   }
+}
+
+
+/// 1.14: photo preview (downloaded through the server's access check; tap opens the full file).
+class _Thumb extends StatelessWidget {
+  final ConversationController c;
+  final ChatMessage m;
+  const _Thumb({required this.c, required this.m});
+
+  @override
+  Widget build(BuildContext context) {
+    final chip = ActionChip(
+        avatar: const Icon(Icons.image_outlined, size: 16),
+        label: Text(m.attachmentName ?? 'Photo', overflow: TextOverflow.ellipsis),
+        onPressed: () => openDownload(context, () => c.api.attachment(m.id)));
+    return FutureBuilder<DownloadedFile?>(
+      future: c.fileOf(m),
+      builder: (context, snap) {
+        final f = snap.data;
+        if (f == null) return snap.connectionState == ConnectionState.done ? chip : const SizedBox(height: 40, width: 40, child: CircularProgressIndicator(strokeWidth: 2));
+        return InkWell(
+          onTap: () => openDownload(context, () async => f),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.memory(Uint8List.fromList(f.bytes),
+                key: Key('thumb-${m.id}'),
+                height: 180,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => chip),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// 1.14: a voice note: tap to play (inline), with its length.
+class _VoiceNote extends StatefulWidget {
+  final ConversationController c;
+  final ChatMessage m;
+  const _VoiceNote({required this.c, required this.m});
+  @override
+  State<_VoiceNote> createState() => _VoiceNoteState();
+}
+
+class _VoiceNoteState extends State<_VoiceNote> {
+  bool _loading = false;
+
+  String get _length {
+    final s = widget.m.voiceSeconds ?? 0;
+    return s == 0 ? '' : ' · ${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _play() async {
+    setState(() => _loading = true);
+    final f = await widget.c.fileOf(widget.m);
+    if (!mounted) return;
+    setState(() => _loading = false);
+    if (f == null) return;
+    try {
+      await VoicePlayer.instance.play(f);
+    } catch (_) {
+      if (mounted) await openDownload(context, () async => f); // no inline player on this device: system player
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => ActionChip(
+        key: Key('voice-${widget.m.id}'),
+        avatar: _loading
+            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+            : const Icon(Icons.play_arrow, size: 18),
+        label: Text('Voice note$_length'),
+        onPressed: _loading ? null : _play,
+      );
 }

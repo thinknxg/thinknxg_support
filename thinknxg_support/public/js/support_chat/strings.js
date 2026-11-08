@@ -16,6 +16,10 @@ export const STRINGS = {
 		waiting_offline: "Our team is offline. We'll reply here and by email when we're back.",
 		with_agent: "You're chatting with {0}", typing: "{0} is typing…", seen: "Seen", sources: "Sources",
 		helpful: "Helpful", not_helpful: "Not helpful", thanks_fb: "Thanks for the feedback",
+		reply: "Reply", react: "React", edit: "Edit", remove: "Remove", edited: "edited", save: "Save", cancel: "Cancel",
+		replying_to: "Replying to", remove_confirm: "Remove this message?", record: "Record a voice note",
+		recording: "Recording", voice_note: "Voice note", photo: "Photo", download: "Download",
+		mic_denied: "Allow the microphone to record a voice note.",
 	},
 	ar: {
 		launcher: "تحدث مع الدعم", close: "تصغير المحادثة", online: "نحن متصلون", offline: "نحن غير متصلين الآن",
@@ -34,5 +38,9 @@ export const STRINGS = {
 		waiting_offline: "فريقنا غير متصل الآن. سنرد هنا وعبر البريد عند عودتنا.",
 		with_agent: "أنت تتحدث مع {0}", typing: "{0} يكتب…", seen: "تمت المشاهدة", sources: "المصادر",
 		helpful: "مفيد", not_helpful: "غير مفيد", thanks_fb: "شكراً على تقييمك",
+		reply: "رد", react: "تفاعل", edit: "تعديل", remove: "حذف", edited: "معدّلة", save: "حفظ", cancel: "إلغاء",
+		replying_to: "رد على", remove_confirm: "هل تريد حذف هذه الرسالة؟", record: "تسجيل رسالة صوتية",
+		recording: "جارٍ التسجيل", voice_note: "رسالة صوتية", photo: "صورة", download: "تنزيل",
+		mic_denied: "اسمح باستخدام الميكروفون لتسجيل رسالة صوتية.",
 	},
 };

@@ -35,8 +35,22 @@ class StaffApi {
   Future<ConversationSummary> conversation(String id) async =>
       ConversationSummary.fromJson(_map(await client.get('conversation', {'name': id})));
 
-  Future<MessagePage> messages(String id, {String? before, String? after, int limit = 30}) async =>
-      MessagePage.fromJson(_map(await client.get('messages', {'name': id, 'before': before, 'after': after, 'limit': '$limit'})));
+  Future<MessagePage> messages(String id, {String? before, String? after, int limit = 30, String? changedSince}) async =>
+      MessagePage.fromJson(_map(await client.get('messages',
+          {'name': id, 'before': before, 'after': after, 'limit': '$limit', 'changed_since': changedSince})));
+
+  // 1.14: change messages after sending
+  Future<ChatMessage> editMessage(String id, String messageId, String text) async =>
+      ChatMessage.fromJson(_map(await client.post('edit_message', {'name': id, 'message': messageId, 'text': text})));
+
+  Future<ChatMessage> removeMessage(String id, String messageId) async =>
+      ChatMessage.fromJson(_map(await client.post('remove_message', {'name': id, 'message': messageId})));
+
+  Future<ChatMessage> react(String id, String messageId, String emoji) async =>
+      ChatMessage.fromJson(_map(await client.post('react', {'name': id, 'message': messageId, 'emoji': emoji})));
+
+  Future<List<Map<String, dynamic>>> messageHistory(String id, String messageId) async =>
+      [for (final h in _list(await client.get('message_history', {'name': id, 'message': messageId}))) _map(h)];
 
   Future<void> markRead(String id, String messageId) => client.post('mark_read', {'name': id, 'message': messageId});
 
@@ -71,8 +85,15 @@ class StaffApi {
 
   /// Reply to the customer, or (internal) a staff-only note. Retrying with the same [clientRequestId] never sends twice.
   Future<({ChatMessage message, bool duplicate})> reply(String id, String text,
-      {required String clientRequestId, bool internal = false, UploadFile? file}) async {
-    final fields = {'name': id, 'text': text, 'client_request_id': clientRequestId, 'internal': internal ? 1 : 0};
+      {required String clientRequestId, bool internal = false, UploadFile? file, String? replyTo, int? voiceSeconds}) async {
+    final fields = {
+      'name': id,
+      'text': text,
+      'client_request_id': clientRequestId,
+      'internal': internal ? 1 : 0,
+      if (replyTo != null) 'reply_to': replyTo,
+      if (voiceSeconds != null) 'voice_seconds': voiceSeconds,
+    };
     final r = _map(file == null ? await client.post('reply', fields) : await client.postFile('reply', fields, file));
     return (message: ChatMessage.fromJson(_map(r['message'])), duplicate: r['duplicate'] == true);
   }

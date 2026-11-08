@@ -333,7 +333,8 @@ def react(message: str, emoji: str, actor: Actor, conversation: str | None = Non
         users.append(actor.key)
     else:
         users.remove(actor.key)
-    frappe.db.set_value(MSG, row.name, "reactions_json", json.dumps({k: v for k, v in data.items() if v}) or None)
+    kept = {k: v for k, v in data.items() if v}
+    frappe.db.set_value(MSG, row.name, "reactions_json", json.dumps(kept) if kept else None)
     if actor.kind == "staff" and row.channel == "WhatsApp" and row.direction == "Inbound" and row.external_message_id \
             and not cint(row.is_internal):
         frappe.enqueue("thinknxg_support.integrations.whatsapp.send_reaction", queue="short", enqueue_after_commit=True,
@@ -351,7 +352,8 @@ def whatsapp_reaction(external_message_id: str, emoji: str | None):
     data = {e: [k for k in v if k != "c:wa"] for e, v in reactions_of(row.reactions_json).items()}
     if emoji:
         data.setdefault(emoji if emoji in REACTIONS else REACTIONS[0], []).append("c:wa")
-    frappe.db.set_value(MSG, row.name, "reactions_json", json.dumps({k: v for k, v in data.items() if v}) or None)
+    kept = {k: v for k, v in data.items() if v}
+    frappe.db.set_value(MSG, row.name, "reactions_json", json.dumps(kept) if kept else None)
     _changed(row)
 
 

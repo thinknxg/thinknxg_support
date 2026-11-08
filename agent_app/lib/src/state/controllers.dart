@@ -166,6 +166,7 @@ class Draft {
   List<Map<String, dynamic>> serverActions = const [];
   String? notice;
   UploadFile? file;
+  int? voiceSeconds; // 1.14: the file is a voice note of this length
 }
 
 /// One open conversation: detail, timeline (paged back, polled forward), read acknowledgement, actions, composer.
@@ -188,6 +189,9 @@ class ConversationController extends ChangeNotifier with _Polling {
   final Draft draft = Draft();
   String? _readUpTo;
   int _ticks = 0;
+  String? _serverTime; // 1.14: edits, removals and reactions since then come back in `updated`
+  ChatMessage? replyingTo;
+  final Map<String, Future<DownloadedFile?>> _files = {};
 
   ConversationController(this.api, this.id, {required this.onExpired, this.onChanged, String Function()? requestIdFactory})
       : requestIdFactory = requestIdFactory ?? newRequestId;
@@ -203,6 +207,7 @@ class ConversationController extends ChangeNotifier with _Polling {
       beforeCursor = page.beforeCursor;
       hasMoreBefore = page.hasMoreBefore;
       latestCursor = page.latestCursor;
+      _serverTime = page.serverTime;
       error = null;
       await _acknowledge();
     } on SessionExpired {
@@ -235,7 +240,12 @@ class ConversationController extends ChangeNotifier with _Polling {
   /// Polling tick: new messages since the latest one, and the detail every few ticks.
   Future<void> poll() async {
     try {
-      final page = await api.messages(id, after: latestCursor);
+      final page = await api.messages(id, after: latestCursor, changedSince: _serverTime);
+      _serverTime = page.serverTime ?? _serverTime;
+      if (page.updated.isNotEmpty) {
+        _replace(page.updated);
+        safeNotify();
+      }
       if (page.items.isNotEmpty) {
         _merge(page.items);
         latestCursor = page.latestCursor ?? latestCursor;
@@ -257,6 +267,74 @@ class ConversationController extends ChangeNotifier with _Polling {
       onExpired();
     } on ApiException {
       // keep showing what we have; the next tick tries again
+    }
+  }
+
+  /// Messages changed in place (edited, removed, reactions): only ones already shown are replaced.
+  void _replace(List<ChatMessage> changed) {
+    final byId = {for (final m in changed) m.id: m};
+    messages = [for (final m in messages) byId[m.id] ?? m];
+  }
+
+  // ---------------------------------------------------------------- 1.14: reply, edit, remove, react, files, voice
+  void startReply(ChatMessage m) {
+    replyingTo = m;
+    safeNotify();
+  }
+
+  void cancelReply() {
+    replyingTo = null;
+    safeNotify();
+  }
+
+  Future<bool> _change(Future<ChatMessage> Function() fn) async {
+    actionError = null;
+    try {
+      _replace([await fn()]);
+      safeNotify();
+      return true;
+    } on SessionExpired {
+      onExpired();
+    } on ApiException catch (e) {
+      actionError = e.message;
+      safeNotify();
+    }
+    return false;
+  }
+
+  Future<bool> editMessage(ChatMessage m, String text) => _change(() => api.editMessage(id, m.id, text.trim()));
+  Future<bool> removeMessage(ChatMessage m) => _change(() => api.removeMessage(id, m.id));
+  Future<bool> react(ChatMessage m, String emoji) => _change(() => api.react(id, m.id, emoji));
+
+  Future<List<Map<String, dynamic>>> history(ChatMessage m) async {
+    try {
+      return await api.messageHistory(id, m.id);
+    } on ApiException catch (e) {
+      actionError = e.message;
+      safeNotify();
+      return const [];
+    }
+  }
+
+  /// The message's file, downloaded once (after the server checks access again).
+  Future<DownloadedFile?> fileOf(ChatMessage m) => _files.putIfAbsent(m.id, () async {
+        try {
+          return await api.attachment(m.id);
+        } on ApiException {
+          _files.remove(m.id);
+          return null;
+        }
+      });
+
+  /// Send a recorded voice note (as a reply or a note, following the composer's mode).
+  Future<void> sendVoice(UploadFile file, int seconds) async {
+    final prev = draft.file;
+    draft.file = file;
+    draft.voiceSeconds = seconds;
+    await send();
+    if (draft.state != SendState.sent) {
+      draft.file = prev;
+      draft.voiceSeconds = null;
     }
   }
 
@@ -454,8 +532,14 @@ class ConversationController extends ChangeNotifier with _Polling {
     safeNotify();
     try {
       final r = await api.reply(id, text,
-          clientRequestId: draft.requestId!, internal: draft.mode == ComposerMode.note, file: draft.file);
+          clientRequestId: draft.requestId!,
+          internal: draft.mode == ComposerMode.note,
+          file: draft.file,
+          replyTo: replyingTo?.id,
+          voiceSeconds: draft.file != null ? draft.voiceSeconds : null);
       _merge([r.message]);
+      replyingTo = null;
+      draft.voiceSeconds = null;
       if (r.duplicate && r.message.text.trim() != text) {
         draft.notice = 'Your earlier message had already been sent. Edit and send again if you need to add more.';
         draft.requestId = null;

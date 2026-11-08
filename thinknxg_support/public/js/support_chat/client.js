@@ -74,6 +74,15 @@ export async function chatCall(method, params = {}, { post = false, files = [], 
 	return data.message;
 }
 
+export async function chatBlob(method, params = {}, token = null) {
+	const headers = {};
+	if (token) headers["X-Support-Chat-Token"] = token;
+	const q = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([, v]) => v != null && v !== ""))).toString();
+	const res = await fetch(BASE + method + (q ? "?" + q : ""), { headers, credentials: "same-origin" });
+	if (!res.ok) throw new ChatError("error", res.status);
+	return res.blob();
+}
+
 export function newId() {
 	if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
 	return "c-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
