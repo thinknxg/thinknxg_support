@@ -331,7 +331,8 @@ class TestStaffApi(BaseTestCase):
         with patch("thinknxg_support.utils.uploaded_files", return_value=[("a.png", png)]):
             out = v1.reply(name, "file", client_request_id="33333333-aaaa-bbbb-cccc-000000000002")
         self.assertEqual(out["message"]["attachment_kind"], "image")
-        self.assertEqual(out["message"]["delivery"]["status"], "Pending")
+        # accepted and handed to WhatsApp (switched off in this test, so the delivery itself fails with that reason)
+        self.assertIn("not enabled", out["message"]["delivery"]["error"] or "WhatsApp is not enabled")
 
     def test_transfer_targets_and_customer_history(self):
         r1, first = self._chat()

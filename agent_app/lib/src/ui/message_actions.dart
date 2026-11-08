@@ -77,7 +77,7 @@ Future<void> showMessageActions(BuildContext context, ConversationController c, 
     );
     if (ok == true) await c.removeMessage(m);
   } else if (choice == 'history') {
-    final rows = await c.history(m);
+    final rows = await c.messageHistory(m);
     if (!context.mounted) return;
     await showDialog<void>(
       context: context,

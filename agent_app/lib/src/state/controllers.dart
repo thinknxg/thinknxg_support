@@ -306,7 +306,7 @@ class ConversationController extends ChangeNotifier with _Polling {
   Future<bool> removeMessage(ChatMessage m) => _change(() => api.removeMessage(id, m.id));
   Future<bool> react(ChatMessage m, String emoji) => _change(() => api.react(id, m.id, emoji));
 
-  Future<List<Map<String, dynamic>>> history(ChatMessage m) async {
+  Future<List<Map<String, dynamic>>> messageHistory(ChatMessage m) async {
     try {
       return await api.messageHistory(id, m.id);
     } on ApiException catch (e) {
