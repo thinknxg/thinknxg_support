@@ -95,7 +95,7 @@ index on (conversation, client_message_id). Tickets: *Support Agent Request* log
 
 `reply` and `ticket_reply` also accept one file (multipart/form-data, field `file`, same size and type rules as the
 portal). Files are private, attached to the message (or ticket) and never included in lists. WhatsApp: files are
-refused with **422** `attachments_unsupported` (outbound WhatsApp media is not sent yet); attach them to a note.
+sent through the WhatsApp Cloud API since 1.14 (images, documents and MP4/AAC/MP3/OGG audio; other audio goes as a file).
 | `sign_out` | POST | `push_token` | stops push to this device (the app then revokes its token and clears local data) |
 
 **ConversationSummary**: `id, subject, display_name, channel, status, handling, queue, assignee{user,name}, customer,

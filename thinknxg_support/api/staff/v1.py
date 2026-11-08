@@ -72,6 +72,7 @@ def bootstrap():
             "helpdesk": helpdesk_agent.available(), "assistant": _assistant_on(),
             "wrap_up": True, "canned_responses": True, "alerts": True, "push": bool(s.push_enabled),
             "copilot": _copilot_on(),
+            "messaging": _messaging_caps(),  # 1.14: reply, edit, remove, reactions, voice notes
             "realtime": False,  # first release: authenticated polling (see docs/agent-api.md)
             "integrations": {k: bool((v or {}).get("installed")) for k, v in (caps.get("apps") or {}).items()}
             if isinstance(caps, dict) else {},
@@ -80,6 +81,12 @@ def bootstrap():
         "poll": {"inbox_seconds": s.inbox_poll_seconds or 10, "thread_seconds": s.thread_poll_seconds or 4,
                  "alerts_seconds": s.alerts_poll_seconds or 15},
     }
+
+
+def _messaging_caps() -> dict:
+    from thinknxg_support.integrations import messaging
+
+    return {**messaging.capabilities(), "reply_to": True, "edit": True, "remove": True, "changed_since": True}
 
 
 def _copilot_on() -> bool:
@@ -269,11 +276,25 @@ def conversation(name: str):
     return conversation_detail(_conv(name))
 
 
-def _message(m) -> dict:
+def _message(m, actor=None, closed=None) -> dict:
+    from thinknxg_support.integrations import messaging
+
     try:
         actions = json.loads(m.get("actions_json") or "{}")
     except ValueError:
         actions = {}
+    actor = actor or messaging.staff()
+    return {**_message_base(m, actions), **{
+        "reply_to": messaging.reply_view(m.get("reply_to")) if m.get("reply_to") else None,
+        "edited": bool(m.get("edited_on")), "removed": bool(cint(m.get("hidden"))), "removed_by": m.get("hidden_by"),
+        "reactions": messaging.reactions_view(m.get("reactions_json"), actor.key),
+        "attachment_kind": messaging.attachment_kind(m.attachment),
+        "voice_seconds": cint(m.get("voice_seconds")) or None,
+        "can_edit": messaging.can_edit(m, actor, closed), "can_remove": messaging.can_remove(m, actor, closed),
+    }}
+
+
+def _message_base(m, actions) -> dict:
     return {"id": m.name, "direction": "inbound" if m.direction == "Inbound" else ("internal" if cint(m.is_internal) else "outbound"),
             "internal": bool(cint(m.is_internal)), "sender_type": m.sender_type, "author": m.sender_name or m.sender,
             "author_user": m.sender, "html": m.content or "", "created_at": _iso(m.creation),
@@ -284,13 +305,21 @@ def _message(m) -> dict:
 
 
 MSG_FIELDS = ["name", "direction", "sender", "sender_name", "content", "attachment", "is_internal", "creation",
-              "delivery_status", "delivery_error", "sender_type", "client_message_id", "read_by_customer", "actions_json"]
+              "delivery_status", "delivery_error", "sender_type", "client_message_id", "read_by_customer", "actions_json",
+              "conversation", "channel", "reply_to", "edited_on", "hidden", "hidden_by", "reactions_json", "voice_seconds"]
 
 
 @frappe.whitelist(methods=["GET"])
-def messages(name: str, before: str | None = None, after: str | None = None, limit: int = 30):
-    """Timeline page, oldest first within the page. `before` pages back; `after` returns newer messages (polling)."""
-    _conv(name)
+def messages(name: str, before: str | None = None, after: str | None = None, limit: int = 30,
+             changed_since: str | None = None):
+    """Timeline page, oldest first within the page. `before` pages back; `after` returns newer messages (polling).
+    1.14: with `changed_since` (the `server_time` of the previous response), `updated` lists older messages that were
+    edited, removed or reacted to since then."""
+    from thinknxg_support.integrations import messaging
+
+    doc = _conv(name)
+    actor, closed = messaging.staff(), doc.status == "Closed"
+    server_time = frappe.utils.now_datetime()
     limit = max(1, min(cint(limit) or 30, 100))
     b, a = cursors.decode(before), cursors.decode(after)
     cond, args = ["conversation = %s"], [name]
@@ -307,11 +336,20 @@ def messages(name: str, before: str | None = None, after: str | None = None, lim
         rows = list(reversed(rows))  # oldest first within the page
     first, last = (rows[0], rows[-1]) if rows else (None, None)
     older = bool(more and not a)  # pages back exist only when paging backwards ran out of room
-    return {"items": [_message(m) for m in rows],
-            "before_cursor": cursors.encode(str(first.creation), first.name) if first and older else None,
-            "has_more_before": older,
-            # when paging back, the newest row of the conversation is not on this page: keep the caller's cursor
-            "latest_cursor": (cursors.encode(str(last.creation), last.name) if last and not b else after)}
+    out = {"items": [_message(m, actor, closed) for m in rows],
+           "before_cursor": cursors.encode(str(first.creation), first.name) if first and older else None,
+           "has_more_before": older,
+           # when paging back, the newest row of the conversation is not on this page: keep the caller's cursor
+           "latest_cursor": (cursors.encode(str(last.creation), last.name) if last and not b else after),
+           "server_time": _iso(server_time)}
+    if changed_since:
+        seen = {m.name for m in rows}
+        since = frappe.utils.get_datetime(str(changed_since).replace("T", " ").rstrip("Z").split("+")[0])
+        changed = frappe.db.sql(f"select {', '.join(MSG_FIELDS)} from `tab{MSG}` where conversation=%s and modified > %s "
+                                f"and modified <= %s order by creation asc limit 100", (name, since, server_time),
+                                as_dict=True)
+        out["updated"] = [_message(m, actor, closed) for m in changed if m.name not in seen]
+    return out
 
 
 @frappe.whitelist(methods=["POST"])
@@ -454,7 +492,8 @@ def _text_html(text: str) -> str:
 
 
 @frappe.whitelist(methods=["POST"])
-def reply(name: str, text: str, client_request_id: str, internal: int = 0):
+def reply(name: str, text: str, client_request_id: str, internal: int = 0, reply_to: str | None = None,
+          voice_seconds: int | None = None):
     """Reply to the customer (internal=0) or add a staff-only note (internal=1). Retrying with the same
     client_request_id returns the first message instead of sending again."""
     doc = _conv(name, "write")
@@ -470,9 +509,9 @@ def reply(name: str, text: str, client_request_id: str, internal: int = 0):
     from thinknxg_support.utils import uploaded_files
 
     files = uploaded_files()[:1]
-    if files and doc.channel == "WhatsApp" and not internal:
-        raise ChannelActionRequired(_("Files cannot be sent over WhatsApp from the app yet. Share a link instead, or "
-                                      "attach the file to an internal note."), "attachments_unsupported", [])
+    from thinknxg_support.integrations import messaging
+
+    messaging.check_upload("staff", files, voice_seconds)  # 1.14: WhatsApp files are sent through the Cloud API
     if not internal and doc.status == "Closed":
         raise ChannelActionRequired(_("This conversation is closed."), "conversation_closed", [])
     if not internal and doc.channel == "WhatsApp":
@@ -486,10 +525,47 @@ def reply(name: str, text: str, client_request_id: str, internal: int = 0):
     from thinknxg_support.integrations import conversations
 
     out = conversations.post_agent_message(doc, _text_html(text) if (text or "").strip() else "", internal=internal,
-                                           source="app", client_message_id=cid, files=files)
+                                           source="app", client_message_id=cid, files=files, reply_to=reply_to,
+                                           voice_seconds=voice_seconds)
     msg = frappe.db.get_value(MSG, out.get("name") or {"conversation": doc.name, "client_message_id": cid}, MSG_FIELDS,
                               as_dict=True)
     return {"message": _message(msg), "duplicate": bool(out.get("duplicate"))}
+
+
+# ------------------------------------------------------------------ 1.14: edit, remove, react, history
+@frappe.whitelist(methods=["POST"])
+def edit_message(name: str, message: str, text: str):
+    from thinknxg_support.integrations import messaging
+
+    doc = _conv(name, "write")
+    messaging.edit(message, text, messaging.staff(), doc.name)
+    return _message(frappe.db.get_value(MSG, message, MSG_FIELDS, as_dict=True), closed=doc.status == "Closed")
+
+
+@frappe.whitelist(methods=["POST"])
+def remove_message(name: str, message: str):
+    from thinknxg_support.integrations import messaging
+
+    doc = _conv(name, "write")
+    messaging.remove(message, messaging.staff(), doc.name)
+    return _message(frappe.db.get_value(MSG, message, MSG_FIELDS, as_dict=True), closed=doc.status == "Closed")
+
+
+@frappe.whitelist(methods=["POST"])
+def react(name: str, message: str, emoji: str):
+    from thinknxg_support.integrations import messaging
+
+    doc = _conv(name)
+    messaging.react(message, emoji, messaging.staff(), doc.name)
+    return _message(frappe.db.get_value(MSG, message, MSG_FIELDS, as_dict=True), closed=doc.status == "Closed")
+
+
+@frappe.whitelist(methods=["GET"])
+def message_history(name: str, message: str):
+    from thinknxg_support.integrations import messaging
+
+    doc = _conv(name)
+    return messaging.history(message, doc.name)
 
 
 # ------------------------------------------------------------------ tickets (Helpdesk)

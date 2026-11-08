@@ -80,18 +80,28 @@ def thread(name):
     msgs = frappe.get_all(MSG, filters={"conversation": name}, order_by="creation asc", limit=1000,
                           fields=["name", "direction", "sender", "sender_name", "content", "attachment", "is_internal",
                                   "creation", "delivery_status", "delivery_error", "sender_type", "response_source",
-                                  "confidence", "feedback", "actions_json", "read_by_customer", "read_by_agent"])
+                                  "confidence", "feedback", "actions_json", "read_by_customer", "read_by_agent",
+                                  "conversation", "channel", "reply_to", "edited_on", "hidden", "hidden_by",
+                                  "reactions_json", "voice_seconds"])
     unread = [m.name for m in msgs if m.direction == "Inbound" and not m.read_by_agent]
     if unread:
         frappe.db.sql("update `tabSupport Portal Message` set read_by_agent=1 where name in %s", (tuple(unread),))
         realtime.bump(name)
     if cint(doc.unread_agent):
         frappe.db.set_value(CONV, name, "unread_agent", 0, update_modified=False)
+    from thinknxg_support.integrations import messaging
+
+    me, closed = messaging.staff(), doc.status == "Closed"
     for m in msgs:
         try:
-            m["actions"] = json.loads(m.pop("actions_json") or "{}")
+            m["actions"] = json.loads(m.get("actions_json") or "{}")
         except ValueError:
             m["actions"] = {}
+        m["reply"] = messaging.reply_view(m.reply_to) if m.reply_to else None
+        m["reactions"] = messaging.reactions_view(m.pop("reactions_json"), me.key)
+        m["attachment_kind"] = messaging.attachment_kind(m.attachment)
+        m["can_edit"], m["can_remove"] = messaging.can_edit(m, me, closed), messaging.can_remove(m, me, closed)
+        m.pop("actions_json", None)
     meta = {k: doc.get(k) for k in ("name", "subject", "status", "channel", "customer", "contact", "is_guest",
                                     "guest_name", "guest_email", "guest_phone", "source_page", "whatsapp_number",
                                     "whatsapp_profile_name", "whatsapp_window_expires", "assigned_agent",
@@ -102,6 +112,7 @@ def thread(name):
     meta["customer_name"] = frappe.db.get_value("Customer", doc.customer, "customer_name") if doc.customer else None
     meta["assigned_name"] = frappe.db.get_value("User", doc.assigned_agent, "full_name") if doc.assigned_agent else None
     meta.update(_live_state(name))
+    meta["messaging"] = messaging.capabilities()
     return {"conversation": meta, "messages": msgs}
 
 
@@ -122,11 +133,50 @@ def _live_state(name):
 
 
 @frappe.whitelist(methods=["POST"])
-def reply(name, content, internal=0):
+def reply(name, content=None, internal=0, reply_to=None, voice_seconds=None):
+    from thinknxg_support.integrations import messaging
+    from thinknxg_support.utils import uploaded_files
+
     doc = _doc(name, "write")
-    if not strip_html(content or "").strip():
+    files = uploaded_files()[:1]
+    if not strip_html(content or "").strip() and not files:
         frappe.throw(_("Write a message first."))
-    return conversations.post_agent_message(doc, content, internal=cint(internal), source="desk")
+    messaging.check_upload("staff", files, voice_seconds)
+    return conversations.post_agent_message(doc, content or "", internal=cint(internal), source="desk", files=files,
+                                            reply_to=reply_to, voice_seconds=voice_seconds)
+
+
+# 1.14: change messages after sending (same rules as the apps and the widget)
+@frappe.whitelist(methods=["POST"])
+def edit_message(name, message, text):
+    from thinknxg_support.integrations import messaging
+
+    _doc(name, "write")
+    return messaging.edit(message, text, messaging.staff(), name)
+
+
+@frappe.whitelist(methods=["POST"])
+def remove_message(name, message):
+    from thinknxg_support.integrations import messaging
+
+    _doc(name, "write")
+    return messaging.remove(message, messaging.staff(), name)
+
+
+@frappe.whitelist(methods=["POST"])
+def react(name, message, emoji):
+    from thinknxg_support.integrations import messaging
+
+    _doc(name)
+    return messaging.react(message, emoji, messaging.staff(), name)
+
+
+@frappe.whitelist(methods=["GET"])
+def message_history(name, message):
+    from thinknxg_support.integrations import messaging
+
+    _doc(name)
+    return messaging.history(message, name)
 
 
 @frappe.whitelist(methods=["POST"])

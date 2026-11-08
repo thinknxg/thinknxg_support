@@ -114,7 +114,16 @@ def widget_config(context: str = "website") -> dict:
         "survey": _survey_config(),
         "assistant": _assistant_info(mode),
         "welcome": _welcome(),
+        "messaging": _messaging_caps(mode),
     }
+
+
+def _messaging_caps(mode) -> dict:
+    from thinknxg_support.integrations import messaging
+
+    caps = messaging.capabilities()
+    caps["uploads"] = mode == "customer" or caps["guest_uploads"]
+    return caps
 
 
 def _assistant_info(mode: str) -> dict | None:
@@ -246,8 +255,11 @@ def guest_messages(conversation: str, token: str) -> dict:
         updates["guest_last_seen"] = now_datetime()
     if cint(conv.unread_customer) or "guest_last_seen" in updates:
         frappe.db.set_value(CONV, conv.name, updates, update_modified=False)
+    from thinknxg_support.integrations import messaging
+
+    actor, closed = messaging.guest(conv), conv.status == "Closed"
     return {"conversation": conv.name, "status": conv.status, "rated": bool(conv.chat_rating),
-            "messages": [conversations.customer_view(r) for r in rows], "state": chat_state(conv)}
+            "messages": [conversations.customer_view(r, None, actor, closed) for r in rows], "state": chat_state(conv)}
 
 
 def guest_state(conversation: str, token: str) -> dict:
@@ -263,15 +275,92 @@ def guest_state(conversation: str, token: str) -> dict:
 
 
 def guest_send(conversation: str, token: str, message: str, client_message_id: str | None = None,
-               payload: str | None = None) -> dict:
+               payload: str | None = None, reply_to: str | None = None, voice_seconds=None) -> dict:
+    from thinknxg_support.integrations import messaging
+    from thinknxg_support.utils import uploaded_files
+
     conv = _guest_conv(conversation, token)
     ratelimit.check("guest_chat_msg", settings().guest_chat_rate_limit or 20, 600)
     if len(message or "") > 4000:
         frappe.throw(_("Message is too long."))
+    files = uploaded_files()[:1]
+    messaging.check_upload("guest", files, voice_seconds)
     frappe.db.set_value(CONV, conv.name, "guest_last_seen", now_datetime(), update_modified=False)
     return conversations.add_inbound_message(conv, guest_text(message), sender=frappe.session.user,
                                              sender_name=conv.guest_name, client_message_id=client_message_id, allow_html=False,
-                                             button_payload=payload)
+                                             button_payload=payload, files=files, reply_to=reply_to,
+                                             voice_seconds=voice_seconds)
+
+
+# ------------------------------------------------------------------ 1.14: edit, remove, react, files
+def guest_edit(conversation: str, token: str, message: str, text: str) -> dict:
+    from thinknxg_support.integrations import messaging
+
+    conv = _guest_conv(conversation, token)
+    return messaging.edit(message, text, messaging.guest(conv), conv.name)
+
+
+def guest_remove(conversation: str, token: str, message: str) -> dict:
+    from thinknxg_support.integrations import messaging
+
+    conv = _guest_conv(conversation, token)
+    return messaging.remove(message, messaging.guest(conv), conv.name)
+
+
+def guest_react(conversation: str, token: str, message: str, emoji: str) -> dict:
+    from thinknxg_support.integrations import messaging
+
+    conv = _guest_conv(conversation, token)
+    return messaging.react(message, emoji, messaging.guest(conv), conv.name)
+
+
+def _visible_msg(conv_name: str, message: str):
+    msg = frappe.db.get_value(MSG, message, ["name", "conversation", "attachment", "is_internal", "hidden"],
+                              as_dict=True) if message else None
+    if not msg or msg.conversation != conv_name or cint(msg.is_internal):
+        raise PortalAccessError(_("File not found."))
+    return msg
+
+
+def guest_attachment(conversation: str, token: str, message: str):
+    from thinknxg_support.integrations import messaging
+
+    ratelimit.check("chat_download", 60, 600)
+    conv = _guest_conv(conversation, token)
+    messaging.stream_attachment(_visible_msg(conv.name, message))
+
+
+def _customer_msg_conv(pu, customer, message: str):
+    conv_name = frappe.db.get_value(MSG, message, "conversation") if message else None
+    row = frappe.db.get_value(CONV, conv_name, ["name", "customer", "started_by"], as_dict=True) if conv_name else None
+    if not row or row.customer != customer or row.started_by != pu.user:
+        raise PortalAccessError(_("Message not found."))
+    return row.name
+
+
+def customer_edit(pu, customer, message: str, text: str) -> dict:
+    from thinknxg_support.integrations import messaging
+
+    return messaging.edit(message, text, messaging.customer(pu), _customer_msg_conv(pu, customer, message))
+
+
+def customer_remove(pu, customer, message: str) -> dict:
+    from thinknxg_support.integrations import messaging
+
+    return messaging.remove(message, messaging.customer(pu), _customer_msg_conv(pu, customer, message))
+
+
+def customer_react(pu, customer, message: str, emoji: str) -> dict:
+    from thinknxg_support.integrations import messaging
+
+    return messaging.react(message, emoji, messaging.customer(pu), _customer_msg_conv(pu, customer, message))
+
+
+def customer_attachment(pu, customer, message: str):
+    from thinknxg_support.integrations import messaging
+
+    ratelimit.check("chat_download", 60, 600)
+    messaging.stream_attachment(_visible_msg(_customer_msg_conv(pu, customer, message), message))
 
 
 def guest_typing(conversation: str, token: str):
@@ -336,8 +425,12 @@ def customer_state(pu, customer) -> dict:
     return {"conversation": conv.name if conv else None, "state": chat_state(conv) if conv else None}
 
 
-def customer_send(pu, customer, message: str, client_message_id=None, files=None, payload=None) -> dict:
+def customer_send(pu, customer, message: str, client_message_id=None, files=None, payload=None, reply_to=None,
+                  voice_seconds=None) -> dict:
     ratelimit.check("message", settings().message_rate_limit)
+    from thinknxg_support.integrations import messaging
+
+    messaging.check_upload("customer", files, voice_seconds)
     conv = _active_customer_chat(pu, customer)
     if not conv:
         r = conversations.start(pu, customer, _("Live chat"), message, conversation_type="Live Chat",
@@ -346,7 +439,8 @@ def customer_send(pu, customer, message: str, client_message_id=None, files=None
             first = frappe.db.get_value(MSG, {"conversation": r["name"]}, "name", order_by="creation asc")
             frappe.db.set_value(MSG, first, "button_payload", clean_text(payload, 140))
         return r
-    return conversations.post_customer_message(pu, conv, message, client_message_id, files=files, button_payload=payload)
+    return conversations.post_customer_message(pu, conv, message, client_message_id, files=files, button_payload=payload,
+                                               reply_to=reply_to, voice_seconds=voice_seconds)
 
 
 def customer_typing(pu, customer):

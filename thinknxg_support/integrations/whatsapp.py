@@ -99,6 +99,87 @@ def _send(payload: dict) -> str:
     return (data.get("messages") or [{}])[0].get("id")
 
 
+def reply_context_of(message: dict, conversation: str | None = None) -> str | None:
+    """1.14: the message the customer replied to on WhatsApp (their "reply" bubble), when we know it."""
+    ctx = (message.get("context") or {}).get("id")
+    if not ctx:
+        return None
+    filters = {"external_message_id": ctx}
+    if conversation:
+        filters["conversation"] = conversation
+    return frappe.db.get_value(MSG, filters, "name")
+
+
+WA_MEDIA_LIMIT = {"image": 5, "audio": 16, "document": 100}
+
+
+def _upload_media(filename: str, content: bytes, mime: str) -> str:
+    """Upload a file to the Cloud API; returns the media id to send."""
+    s = settings()
+    url = f"{GRAPH}/{s.whatsapp_api_version or 'v22.0'}/{s.whatsapp_phone_number_id}/media"
+    try:
+        r = requests.post(url, headers={"Authorization": f"Bearer {_secret('whatsapp_access_token')}"},
+                          data={"messaging_product": "whatsapp", "type": mime}, files={"file": (filename, content, mime)},
+                          timeout=60)
+    except requests.RequestException as e:
+        raise WhatsAppError(f"network: {e.__class__.__name__}", retryable=True)
+    try:
+        data = r.json()
+    except ValueError:
+        data = {}
+    if r.status_code >= 400 or not data.get("id"):
+        err = data.get("error") or {}
+        raise WhatsAppError(str(err.get("message") or f"media upload failed (HTTP {r.status_code})")[:500],
+                            retryable=r.status_code >= 500)
+    return data["id"]
+
+
+def _media_payload(msg, caption: str) -> dict | None:
+    """The media part of an outgoing message (image, audio or document), uploaded first."""
+    if not msg.attachment:
+        return None
+    import mimetypes
+
+    from thinknxg_support.integrations import messaging
+
+    fname = frappe.db.get_value("File", {"file_url": msg.attachment}, "name")
+    if not fname:
+        return None
+    f = frappe.get_doc("File", fname)
+    content = f.get_content()
+    content = content.encode() if isinstance(content, str) else content
+    kind = messaging.attachment_kind(msg.attachment)
+    wa_type = {"image": "image", "audio": "audio"}.get(kind, "document")
+    if wa_type == "image" and not messaging.image_ok(content, msg.attachment):
+        wa_type = "document"
+    if len(content) > WA_MEDIA_LIMIT[wa_type] * 1024 * 1024:
+        raise WhatsAppError(_("The file is too large for WhatsApp ({0} MB at most).").format(WA_MEDIA_LIMIT[wa_type]))
+    mime = mimetypes.guess_type(f.file_name)[0] or "application/octet-stream"
+    if wa_type == "audio" and messaging.ext_of(f.file_name) in ("ogg", "oga", "opus"):
+        mime = "audio/ogg"
+    elif wa_type == "audio" and messaging.ext_of(f.file_name) not in ("m4a", "mp4", "aac", "mp3"):
+        wa_type = "document"  # WhatsApp plays only OGG Opus, AAC, MP4 audio and MP3; browser WebM goes as a file
+    media = {"id": _upload_media(f.file_name, content, mime)}
+    if wa_type in ("image", "document") and caption:
+        media["caption"] = caption[:1024]
+    if wa_type == "document":
+        media["filename"] = f.file_name
+    return {"type": wa_type, wa_type: media}
+
+
+def send_reaction(message: str, emoji: str = ""):
+    """1.14: an agent's reaction on the customer's WhatsApp message (empty emoji removes it)."""
+    msg = frappe.db.get_value(MSG, message, ["conversation", "external_message_id"], as_dict=True)
+    if not msg or not msg.external_message_id or not available():
+        return
+    to = frappe.db.get_value(CONV, msg.conversation, "whatsapp_number")
+    try:
+        _send({"to": to, "type": "reaction", "reaction": {"message_id": msg.external_message_id, "emoji": emoji or ""}})
+    except WhatsAppError as e:
+        log_event("Integration Error", severity="Warning", reference_doctype=CONV, reference_name=msg.conversation,
+                  details=f"whatsapp reaction failed: {str(e)[:200]}", user="Administrator")
+
+
 def _send_template(to: str) -> str:
     s = settings()
     if not s.whatsapp_template_name:
@@ -142,9 +223,23 @@ def deliver(message: str):
         if window_open(conv):
             text = html_to_text(msg.content)
             ext_id = None
+            context = None  # 1.14: WhatsApp shows the quoted message above the reply
+            if msg.get("reply_to"):
+                quoted = frappe.db.get_value(MSG, msg.reply_to, "external_message_id")
+                context = {"message_id": quoted} if quoted else None
             try:
-                for part in _chunks(text or "."):
-                    ext_id = _send({"to": to, "type": "text", "text": {"body": part, "preview_url": False}})
+                media = _media_payload(msg, text)
+                if media:
+                    ext_id = _send({"to": to, **media, **({"context": context} if context else {})})
+                    if media["type"] == "audio" and text:  # audio has no caption: the text follows
+                        for part in _chunks(text):
+                            ext_id = _send({"to": to, "type": "text", "text": {"body": part, "preview_url": False}})
+                else:
+                    for i, part in enumerate(_chunks(text or ".")):
+                        payload = {"to": to, "type": "text", "text": {"body": part, "preview_url": False}}
+                        if context and i == 0:
+                            payload["context"] = context
+                        ext_id = _send(payload)
                 note = None
             except WhatsAppError as e:
                 if e.code not in WINDOW_CLOSED_CODES:
@@ -298,7 +393,12 @@ def process_inbound(message: dict, profile_name: str | None = None):
     key = f"wa-in:{message.get('id')}"
     if frappe.db.exists("Support Message Mapping", {"dedupe_key": key}):
         return
-    if message.get("type") == "reaction":
+    if message.get("type") == "reaction":  # 1.14: the customer's reaction on one of our messages
+        from thinknxg_support.integrations import messaging
+
+        r = message.get("reaction") or {}
+        if r.get("message_id"):
+            messaging.whatsapp_reaction(r["message_id"], r.get("emoji") or "")
         return
     wa_id = normalize(message.get("from"))
     profile_name = (profile_name or "").strip()[:80] or None
@@ -306,7 +406,7 @@ def process_inbound(message: dict, profile_name: str | None = None):
     text, media = _content(message)
     result = conversations.add_inbound_message(
         conv, text, sender=conv.started_by, sender_name=profile_name or f"+{wa_id}",
-        external_id=message.get("id"), allow_html=False, reopen=True)
+        external_id=message.get("id"), allow_html=False, reopen=True, reply_to=reply_context_of(message, conv.name))
     conv.db_set({"whatsapp_window_expires": add_to_date(now_datetime(), hours=24),
                  "whatsapp_profile_name": profile_name or conv.whatsapp_profile_name}, update_modified=False)
     if media and result.get("name") and not result.get("duplicate"):

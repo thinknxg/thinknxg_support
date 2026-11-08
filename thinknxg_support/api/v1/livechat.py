@@ -40,8 +40,29 @@ def state(conversation, token=None):
 
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])
-def send(conversation, message, token=None, client_message_id=None, payload=None):
-    return live_chat.guest_send(conversation, _token(token), message, client_message_id, payload)
+def send(conversation, message=None, token=None, client_message_id=None, payload=None, reply_to=None, voice_seconds=None):
+    return live_chat.guest_send(conversation, _token(token), message or "", client_message_id, payload,
+                                reply_to=reply_to, voice_seconds=voice_seconds)
+
+
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+def edit(conversation, message, text, token=None):
+    return live_chat.guest_edit(conversation, _token(token), message, text)
+
+
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+def remove(conversation, message, token=None):
+    return live_chat.guest_remove(conversation, _token(token), message)
+
+
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+def react(conversation, message, emoji, token=None):
+    return live_chat.guest_react(conversation, _token(token), message, emoji)
+
+
+@frappe.whitelist(allow_guest=True, methods=["GET"])
+def attachment(conversation, message, token=None):
+    return live_chat.guest_attachment(conversation, _token(token), message)
 
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])
@@ -87,9 +108,35 @@ def my_state(organization=None):
 
 
 @frappe.whitelist(methods=["POST"])
-def customer_send(message, organization=None, client_message_id=None, payload=None):
+def customer_send(message=None, organization=None, client_message_id=None, payload=None, reply_to=None,
+                  voice_seconds=None):
     pu, customer = _customer(organization)
-    return live_chat.customer_send(pu, customer, message, client_message_id, files=uploaded_files(), payload=payload)
+    return live_chat.customer_send(pu, customer, message or "", client_message_id, files=uploaded_files(), payload=payload,
+                                   reply_to=reply_to, voice_seconds=voice_seconds)
+
+
+@frappe.whitelist(methods=["POST"])
+def customer_edit(message, text, organization=None):
+    pu, customer = _customer(organization)
+    return live_chat.customer_edit(pu, customer, message, text)
+
+
+@frappe.whitelist(methods=["POST"])
+def customer_remove(message, organization=None):
+    pu, customer = _customer(organization)
+    return live_chat.customer_remove(pu, customer, message)
+
+
+@frappe.whitelist(methods=["POST"])
+def customer_react(message, emoji, organization=None):
+    pu, customer = _customer(organization)
+    return live_chat.customer_react(pu, customer, message, emoji)
+
+
+@frappe.whitelist(methods=["GET"])
+def customer_attachment(message, organization=None):
+    pu, customer = _customer(organization)
+    return live_chat.customer_attachment(pu, customer, message)
 
 
 @frappe.whitelist(methods=["POST"])
