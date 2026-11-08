@@ -17,3 +17,4 @@ thinknxg_support.patches.v1_9.hd_customers_and_wrap_up
 thinknxg_support.patches.v1_10.ai_copilot_defaults
 thinknxg_support.patches.v1_11.knowledge_defaults
 thinknxg_support.patches.v1_14.routing_defaults
+thinknxg_support.patches.v1_14.lead_defaults

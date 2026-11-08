@@ -126,6 +126,8 @@ class SupportAnalytics {
 			this.tile(__("Resolution time (median)"), dur(t.resolution_median), __("90% within {0}", [dur(t.resolution_p90)])),
 			this.tile(__("Customer satisfaction"), t.csat_average == null ? "—" : `${t.csat_average} / 5`, __("{0} positive · {1} ratings", [pct(t.csat_positive), num(t.ratings)])),
 			this.tile(__("AI tokens"), num(t.ai_tokens), __("{0} calls · {1} errors", [num(t.ai_calls), num(t.ai_errors)])),
+			this.tile(__("Leads from chats"), num(t.leads), __("{0} converted", [num(t.lead_conversions)])),
+			this.tile(__("Automation rule runs"), num(t.automation_runs), ""),
 		].join(""));
 		const labels = d.daily.map((x) => frappe.datetime.str_to_user(x.date));
 		this.chart("volume", { type: "bar", height: 240, barOptions: { stacked: 1 }, colors: ["#30a46c", "#2490ef", "#b8c2cc"],
@@ -138,7 +140,7 @@ class SupportAnalytics {
 		this.list(".sa-list-handoff", d.handoff_reasons);
 		this.list(".sa-list-intents", d.intents, __("Turn on message analysis in Support AI Settings to see this."));
 		this.list(".sa-list-languages", d.languages);
-		this.list(".sa-ai", d.ai_usage, __("No AI calls in this period."));
+		this.list(".sa-ai", (d.ai_usage || []).concat((d.automation || []).map((r) => ({ label: __("Rule: {0}", [r.label]), count: r.count }))), __("No AI calls in this period."));
 	}
 
 	chart(key, opts) {

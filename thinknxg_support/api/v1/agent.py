@@ -108,8 +108,12 @@ def thread(name):
                                     "guest_name", "guest_email", "guest_phone", "source_page", "whatsapp_number",
                                     "whatsapp_profile_name", "whatsapp_window_expires", "assigned_agent",
                                     "helpdesk_ticket", "chat_rating", "guest_last_seen", "creation", "handling", "queue",
-                                    "handoff_reason", "ai_replies", "priority")}
+                                    "handoff_reason", "ai_replies", "priority", "lead_score")}
     meta["tags"] = [t for t in (frappe.db.get_value(CONV, name, "_user_tags") or "").split(",") if t.strip()]
+    from thinknxg_support.integrations import crm
+
+    meta["lead"] = crm.lead_view(doc)
+    meta["leads_on"] = bool(crm.target())
     meta["display_name"] = _display_name(doc.as_dict())
     meta["window_open"] = whatsapp.window_open(doc) if doc.channel == "WhatsApp" else None
     meta["customer_name"] = frappe.db.get_value("Customer", doc.customer, "customer_name") if doc.customer else None
@@ -238,6 +242,33 @@ def set_tags(name, add=None, remove=None):
         return [str(x) for x in (v or [])]
 
     return tags.update(name, as_list(add), as_list(remove))
+
+
+@frappe.whitelist(methods=["POST"])
+def create_lead(name, person_name=None, email=None, phone=None, company=None):
+    doc = _doc(name, "write")
+    from thinknxg_support.integrations import crm
+
+    return crm.create_lead(doc, {"name": person_name, "email": email, "phone": phone, "company": company},
+                           actor=frappe.session.user)
+
+
+@frappe.whitelist(methods=["GET"])
+def lead_details(name):
+    doc = _doc(name)
+    from thinknxg_support.integrations import crm
+
+    return crm.details(doc)
+
+
+@frappe.whitelist(methods=["POST"])
+def collect_lead_details(name):
+    doc = _doc(name, "write")
+    from thinknxg_support.integrations import lead_capture
+
+    if not lead_capture.start(doc, source="agent"):
+        frappe.throw(_("This chat already has a lead, details are already being collected, or leads are off."))
+    return True
 
 
 @frappe.whitelist(methods=["GET"])

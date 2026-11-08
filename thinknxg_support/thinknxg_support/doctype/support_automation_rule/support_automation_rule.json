@@ -1,0 +1,247 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "rule_name",
+  "enabled",
+  "trigger",
+  "action",
+  "column_break_r1",
+  "channel_live_chat",
+  "channel_whatsapp",
+  "channel_portal",
+  "queue",
+  "when_section",
+  "page_pattern",
+  "seconds_on_page",
+  "quiet_minutes",
+  "column_break_r2",
+  "task_days",
+  "escalation_priority",
+  "message_section",
+  "message",
+  "stats_section",
+  "runs",
+  "last_run_on"
+ ],
+ "fields": [
+  {
+   "fieldname": "rule_name",
+   "fieldtype": "Data",
+   "label": "Rule Name",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "1",
+   "in_list_view": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "trigger",
+   "fieldtype": "Select",
+   "label": "Trigger",
+   "options": "Visitor on a Page\nCustomer Quiet\nChat Closed Needing Follow-up\nNew Chat Outside Chat Hours",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 3
+  },
+  {
+   "fieldname": "action",
+   "fieldtype": "Select",
+   "label": "Action",
+   "options": "Send Message\nCollect Details\nClose Chat\nCreate Follow-up Task\nNotify or Escalate",
+   "reqd": 1,
+   "in_list_view": 1,
+   "idx": 4
+  },
+  {
+   "fieldname": "column_break_r1",
+   "fieldtype": "Column Break",
+   "idx": 5
+  },
+  {
+   "fieldname": "channel_live_chat",
+   "fieldtype": "Check",
+   "label": "Live Chat",
+   "default": "1",
+   "idx": 6
+  },
+  {
+   "fieldname": "channel_whatsapp",
+   "fieldtype": "Check",
+   "label": "WhatsApp",
+   "idx": 7
+  },
+  {
+   "fieldname": "channel_portal",
+   "fieldtype": "Check",
+   "label": "Portal Messages",
+   "idx": 8
+  },
+  {
+   "fieldname": "queue",
+   "fieldtype": "Link",
+   "label": "Queue",
+   "options": "Support Chat Queue",
+   "description": "Optional: only chats in this queue",
+   "idx": 9
+  },
+  {
+   "fieldname": "when_section",
+   "fieldtype": "Section Break",
+   "label": "When",
+   "idx": 10
+  },
+  {
+   "fieldname": "page_pattern",
+   "fieldtype": "Data",
+   "label": "Page Pattern",
+   "depends_on": "eval:doc.trigger=='Visitor on a Page'",
+   "description": "Page address to match, e.g. /pricing or /products/* (empty: every page)",
+   "idx": 11
+  },
+  {
+   "fieldname": "seconds_on_page",
+   "fieldtype": "Int",
+   "label": "Seconds On Page",
+   "default": "20",
+   "depends_on": "eval:doc.trigger=='Visitor on a Page'",
+   "idx": 12
+  },
+  {
+   "fieldname": "quiet_minutes",
+   "fieldtype": "Int",
+   "label": "Quiet Minutes",
+   "default": "10",
+   "depends_on": "eval:doc.trigger=='Customer Quiet'",
+   "description": "After our last reply, the customer has not written for this long",
+   "idx": 13
+  },
+  {
+   "fieldname": "column_break_r2",
+   "fieldtype": "Column Break",
+   "idx": 14
+  },
+  {
+   "fieldname": "task_days",
+   "fieldtype": "Int",
+   "label": "Follow-up Due In (days)",
+   "default": "1",
+   "depends_on": "eval:doc.action=='Create Follow-up Task'",
+   "idx": 15
+  },
+  {
+   "fieldname": "escalation_priority",
+   "fieldtype": "Select",
+   "label": "Escalation Priority",
+   "options": "Low\nMedium\nHigh\nUrgent",
+   "default": "Medium",
+   "depends_on": "eval:doc.action=='Notify or Escalate'",
+   "idx": 16
+  },
+  {
+   "fieldname": "message_section",
+   "fieldtype": "Section Break",
+   "label": "Message",
+   "idx": 17
+  },
+  {
+   "fieldname": "message",
+   "fieldtype": "Small Text",
+   "label": "Message",
+   "description": "Plain text. Sent in the customer's language when translation is on",
+   "idx": 18
+  },
+  {
+   "fieldname": "stats_section",
+   "fieldtype": "Section Break",
+   "label": "Runs",
+   "idx": 19
+  },
+  {
+   "fieldname": "runs",
+   "fieldtype": "Int",
+   "label": "Runs",
+   "read_only": 1,
+   "idx": 20
+  },
+  {
+   "fieldname": "last_run_on",
+   "fieldtype": "Datetime",
+   "label": "Last Run On",
+   "read_only": 1,
+   "idx": 21
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support Automation Rule",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Agent",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "field:rule_name",
+ "naming_rule": "By fieldname"
+}

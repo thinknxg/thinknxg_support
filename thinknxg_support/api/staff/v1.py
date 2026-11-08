@@ -75,6 +75,7 @@ def bootstrap():
             "copilot": _copilot_on(),
             "messaging": _messaging_caps(),  # 1.14: reply, edit, remove, reactions, voice notes
             "status": True, "priority": True, "tags": True,  # 1.14 increment 2
+            "leads": bool(_crm().target()),  # 1.14 increment 3
             "realtime": False,  # first release: authenticated polling (see docs/agent-api.md)
             "integrations": {k: bool((v or {}).get("installed")) for k, v in (caps.get("apps") or {}).items()}
             if isinstance(caps, dict) else {},
@@ -286,6 +287,7 @@ def conversation_detail(doc) -> dict:
         "insight": {k: doc.get(f) for k, f in (("sentiment", "sentiment"), ("urgency", "urgency"), ("intent", "intent"),
                                                ("language", "customer_language"), ("summary", "summary"))},
         "tags": [t for t in (frappe.db.get_value(CONV, doc.name, "_user_tags") or "").split(",") if t.strip()],
+        "lead": _crm().lead_view(doc),  # 1.14
     })
     return out
 
@@ -950,6 +952,33 @@ def set_tags(name: str, add: list | str | None = None, remove: list | str | None
         return [str(x) for x in (v or [])]
 
     tags.update(doc.name, as_list(add), as_list(remove))
+    return conversation_detail(frappe.get_doc(CONV, doc.name))
+
+
+def _crm():
+    from thinknxg_support.integrations import crm
+
+    return crm
+
+
+@frappe.whitelist(methods=["POST"])
+def create_lead(name: str, person_name: str | None = None, email: str | None = None, phone: str | None = None,
+                company: str | None = None):
+    """1.14: create (or link) the lead for this chat in thinkNXG CRM or ERPNext; returns ConversationDetail."""
+    doc = _conv(name, "write")
+    _crm().create_lead(doc, {"name": person_name, "email": email, "phone": phone, "company": company},
+                       actor=frappe.session.user)
+    return conversation_detail(frappe.get_doc(CONV, doc.name))
+
+
+@frappe.whitelist(methods=["POST"])
+def collect_lead_details(name: str):
+    """1.14: let the assistant ask the visitor for their details (name, e-mail, phone, company)."""
+    doc = _conv(name, "write")
+    from thinknxg_support.integrations import lead_capture
+
+    if not lead_capture.start(doc, source="agent"):
+        frappe.throw(_("This chat already has a lead, details are already being collected, or leads are off."))
     return conversation_detail(frappe.get_doc(CONV, doc.name))
 
 

@@ -81,6 +81,11 @@ def handoff(conv, reason: str, message: str | None = None, announce: bool = True
     from thinknxg_support.integrations import alerts
 
     alerts.on_new_chat(conv, reason)
+    if announce and not message and not live_chat.is_online():
+        from thinknxg_support.integrations import automation  # 1.14: a rule may answer instead of the offline text
+
+        if automation.outside_hours(frappe.get_doc(CONV, conv.name)):
+            announce = False
     if announce:
         if message:
             text = message
@@ -148,3 +153,8 @@ def on_closed(conv):
     from thinknxg_support.integrations import feedback
 
     feedback.on_chat_closed(conv)
+    for hook in ("crm", "automation"):  # 1.14: lead timeline and follow-up rules; never block closing
+        try:
+            frappe.get_attr(f"thinknxg_support.integrations.{hook}.on_closed")(conv)
+        except Exception:
+            frappe.log_error(title=f"thinkNXG Support: {hook} on chat close failed")

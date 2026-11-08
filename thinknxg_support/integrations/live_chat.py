@@ -115,7 +115,17 @@ def widget_config(context: str = "website") -> dict:
         "assistant": _assistant_info(mode),
         "welcome": _welcome(),
         "messaging": _messaging_caps(mode),
+        "proactive": _proactive(),  # 1.14: messages shown on matching pages after some seconds
     }
+
+
+def _proactive() -> list:
+    try:
+        from thinknxg_support.integrations import automation
+
+        return automation.page_rules()
+    except Exception:
+        return []
 
 
 def _messaging_caps(mode) -> dict:

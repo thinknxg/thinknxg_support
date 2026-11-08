@@ -238,6 +238,10 @@ def run_rule(conv, bot, rule, text):
         from thinknxg_support.integrations import live_chat
 
         live_chat._close(frappe.get_doc(CONV, conv.name))
+    elif rule.action == "Collect Details":  # 1.14: the visitor's details for a lead, one question at a time
+        from thinknxg_support.integrations import lead_capture
+
+        lead_capture.start(frappe.get_doc(CONV, conv.name), source="chatbot")
 
 
 def _history(conv, limit=8) -> list[dict]:

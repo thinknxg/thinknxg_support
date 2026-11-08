@@ -235,6 +235,10 @@ def add_inbound_message(conv, content: str, *, sender: str | None, sender_name: 
         alerts.on_assistant_chat(conv)
     realtime.bump(conv.name)
     publish_agent_event(conv, "message")
+    from thinknxg_support.integrations import lead_capture  # 1.14: answers to "collect details" questions
+
+    if lead_capture.consume(conv, content):
+        return {"name": msg.name}
     if conv.handling == "Bot":
         frappe.enqueue("thinknxg_support.integrations.ai.engine.respond", queue="default", enqueue_after_commit=True,
                        conversation=conv.name, message=msg.name)
