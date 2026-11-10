@@ -36,7 +36,7 @@ class Base(BaseTestCase):
         as_user("Administrator")
         frappe.db.set_single_value("Support Portal Settings", {
             "enable_live_chat": 1, "allow_guest_chat": 1, "guest_chat_rate_limit": 1000, "lead_target": self.target,
-            "lead_source": "Live Chat"})
+            "lead_source": "Live Chat", "auto_lead_from_chat_form": 0})
         frappe.db.set_single_value("Support AI Settings", {"enable_ai": 0, "analyze_messages": 0, "enable_lead_scoring": 0,
                                                            "localize_messages": 0, "translate_questions": 0})
         for dt in ("Support Portal Settings", "Support AI Settings"):
@@ -115,6 +115,65 @@ class TestLeads(Base):
         conv, _t = self.chat()
         self.assertRaises(frappe.ValidationError, crm.create_lead, conv)
         self.assertFalse(v1.bootstrap()["capabilities"]["leads"])
+
+
+class TestLeadFromChatForm(Base):
+    def setUp(self):
+        super().setUp()
+        frappe.db.set_single_value("Support Portal Settings", "auto_lead_from_chat_form", 1)
+        frappe.clear_document_cache("Support Portal Settings", "Support Portal Settings")
+        from thinknxg_support.utils import clear_request_cache
+
+        clear_request_cache()
+
+    def email_field(self):
+        return "email" if self.lead_doctype() == "CRM Lead" else "email_id"
+
+    def test_the_start_chat_form_creates_a_lead(self):
+        frappe.db.delete(self.lead_doctype(), {self.email_field(): "form.new@acme.example"})
+        as_user("Guest")
+        with patch("thinknxg_support.integrations.ai.engine.respond"):
+            r = live_chat.start_guest("I need pricing", name="Noor Said", email="Form.New@acme.example",
+                                      phone="+968 9123 4567")
+        as_user("Administrator")
+        conv = frappe.get_doc(CONV, r["conversation"])
+        dt = self.lead_doctype()
+        self.assertEqual(conv.lead_doctype, dt)
+        doc = frappe.get_doc(dt, conv.lead)
+        self.assertEqual(doc.get(self.email_field()), "form.new@acme.example")
+        self.assertEqual(doc.first_name, "Noor")
+        self.assertEqual(doc.mobile_no, "+96891234567")
+        note = frappe.get_all("Comment", {"reference_doctype": dt, "reference_name": conv.lead}, pluck="content")
+        self.assertTrue(any("I need pricing" in c for c in note))
+
+    def test_same_email_updates_the_lead_and_never_duplicates(self):
+        dt, ef = self.lead_doctype(), self.email_field()
+        frappe.db.delete(dt, {ef: "form.again@acme.example"})
+        first, _t = self.chat(text="First chat", email="form.again@acme.example", name="Omar Ali")
+        lead = first.lead
+        self.assertTrue(lead)
+        self.assertFalse(frappe.db.get_value(dt, lead, "mobile_no"))
+        as_user("Guest")
+        with patch("thinknxg_support.integrations.ai.engine.respond"):
+            r = live_chat.start_guest("Second chat", name="Someone Else", email="form.again@acme.example",
+                                      phone="+96899887766")
+        as_user("Administrator")
+        self.assertEqual(frappe.db.get_value(CONV, r["conversation"], "lead"), lead)
+        self.assertEqual(frappe.db.count(dt, {ef: "form.again@acme.example"}), 1)
+        doc = frappe.get_doc(dt, lead)
+        self.assertEqual(doc.mobile_no, "+96899887766")  # the blank phone was filled in
+        self.assertEqual(doc.first_name, "Omar")  # what was already there is kept
+        self.assertEqual(frappe.db.count("Comment", {"reference_doctype": dt, "reference_name": lead,
+                                                     "content": ["like", "%Chat form%"]}), 2)
+
+    def test_it_can_be_switched_off(self):
+        frappe.db.set_single_value("Support Portal Settings", "auto_lead_from_chat_form", 0)
+        frappe.clear_document_cache("Support Portal Settings", "Support Portal Settings")
+        from thinknxg_support.utils import clear_request_cache
+
+        clear_request_cache()
+        conv, _t = self.chat(email="form.off@acme.example")
+        self.assertFalse(conv.lead)
 
 
 class TestLeadCapture(Base):

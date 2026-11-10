@@ -253,6 +253,12 @@ def start_guest(message: str, name: str | None = None, email: str | None = None,
     conversations.add_inbound_message(conv, guest_text(message), sender=user, sender_name=name,
                                       client_message_id=client_message_id, allow_html=False)
     log_event("Guest Chat", reference_doctype=CONV, reference_name=conv.name, details="guest chat started")
+    try:  # 1.14.2: a lead from the start-chat form (in the background; never blocks the chat)
+        from thinknxg_support.integrations import crm
+
+        crm.queue_from_form(conv.name)
+    except Exception:
+        frappe.log_error(title="thinkNXG Support: lead from the chat form", message=frappe.get_traceback())
     return {"conversation": conv.name, "token": token}
 
 
