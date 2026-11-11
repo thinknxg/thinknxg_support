@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.14.2, 2026-11-10
+* **A lead for every website chat**: when a visitor fills in the start-chat form, a lead is created automatically
+  (Support Portal Settings > Leads > "Create a Lead When a Visitor Starts a Chat", on by default; needs "Create Leads
+  In" not Off). If a lead with the same e-mail address exists, the chat is linked to it and its blank fields (phone,
+  name) are filled in; nothing already on the lead is overwritten. The form details and first message go on the
+  lead's timeline. Runs in the background, so the chat never waits for it.
+
 ## 1.14.1, 2026-11-08
 * Fix: **Log out** in the support portal gave "Not Permitted" (Frappe v16 only accepts logout as a POST). The portal
   now posts to `/api/method/logout` and returns to the portal home.

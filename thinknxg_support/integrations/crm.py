@@ -97,7 +97,59 @@ def clean(values: dict) -> dict:
     return v
 
 
-def create_lead(conv, values: dict | None = None, actor: str | None = None) -> dict:
+def _fill_blanks(dt: str, name: str, v: dict) -> list[str]:
+    """Add what the visitor gave to an existing lead, without overwriting what is already there."""
+    doc = frappe.get_doc(dt, name)
+    first, last = _split(v.get("name") or "")
+    wanted = {"mobile_no": v.get("phone"), ("organization" if dt == "CRM Lead" else "company_name"): v.get("company")}
+    if v.get("name"):
+        wanted.update({"first_name": first, "last_name": last})
+    changed = []
+    for field, value in wanted.items():
+        if value and doc.meta.has_field(field) and not (doc.get(field) or "").strip():
+            doc.set(field, value)
+            changed.append(field)
+    if changed:
+        doc.flags.ignore_permissions = True
+        doc.save()
+    return changed
+
+
+def auto_from_form() -> bool:
+    """Create a lead when a visitor fills in the start-chat form? On unless switched off."""
+    v = _s().get("auto_lead_from_chat_form")
+    return True if v is None else bool(cint(v))
+
+
+def queue_from_form(conversation: str):
+    if auto_from_form() and target():
+        frappe.enqueue("thinknxg_support.integrations.crm.from_chat_form", queue="short", enqueue_after_commit=True,
+                       conversation=conversation)
+
+
+def from_chat_form(conversation: str) -> dict | None:
+    """The visitor filled in "Start a new chat": create the lead, or update the one with the same e-mail."""
+    if not (auto_from_form() and target()) or not frappe.db.exists(CONV, conversation):
+        return None
+    conv = frappe.get_doc(CONV, conversation)
+    if conv.get("lead") or not conv.get("guest_email"):
+        return None
+    try:
+        first = frappe.get_all("Support Portal Message", filters={"conversation": conv.name},
+                               fields=["content"], order_by="creation asc", limit=1)
+        said = strip_html(first[0].content or "").strip()[:500] if first else ""
+        form = ", ".join(x for x in (conv.get("guest_name"), conv.get("guest_email"), conv.get("guest_phone")) if x)
+        note = [_("Chat form: {0}").format(form)] + ([_("Message: {0}").format(said)] if said else [])
+        return create_lead(conv, {"name": conv.get("guest_name"), "email": conv.get("guest_email"),
+                                  "phone": conv.get("guest_phone")}, match_phone=False, update_existing=True, note=note)
+    except Exception:
+        frappe.db.rollback()
+        frappe.log_error(title="thinkNXG Support: lead from the chat form", message=frappe.get_traceback())
+        return None
+
+
+def create_lead(conv, values: dict | None = None, actor: str | None = None, match_phone: bool = True,
+                update_existing: bool = False, note: list[str] | None = None) -> dict:
     """Create (or link) the lead for this chat. Returns {doctype, name, created}."""
     if conv.get("lead") and conv.get("lead_doctype") and frappe.db.exists(conv.lead_doctype, conv.lead):
         return {"doctype": conv.lead_doctype, "name": conv.lead, "created": False}
@@ -107,10 +159,13 @@ def create_lead(conv, values: dict | None = None, actor: str | None = None) -> d
     v = clean({**{k: x for k, x in details(conv).items() if x}, **{k: x for k, x in (values or {}).items() if x}})
     if not (v["email"] or v["phone"]):
         frappe.throw(_("A lead needs an e-mail address or a phone number."))
-    existing = find_existing(dt, v["email"], v["phone"])
+    existing = find_existing(dt, v["email"], v["phone"] if match_phone else None)
     created = not existing
+    updated = []
     if existing:
         name = existing
+        if update_existing:
+            updated = _fill_blanks(dt, name, v)
     else:
         first, last = _split(v["name"] or v["email"] or "")
         src = (_s().get("lead_source") or "Live Chat").strip()
@@ -127,18 +182,19 @@ def create_lead(conv, values: dict | None = None, actor: str | None = None) -> d
         name = lead.name
     frappe.db.set_value(CONV, conv.name, {"lead_doctype": dt, "lead": name}, update_modified=False)
     conv.lead_doctype, conv.lead = dt, name
-    timeline(conv, _("Lead {0} from this chat.").format(_("created") if created else _("linked")), summary=True)
+    timeline(conv, _("Lead {0} from this chat.").format(_("created") if created else _("linked")), summary=True,
+             extra=note)
     from thinknxg_support.audit import log_event
 
     log_event("Administrative Change", reference_doctype=CONV, reference_name=conv.name,
-              details={"lead": f"{dt} {name}", "created": created}, user=actor)
+              details={"lead": f"{dt} {name}", "created": created, "updated": updated}, user=actor)
     from thinknxg_support.integrations import lead_score
 
     lead_score.queue(conv.name)
     from thinknxg_support.integrations import analytics
 
     analytics.refresh()
-    return {"doctype": dt, "name": name, "created": created}
+    return {"doctype": dt, "name": name, "created": created, "updated": updated}
 
 
 def _conv_link(conv) -> str:
