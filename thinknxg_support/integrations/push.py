@@ -147,7 +147,7 @@ def _attempt(row, device, badge: int | None = None) -> str:
     project = frappe.get_cached_doc(SETTINGS).fcm_project_id
     url = f"https://fcm.googleapis.com/v1/projects/{project}/messages:send"
     data = {"kind": row.kind, "doctype": row.reference_doctype, "name": row.reference_name, "delivery": row.name}
-    status, error, code = None, None, None
+    status, code, text = None, None, ""
     for again in (True, False):
         try:
             headers = {"Authorization": f"Bearer {access_token()}", "Content-Type": "application/json"}
