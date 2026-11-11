@@ -16,6 +16,7 @@
   "route",
   "content_hash",
   "embedding_model",
+  "boost",
   "content_section",
   "content",
   "embedding"
@@ -84,15 +85,23 @@
    "idx": 9
   },
   {
+   "fieldname": "boost",
+   "fieldtype": "Float",
+   "label": "Priority Weight",
+   "default": "1",
+   "description": "From the source's priority: High 1.25, Normal 1, Low 0.8",
+   "idx": 10
+  },
+  {
    "fieldname": "content_section",
    "fieldtype": "Section Break",
-   "idx": 10
+   "idx": 11
   },
   {
    "fieldname": "content",
    "fieldtype": "Long Text",
    "label": "Content",
-   "idx": 11
+   "idx": 12
   },
   {
    "fieldname": "embedding",
@@ -100,7 +109,7 @@
    "label": "Embedding",
    "hidden": 1,
    "description": "Base64 float32 vector",
-   "idx": 12
+   "idx": 13
   }
  ],
  "index_web_pages_for_search": 0,

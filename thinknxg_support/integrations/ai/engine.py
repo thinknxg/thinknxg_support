@@ -300,6 +300,15 @@ def _user_turn(question: str, passages: list[dict]) -> str:
     return f"Reference passages:\n{blocks or '(none found)'}\n\nCustomer question:\n{question}"
 
 
+def strict_no_result(c=None) -> bool:
+    """Answer only from the knowledge base, and spend no AI call at all when nothing is found (on unless switched off)."""
+    c = c or cfg()
+    if not cint(c.only_answer_from_kb):
+        return False
+    v = c.get("strict_no_result")
+    return True if v is None else bool(cint(v))
+
+
 def _source_links(conv, used: list[dict]) -> list[dict]:
     from thinknxg_support.constants import PORTAL_ROUTE
 
@@ -329,14 +338,22 @@ def answer(conv, question: str):
 
     lang = None
     try:
-        found = language.search(question, audience, conv)  # 1.11: also across languages
+        # 1.11: also across languages; 1.16: not when nothing-found must cost no AI call
+        found = language.search(question, audience, conv, translate=not strict_no_result(c))
         passages, lang = found["passages"], found["language"]
     except Exception as e:
         passages = []
         frappe.log_error(title="thinkNXG Support: knowledge search failed", message=str(e))
     if not passages and c.only_answer_from_kb:
         providers.log_usage(conversation=conv.name, status="Skipped", error="no relevant passages")
-        routing.handoff(conv, _("No matching help article"), message=c.no_answer_message)
+        strict = strict_no_result(c)
+        if strict:
+            frappe.flags.thinknxg_no_ai = True  # the hand-over itself makes no AI call either
+        try:
+            routing.handoff(conv, _("No matching help article"), message=c.no_answer_message)
+        finally:
+            if strict:
+                frappe.flags.thinknxg_no_ai = False
         return
     lang = lang or language.conversation_language(conv)
 
@@ -391,7 +408,8 @@ def dry_run(question: str, audience: str = "Everyone") -> dict:
     c = cfg()
     from thinknxg_support.integrations.ai import language
 
-    found = language.search(question, "Customers" if audience == "Customers" else "Everyone")
+    found = language.search(question, "Customers" if audience == "Customers" else "Everyone",
+                            translate=not strict_no_result(c))
     passages = found["passages"]
     out = {"sources": [{"title": p["title"], "score": p["score"]} for p in passages],
            "language": language.name(found["language"]) or None, "searched_as": found["translated"]}

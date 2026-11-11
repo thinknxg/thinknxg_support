@@ -28,7 +28,7 @@ class SupportKnowledgeWebsite(Document):
             self.language = self.language.strip().lower()[:8]
 
     def on_update(self):
-        if not self.is_new() and any(self.has_value_changed(f) for f in ("enabled", "audience", "site_name")):
+        if not self.is_new() and any(self.has_value_changed(f) for f in ("enabled", "audience", "site_name", "priority")):
             frappe.enqueue("thinknxg_support.integrations.ai.crawler.reindex", queue="long",
                            enqueue_after_commit=True, website=self.name)
 
@@ -41,5 +41,5 @@ def crawl_now(name: str):
     frappe.only_for(["System Manager", "Support Portal Administrator", "Support Manager"])
     frappe.get_doc("Support Knowledge Website", name).check_permission("write")
     crawler.queue(name)
-    frappe.db.set_value("Support Knowledge Website", name, "last_crawl_status", _("Queued"))
+    frappe.db.set_value("Support Knowledge Website", name, {"last_crawl_status": _("Queued"), "crawl_state": "Queued"})
     return _("Crawl started. Pages appear under Support Knowledge Web Page as they are read.")

@@ -1,6 +1,7 @@
 const AI = "thinknxg_support.thinknxg_support.doctype.support_ai_settings.support_ai_settings";
 frappe.ui.form.on("Support AI Settings", {
     refresh(frm) {
+        frm.trigger("render_sources");
         frm.add_custom_button(__("Test Connection"), () =>
             frappe.call({ method: `${AI}.test_connection`, freeze: true, freeze_message: __("Calling the model…") })
                 .then((r) => frappe.msgprint({ title: __("Connection"), message: frappe.utils.escape_html(r.message || "") })));
@@ -30,6 +31,32 @@ frappe.ui.form.on("Support AI Settings", {
                 },
             });
             d.show();
+        });
+    },
+    render_sources(frm) {
+        const w = frm.get_field("sources_html").$wrapper;
+        w.html(`<p class="text-muted">${__("Loading…")}</p>`);
+        frappe.call({ method: `${AI}.knowledge_sources` }).then((r) => {
+            const esc = frappe.utils.escape_html, rows = r.message || [];
+            const colour = { Active: "green", Off: "gray", Working: "blue", Problem: "red", Empty: "orange" };
+            const body = rows.map((x) => `<tr>
+                <td>${x.route ? `<a href="${esc(x.route)}">${esc(x.label)}</a>` : esc(x.label)}<div class="text-muted small">${esc(x.detail || "")}</div></td>
+                <td>${esc(__(x.type))}</td>
+                <td><span class="indicator-pill ${colour[x.state] || "gray"}">${esc(__(x.state))}</span></td>
+                <td>${esc(__(x.priority || "Normal"))}</td>
+                <td class="text-right">${x.items}</td>
+                <td class="text-right">${x.passages}</td>
+                <td>${x.last ? esc(frappe.datetime.prettyDate(x.last)) : ""}</td>
+                <td class="small ${x.errors ? "text-danger" : "text-muted"}">${esc(x.note || "")}</td></tr>`).join("");
+            w.html(`<table class="table table-bordered" style="margin-bottom:8px"><thead><tr>
+                <th>${__("Source")}</th><th>${__("Type")}</th><th>${__("Status")}</th><th>${__("Priority")}</th>
+                <th class="text-right">${__("Items")}</th><th class="text-right">${__("Passages")}</th>
+                <th>${__("Last indexed")}</th><th>${__("Notes")}</th></tr></thead><tbody>${body}</tbody></table>
+                <button class="btn btn-xs btn-default" data-new="Support Knowledge Website">${__("Add website source")}</button>
+                <button class="btn btn-xs btn-default" data-new="Support Knowledge Document">${__("Upload document")}</button>
+                <button class="btn btn-xs btn-default" data-refresh="1">${__("Refresh")}</button>`);
+            w.find("[data-new]").on("click", (e) => frappe.new_doc(e.currentTarget.dataset.new));
+            w.find("[data-refresh]").on("click", () => frm.trigger("render_sources"));
         });
     },
     provider(frm) {

@@ -13,8 +13,11 @@
   "column_break_w1",
   "audience",
   "language",
+  "priority",
   "refresh",
   "scope_section",
+  "follow_links",
+  "stay_under_start",
   "include_paths",
   "exclude_patterns",
   "column_break_w2",
@@ -27,7 +30,11 @@
   "last_crawl_on",
   "page_count",
   "column_break_w3",
-  "last_crawl_status"
+  "crawl_state",
+  "error_count",
+  "last_crawl_status",
+  "log_section",
+  "crawl_log"
  ],
  "fields": [
   {
@@ -78,39 +85,64 @@
    "idx": 6
   },
   {
+   "fieldname": "priority",
+   "fieldtype": "Select",
+   "label": "Priority",
+   "options": "High\nNormal\nLow",
+   "default": "Normal",
+   "description": "When several sources match a question, High sources are preferred and Low ones come last",
+   "idx": 7
+  },
+  {
    "fieldname": "refresh",
    "fieldtype": "Select",
    "label": "Refresh",
    "options": "Manual\nDaily\nWeekly",
    "default": "Weekly",
    "description": "Changed pages are re-read; removed pages leave the knowledge base",
-   "idx": 7
+   "idx": 8
   },
   {
    "fieldname": "scope_section",
    "fieldtype": "Section Break",
    "label": "What to Read",
    "description": "The crawler always obeys robots.txt and noindex, never logs in, and never visits private or internal network addresses. Crawl only sites you own or may use",
-   "idx": 8
+   "idx": 9
+  },
+  {
+   "fieldname": "follow_links",
+   "fieldtype": "Check",
+   "label": "Include Linked Pages",
+   "default": "1",
+   "description": "Off: only the start address itself is read (a single page)",
+   "idx": 10
+  },
+  {
+   "fieldname": "stay_under_start",
+   "fieldtype": "Check",
+   "label": "Stay Under the Start Address",
+   "default": "1",
+   "description": "For https://example.com/docs only pages under /docs are read, not the rest of the site. Ignored when Only These Paths is filled in",
+   "idx": 11
   },
   {
    "fieldname": "include_paths",
    "fieldtype": "Small Text",
-   "label": "Include Paths",
+   "label": "Only These Paths",
    "description": "Optional: only addresses starting with these paths, one per line, e.g. /help/",
-   "idx": 9
+   "idx": 12
   },
   {
    "fieldname": "exclude_patterns",
    "fieldtype": "Small Text",
    "label": "Exclude Patterns",
    "description": "Optional: skip addresses matching these, one per line, e.g. /blog/* or */login*",
-   "idx": 10
+   "idx": 13
   },
   {
    "fieldname": "column_break_w2",
    "fieldtype": "Column Break",
-   "idx": 11
+   "idx": 14
   },
   {
    "fieldname": "max_pages",
@@ -118,7 +150,7 @@
    "label": "Max Pages",
    "default": "200",
    "description": "Up to 2000",
-   "idx": 12
+   "idx": 15
   },
   {
    "fieldname": "max_depth",
@@ -126,21 +158,21 @@
    "label": "Link Depth",
    "default": "3",
    "description": "How many clicks away from the start page (0 to 10)",
-   "idx": 13
+   "idx": 16
   },
   {
    "fieldname": "use_sitemap",
    "fieldtype": "Check",
    "label": "Read the Sitemap",
    "default": "1",
-   "idx": 14
+   "idx": 17
   },
   {
    "fieldname": "include_pdfs",
    "fieldtype": "Check",
    "label": "Read Linked PDFs",
    "default": "1",
-   "idx": 15
+   "idx": 18
   },
   {
    "fieldname": "delay_seconds",
@@ -148,39 +180,70 @@
    "label": "Pause Between Requests (seconds)",
    "default": "1",
    "description": "At least 0.5, to be gentle with the site",
-   "idx": 16
+   "idx": 19
   },
   {
    "fieldname": "status_section",
    "fieldtype": "Section Break",
    "label": "Last Crawl",
-   "idx": 17
+   "idx": 20
   },
   {
    "fieldname": "last_crawl_on",
    "fieldtype": "Datetime",
    "label": "Last Crawl On",
    "read_only": 1,
-   "idx": 18
+   "idx": 21
   },
   {
    "fieldname": "page_count",
    "fieldtype": "Int",
    "label": "Pages in Knowledge Base",
    "read_only": 1,
-   "idx": 19
+   "idx": 22
   },
   {
    "fieldname": "column_break_w3",
    "fieldtype": "Column Break",
-   "idx": 20
+   "idx": 23
+  },
+  {
+   "fieldname": "crawl_state",
+   "fieldtype": "Select",
+   "label": "Indexing Status",
+   "options": "\nQueued\nCrawling\nCompleted\nCompleted with Errors\nFailed",
+   "read_only": 1,
+   "in_list_view": 1,
+   "idx": 24
+  },
+  {
+   "fieldname": "error_count",
+   "fieldtype": "Int",
+   "label": "Pages With Errors",
+   "read_only": 1,
+   "idx": 25
   },
   {
    "fieldname": "last_crawl_status",
    "fieldtype": "Small Text",
    "label": "Last Crawl Status",
    "read_only": 1,
-   "idx": 21
+   "idx": 26
+  },
+  {
+   "fieldname": "log_section",
+   "fieldtype": "Section Break",
+   "label": "Pages That Could Not Be Read",
+   "collapsible": 1,
+   "idx": 27
+  },
+  {
+   "fieldname": "crawl_log",
+   "fieldtype": "Long Text",
+   "label": "Problems in the Last Crawl",
+   "read_only": 1,
+   "description": "Addresses that failed or were not accessible, with the reason",
+   "idx": 28
   }
  ],
  "index_web_pages_for_search": 0,

@@ -116,13 +116,16 @@ def _ai_ready(c) -> bool:
     return bool(c.get("model")) and providers.budget_left()
 
 
-def _translate(text: str, target: str, kind_hint: str, conversation: str | None, max_tokens: int) -> str | None:
+def _translate(text: str, target: str, kind_hint: str, conversation: str | None, max_tokens: int,
+               cached_only: bool = False) -> str | None:
     from thinknxg_support.integrations.ai import common
 
     key = frappe.cache.make_key(f"thinknxg_support:l10n:{target}:{hashlib.sha1(text.encode()).hexdigest()}")
     hit = frappe.cache.get(key)
     if hit:
         return hit.decode() if isinstance(hit, bytes) else str(hit)
+    if cached_only or frappe.flags.get("thinknxg_no_ai"):
+        return None
     try:
         out = common.call("Translation", f"Translate {kind_hint} into {name(target)}. Keep names, numbers, codes and "
                                          "links unchanged. Reply with only the translation.",
@@ -135,8 +138,11 @@ def _translate(text: str, target: str, kind_hint: str, conversation: str | None,
     return out or None
 
 
-def search(question: str, audience: str, conv=None, k: int | None = None) -> dict:
-    """Knowledge search that also works across languages. Returns {passages, language, translated}."""
+def search(question: str, audience: str, conv=None, k: int | None = None, translate: bool = True) -> dict:
+    """Knowledge search that also works across languages. Returns {passages, language, translated}.
+
+    translate=False: never spend an AI call on translating the question (1.16, "No AI Calls When Nothing Is Found");
+    a translation made earlier is still used."""
     from thinknxg_support.integrations.ai import retrieval
 
     c = cfg()
@@ -148,7 +154,7 @@ def search(question: str, audience: str, conv=None, k: int | None = None) -> dic
     if not lang or lang == kb or semantic or not cint(c.get("translate_questions")) or not _ai_ready(c):
         return out
     translated = _translate(question, kb, "this customer support question (for a knowledge-base search)",
-                            conv.name if conv else None, 200)
+                            conv.name if conv else None, 200, cached_only=not translate)
     if not translated or translated.strip().casefold() == question.strip().casefold():
         return out
     best = {}

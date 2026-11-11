@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.16.0, 2026-11-11 — multi-source AI knowledge base
+* **AI Knowledge Sources** overview in Support AI Settings: every source (knowledge base articles, snippets,
+  uploaded documents, each website) with status, priority, items, passages, last indexing and problems; *Add website
+  source* and *Upload document* from there.
+* **Documentation websites**: a start address such as `https://thinknxg.com/thinknxgerp` now keeps the crawl under
+  that path (*Stay Under the Start Address*; existing sources keep reading the whole site until you switch it on);
+  *Include Linked Pages* off reads a single page; indexing status, a running count while crawling, and the list of
+  pages that could not be read.
+* **Source priority** (High, Normal, Low) per website and document, and for articles and snippets: preferred
+  sources come first when several match; priority never lets a weak match through.
+* **No AI Calls When Nothing Is Found** (on by default): the no-result hand-over makes no generative call at all,
+  including question translation, message translation and the hand-over summary. **Changes behaviour on upgrade**:
+  questions in a language other than the knowledge base's are no longer translated for searching unless you switch
+  this off or use multilingual embeddings.
+
 ## 1.15.0, 2026-11-11 — alerts when the app is not open
 * **Windows app**: starts with Windows in the background (installer option, on by default), stays in the system
   tray when its window is closed, keeps receiving alerts and shows Windows notifications with sound; clicking one
