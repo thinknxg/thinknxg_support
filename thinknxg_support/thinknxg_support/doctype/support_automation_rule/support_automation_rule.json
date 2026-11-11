@@ -24,6 +24,8 @@
   "task_days",
   "escalation_priority",
   "message_section",
+  "whatsapp_template",
+  "text_when_window_open",
   "message",
   "stats_section",
   "runs",
@@ -61,7 +63,7 @@
    "fieldname": "action",
    "fieldtype": "Select",
    "label": "Action",
-   "options": "Send Message\nCollect Details\nClose Chat\nCreate Follow-up Task\nNotify or Escalate",
+   "options": "Send Message\nSend WhatsApp Template\nCollect Details\nClose Chat\nCreate Follow-up Task\nNotify or Escalate",
    "reqd": 1,
    "in_list_view": 1,
    "idx": 4
@@ -158,31 +160,48 @@
    "idx": 17
   },
   {
+   "fieldname": "whatsapp_template",
+   "fieldtype": "Link",
+   "label": "WhatsApp Template",
+   "options": "Support WhatsApp Template",
+   "depends_on": "eval:doc.action=='Send WhatsApp Template'",
+   "mandatory_depends_on": "eval:doc.action=='Send WhatsApp Template'",
+   "description": "Approved in WhatsApp Manager and synced. Variables use the values set on the template. Marketing templates are only sent to customers who opted in",
+   "idx": 18
+  },
+  {
+   "fieldname": "text_when_window_open",
+   "fieldtype": "Check",
+   "label": "Send the Message Below Instead While the 24-hour Window Is Open",
+   "depends_on": "eval:doc.action=='Send WhatsApp Template'",
+   "idx": 19
+  },
+  {
    "fieldname": "message",
    "fieldtype": "Small Text",
    "label": "Message",
    "description": "Plain text. Sent in the customer's language when translation is on",
-   "idx": 18
+   "idx": 20
   },
   {
    "fieldname": "stats_section",
    "fieldtype": "Section Break",
    "label": "Runs",
-   "idx": 19
+   "idx": 21
   },
   {
    "fieldname": "runs",
    "fieldtype": "Int",
    "label": "Runs",
    "read_only": 1,
-   "idx": 20
+   "idx": 22
   },
   {
    "fieldname": "last_run_on",
    "fieldtype": "Datetime",
    "label": "Last Run On",
    "read_only": 1,
-   "idx": 21
+   "idx": 23
   }
  ],
  "index_web_pages_for_search": 0,

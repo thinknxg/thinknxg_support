@@ -52,7 +52,7 @@ index on (conversation, client_message_id). Tickets: *Support Agent Request* log
 | `auth_config` | GET (guest) | | `enabled, api_version, site_name, client_id, scopes, redirect_uris, authorize_url, token_url, revoke_url, userinfo_url` |
 | `bootstrap` | GET | | `api_version, server_time, site{url,name,app_version}, agent{user,full_name,email,image,is_manager,helpdesk_agent}, capabilities{conversations,live_chat,whatsapp,raven,helpdesk,assistant,wrap_up,canned_responses,alerts,push,realtime,integrations}, queues[{name,member}], poll{inbox_seconds,thread_seconds,alerts_seconds}` |
 | `conversations` | GET | `view` all\|mine\|unassigned\|waiting, `channel` Portal\|Live Chat\|WhatsApp, `status` open\|closed\|all, `queue`, `q`, `cursor`, `limit` | page of ConversationSummary |
-| `conversation` | GET | `name` | ConversationDetail (summary + `contact`, `customer_name`, `created_at`, `handoff_reason`, `actions{claim,transfer,reply,note,close,take_over,return_to_assistant,whatsapp_window_open}`, `read_up_to`) |
+| `conversation` | GET | `name` | ConversationDetail (summary + `contact`, `customer_name`, `created_at`, `handoff_reason`, `actions{claim,transfer,reply,note,close,take_over,return_to_assistant,whatsapp_window_open,send_template}`, `read_up_to`) |
 | `messages` | GET | `name`, `before` \| `after` cursor, `limit`, `changed_since` (the previous `server_time`) | `items` (oldest first), `before_cursor`, `has_more_before`, `latest_cursor`, `server_time`, and with `changed_since`: `updated` (older messages edited, removed or reacted to since) |
 | `mark_read` | POST | `name`, `message` | `read_up_to` — per agent, only moves forward |
 | `claim` | POST | `name` | ConversationDetail · 409 if another agent has it (row lock: one winner) |
@@ -61,7 +61,11 @@ index on (conversation, client_message_id). Tickets: *Support Agent Request* log
 | `closing_form` | GET | | `reasons, require_reason, questions[{idx,question,answer_type,required,options}], closing_message` |
 | `close` | POST | `name`, `reason`, `notes`, `answers{idx: answer}`, `send_closing_message`, `expected_status` | ConversationDetail (wrap-up saved, as in the web console) |
 | `canned_responses` | GET | `channel` | canned responses the agent may use |
-| `reply` | POST | `name`, `text`, `client_request_id`, `internal` 0\|1, `reply_to` (message id), `voice_seconds` (with an audio file) | `{message, duplicate}` · 422 `whatsapp_window_closed` |
+| `reply` | POST | `name`, `text`, `client_request_id`, `internal` 0\|1, `reply_to` (message id), `voice_seconds` (with an audio file) | `{message, duplicate}` · 422 `whatsapp_window_closed` (actions `send_template`, `open_web_console`) |
+| `whatsapp_templates` | GET | `name` | `{templates[{name, template_name, language, category, text, raw{header,body,footer,buttons}, variables[{key,component,position,example,source,value}], blocked, needs_media}], consent{required,status,source,note}, window_open}` · approved templates for this chat with the variables filled as far as known; `blocked` is `no_optin` or `opted_out` for a marketing template |
+| `send_whatsapp_template` | POST | `name`, `template`, `client_request_id`, `values` {key: text} | `{message, duplicate}` · works with the 24-hour window open or closed · 422 `whatsapp_optin_required` (marketing, no opt-in) or `whatsapp_template_error` (not approved, a variable missing, no media link) |
+| `whatsapp_consent` | POST | `name`, `status` Opted In\|Opted Out, `note` | consent · an opt-in needs a note saying how the customer agreed; only a Support Manager can undo a customer's STOP |
+| `start_whatsapp_chat` | POST | `number`, `template`, `client_request_id`, `values`, `customer` | ConversationDetail · the first message to a number is always a template; limited to 60 chats an hour per user |
 | `tickets` | GET | `view` mine\|unassigned\|all, `status` open\|closed\|<status>, `priority`, `q`, `cursor`, `limit` | page of Ticket |
 | `ticket` | GET | `name` | Ticket + `description, linked_conversation, can_write, statuses[{name,label,category,color}], priorities` (marks it seen) |
 | `ticket_timeline` | GET | `name`, `cursor`, `limit` | `items[{id, kind email\|note, internal, direction, author, author_email, html, to, cc, delivery, created_at}]` |

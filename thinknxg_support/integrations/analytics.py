@@ -179,7 +179,17 @@ def _overview(start, end, channel, queue) -> dict:
         "languages": top([(c.customer_language or "").lower() for c in rows]),
         "ai_usage": top([u.kind for u in usage], 12),
         "automation": top([r.rule for r in runs], 12),
+        "whatsapp_templates": _wa_templates(start, end),
     }
+
+
+def _wa_templates(start, end) -> list[dict]:
+    try:
+        from thinknxg_support.integrations import wa_templates
+
+        return wa_templates.report(start, end)
+    except Exception:
+        return []
 
 
 def agents(from_date=None, to_date=None, channel=None, queue=None) -> list[dict]:

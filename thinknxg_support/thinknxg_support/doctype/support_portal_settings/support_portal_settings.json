@@ -120,6 +120,11 @@
   "whatsapp_webhook_url",
   "whatsapp_template_name",
   "whatsapp_template_language",
+  "whatsapp_require_optin",
+  "whatsapp_optout_reply",
+  "whatsapp_optin_reply",
+  "whatsapp_template_sync",
+  "whatsapp_templates_synced_on",
   "column_break_wa2",
   "whatsapp_link_contacts",
   "whatsapp_auto_reply",
@@ -929,9 +934,45 @@
    "idx": 113
   },
   {
+   "fieldname": "whatsapp_require_optin",
+   "fieldtype": "Check",
+   "label": "Marketing Needs Opt-in",
+   "default": "1",
+   "description": "Marketing templates are only sent to numbers recorded as Opted In. Strongly recommended",
+   "idx": 114
+  },
+  {
+   "fieldname": "whatsapp_optout_reply",
+   "fieldtype": "Small Text",
+   "label": "Reply to STOP",
+   "default": "You will no longer receive marketing messages from us. Send START to receive them again.",
+   "idx": 115
+  },
+  {
+   "fieldname": "whatsapp_optin_reply",
+   "fieldtype": "Small Text",
+   "label": "Reply to START",
+   "default": "Thank you, you will receive our updates again. Send STOP at any time to unsubscribe.",
+   "idx": 116
+  },
+  {
+   "fieldname": "whatsapp_template_sync",
+   "fieldtype": "Small Text",
+   "label": "Last Template Sync",
+   "read_only": 1,
+   "idx": 117
+  },
+  {
+   "fieldname": "whatsapp_templates_synced_on",
+   "fieldtype": "Datetime",
+   "label": "Whatsapp Templates Synced On",
+   "read_only": 1,
+   "idx": 118
+  },
+  {
    "fieldname": "column_break_wa2",
    "fieldtype": "Column Break",
-   "idx": 114
+   "idx": 119
   },
   {
    "fieldname": "whatsapp_link_contacts",
@@ -939,27 +980,27 @@
    "label": "Match Numbers to Contacts",
    "default": "1",
    "description": "Link WhatsApp chats to the Contact and Customer that own the number",
-   "idx": 115
+   "idx": 120
   },
   {
    "fieldname": "whatsapp_auto_reply",
    "fieldtype": "Small Text",
    "label": "Out-of-hours Auto Reply",
    "description": "Sent once per chat when a message arrives outside support hours. Leave empty to disable",
-   "idx": 116
+   "idx": 121
   },
   {
    "fieldname": "whatsapp_status",
    "fieldtype": "Small Text",
    "label": "Whatsapp Status",
    "read_only": 1,
-   "idx": 117
+   "idx": 122
   },
   {
    "fieldname": "landing_tab",
    "fieldtype": "Tab Break",
    "label": "Landing Page",
-   "idx": 118
+   "idx": 123
   },
   {
    "fieldname": "landing_enabled",
@@ -967,7 +1008,7 @@
    "label": "Public Landing Page",
    "default": "1",
    "description": "Visitors can open the portal home page without logging in. Off: the portal asks everyone to log in",
-   "idx": 119
+   "idx": 124
   },
   {
    "fieldname": "customer_home",
@@ -975,12 +1016,12 @@
    "label": "Home Page for Logged-in Customers",
    "options": "Landing Page\nDashboard",
    "default": "Landing Page",
-   "idx": 120
+   "idx": 125
   },
   {
    "fieldname": "column_break_land",
    "fieldtype": "Column Break",
-   "idx": 121
+   "idx": 126
   },
   {
    "fieldname": "public_knowledge",
@@ -988,40 +1029,40 @@
    "label": "Public Knowledge Base",
    "default": "1",
    "description": "Visitors can search and read published help articles without logging in",
-   "idx": 122
+   "idx": 127
   },
   {
    "fieldname": "index_landing",
    "fieldtype": "Check",
    "label": "Let Search Engines Index the Landing Page",
    "description": "Off by default. Other portal pages are never indexed",
-   "idx": 123
+   "idx": 128
   },
   {
    "fieldname": "meta_description",
    "fieldtype": "Small Text",
    "label": "Search Engine Description",
-   "idx": 124
+   "idx": 129
   },
   {
    "fieldname": "landing_sections_section",
    "fieldtype": "Section Break",
    "label": "Sections",
    "description": "Shown from top to bottom in this order. Drag rows to reorder, untick Enabled to hide, and set Audience to show a section only to visitors or only to logged-in customers",
-   "idx": 125
+   "idx": 130
   },
   {
    "fieldname": "landing_sections",
    "fieldtype": "Table",
    "label": "Landing Sections",
    "options": "Support Portal Section",
-   "idx": 126
+   "idx": 131
   },
   {
    "fieldname": "menu_tab",
    "fieldtype": "Tab Break",
    "label": "Menu",
-   "idx": 127
+   "idx": 132
   },
   {
    "fieldname": "menu_links",
@@ -1029,13 +1070,13 @@
    "label": "Menu Links",
    "options": "Support Portal Menu Link",
    "description": "Links shown in the portal's top bar (Header) or at the bottom of the page (Footer)",
-   "idx": 128
+   "idx": 133
   },
   {
    "fieldname": "security_tab",
    "fieldtype": "Tab Break",
    "label": "Security",
-   "idx": 129
+   "idx": 134
   },
   {
    "fieldname": "require_contact_link",
@@ -1043,32 +1084,32 @@
    "label": "Require Contact Link",
    "default": "1",
    "description": "Access grants only apply when the user's Contact is linked to the Customer",
-   "idx": 130
+   "idx": 135
   },
   {
    "fieldname": "allowed_attachment_extensions",
    "fieldtype": "Small Text",
    "label": "Allowed Attachment Extensions",
-   "idx": 131
+   "idx": 136
   },
   {
    "fieldname": "max_attachment_mb",
    "fieldtype": "Int",
    "label": "Max Attachment Mb",
    "default": "10",
-   "idx": 132
+   "idx": 137
   },
   {
    "fieldname": "max_attachments_per_message",
    "fieldtype": "Int",
    "label": "Max Attachments Per Message",
    "default": "5",
-   "idx": 133
+   "idx": 138
   },
   {
    "fieldname": "column_break_sec",
    "fieldtype": "Column Break",
-   "idx": 134
+   "idx": 139
   },
   {
    "fieldname": "message_rate_limit",
@@ -1076,7 +1117,7 @@
    "label": "Message Rate Limit",
    "description": "Messages / replies per user per minute",
    "default": "30",
-   "idx": 135
+   "idx": 140
   },
   {
    "fieldname": "ticket_rate_limit",
@@ -1084,14 +1125,14 @@
    "label": "Ticket Rate Limit",
    "description": "New tickets / requests per user per minute",
    "default": "10",
-   "idx": 136
+   "idx": 141
   },
   {
    "fieldname": "event_retention_days",
    "fieldtype": "Int",
    "label": "Event Retention Days",
    "default": "365",
-   "idx": 137
+   "idx": 142
   }
  ],
  "index_web_pages_for_search": 0,

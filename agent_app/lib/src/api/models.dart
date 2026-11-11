@@ -88,7 +88,7 @@ class Bootstrap {
 }
 
 class ConversationActions {
-  final bool claim, transfer, reply, note, close, takeOver, returnToAssistant, linkCustomer, createTicket;
+  final bool claim, transfer, reply, note, close, takeOver, returnToAssistant, linkCustomer, createTicket, sendTemplate;
   final bool? whatsappWindowOpen;
   const ConversationActions({
     this.claim = false,
@@ -100,6 +100,7 @@ class ConversationActions {
     this.returnToAssistant = false,
     this.linkCustomer = false,
     this.createTicket = false,
+    this.sendTemplate = false,
     this.whatsappWindowOpen,
   });
   factory ConversationActions.fromJson(Map<String, dynamic> j) => ConversationActions(
@@ -112,8 +113,90 @@ class ConversationActions {
         returnToAssistant: _b(j['return_to_assistant']),
         linkCustomer: j['link_customer'] == null ? true : _b(j['link_customer']),
         createTicket: _b(j['create_ticket']),
+        sendTemplate: _b(j['send_template']),
         whatsappWindowOpen: j['whatsapp_window_open'] == null ? null : _b(j['whatsapp_window_open']),
       );
+}
+
+/// 1.17: one {{variable}} of a WhatsApp template and the value we propose for it.
+class TemplateVariable {
+  final String key, component, position, example, value;
+  const TemplateVariable({required this.key, required this.component, required this.position, this.example = '', this.value = ''});
+  factory TemplateVariable.fromJson(Map<String, dynamic> j) => TemplateVariable(
+        key: _s(j['key']),
+        component: _s(j['component']),
+        position: _s(j['position']),
+        example: _s(j['example']),
+        value: _s(j['value']),
+      );
+}
+
+/// An approved WhatsApp template an agent can send into this chat. [blocked] is `no_optin` or `opted_out` for a
+/// marketing template when the customer has not agreed to marketing messages.
+class WhatsAppTemplate {
+  final String id, name, language, category, header, body, footer;
+  final List<String> buttons;
+  final List<TemplateVariable> variables;
+  final String? blocked;
+  final bool needsMedia;
+  const WhatsAppTemplate({
+    required this.id,
+    required this.name,
+    required this.language,
+    required this.category,
+    this.header = '',
+    this.body = '',
+    this.footer = '',
+    this.buttons = const [],
+    this.variables = const [],
+    this.blocked,
+    this.needsMedia = false,
+  });
+  factory WhatsAppTemplate.fromJson(Map<String, dynamic> j) {
+    final raw = _m(j['raw']);
+    return WhatsAppTemplate(
+      id: _s(j['name']),
+      name: _s(j['template_name']),
+      language: _s(j['language']),
+      category: _s(j['category']),
+      header: _s(raw['header']),
+      body: _s(raw['body']),
+      footer: _s(raw['footer']),
+      buttons: [for (final b in _l(raw['buttons'])) _s(_m(b)['text'])],
+      variables: [for (final v in _l(j['variables'])) TemplateVariable.fromJson(_m(v))],
+      blocked: j['blocked'] == null ? null : _s(j['blocked']),
+      needsMedia: _b(j['needs_media']),
+    );
+  }
+
+  static final _placeholder = RegExp(r'\{\{\s*([A-Za-z0-9_]+)\s*\}\}');
+
+  /// The message as the customer will read it, with [values] (keyed `body.1`, `header.1`) filled in.
+  String preview(Map<String, String> values) {
+    String fill(String t, String part) =>
+        t.replaceAllMapped(_placeholder, (m) => (values['$part.${m[1]}'] ?? '').trim().isEmpty ? m[0]! : values['$part.${m[1]}']!);
+    return [
+      if (header.isNotEmpty) fill(header, 'header'),
+      fill(body, 'body'),
+      if (footer.isNotEmpty) footer,
+      if (buttons.isNotEmpty) '[ ${buttons.join(' · ')} ]',
+    ].join('\n\n');
+  }
+}
+
+class WhatsAppTemplates {
+  final List<WhatsAppTemplate> templates;
+  final String? consent; // Opted In | Opted Out | null
+  final bool consentRequired;
+  const WhatsAppTemplates({this.templates = const [], this.consent, this.consentRequired = true});
+  factory WhatsAppTemplates.fromJson(Map<String, dynamic> j) {
+    final c = _m(j['consent']);
+    return WhatsAppTemplates(
+      templates: [for (final t in _l(j['templates'])) WhatsAppTemplate.fromJson(_m(t))],
+      consent: c['status'] == null ? null : _s(c['status']),
+      consentRequired: c['required'] == null ? true : _b(c['required']),
+    );
+  }
 }
 
 class ConversationSummary {

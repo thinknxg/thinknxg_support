@@ -1,0 +1,102 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "key",
+  "component",
+  "position",
+  "example",
+  "source",
+  "fixed_text",
+  "button_index"
+ ],
+ "fields": [
+  {
+   "fieldname": "key",
+   "fieldtype": "Data",
+   "label": "Key",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 2,
+   "description": "Where it appears: body.1, header.1, button0.1",
+   "idx": 1
+  },
+  {
+   "fieldname": "component",
+   "fieldtype": "Select",
+   "label": "Component",
+   "options": "Header\nBody\nButton",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 1,
+   "idx": 2
+  },
+  {
+   "fieldname": "position",
+   "fieldtype": "Data",
+   "label": "Variable",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 1,
+   "description": "{{1}}, or the name in {{name}}",
+   "idx": 3
+  },
+  {
+   "fieldname": "example",
+   "fieldtype": "Data",
+   "label": "Example",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 2,
+   "description": "The example given to Meta",
+   "idx": 4
+  },
+  {
+   "fieldname": "source",
+   "fieldtype": "Select",
+   "label": "Source",
+   "options": "Entered by Agent\nCustomer First Name\nCustomer Name\nPhone Number\nChat Reference\nTicket Reference\nAgent Name\nAgent First Name\nCompany\nPortal Link\nFixed Text",
+   "default": "Entered by Agent",
+   "in_list_view": 1,
+   "columns": 2,
+   "idx": 5
+  },
+  {
+   "fieldname": "fixed_text",
+   "fieldtype": "Data",
+   "label": "Fixed Text",
+   "in_list_view": 1,
+   "columns": 2,
+   "depends_on": "eval:doc.source==\"Fixed Text\"",
+   "description": "Also the starting text for Entered by Agent",
+   "idx": 6
+  },
+  {
+   "fieldname": "button_index",
+   "fieldtype": "Int",
+   "label": "Button Index",
+   "read_only": 1,
+   "hidden": 1,
+   "idx": 7
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 1,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support WhatsApp Template Variable",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

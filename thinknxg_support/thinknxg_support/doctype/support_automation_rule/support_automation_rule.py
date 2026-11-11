@@ -5,9 +5,9 @@ from frappe.model.document import Document
 
 ALLOWED = {
     "Visitor on a Page": {"Send Message"},
-    "Customer Quiet": {"Send Message", "Close Chat", "Notify or Escalate"},
-    "Chat Closed Needing Follow-up": {"Create Follow-up Task", "Notify or Escalate"},
-    "New Chat Outside Chat Hours": {"Send Message", "Collect Details"},
+    "Customer Quiet": {"Send Message", "Send WhatsApp Template", "Close Chat", "Notify or Escalate"},
+    "Chat Closed Needing Follow-up": {"Create Follow-up Task", "Send WhatsApp Template", "Notify or Escalate"},
+    "New Chat Outside Chat Hours": {"Send Message", "Send WhatsApp Template", "Collect Details"},
 }
 
 
@@ -18,6 +18,15 @@ class SupportAutomationRule(Document):
                 _(self.action), _(self.trigger), ", ".join(_(a) for a in sorted(ALLOWED[self.trigger]))))
         if self.action in ("Send Message",) and not (self.message or "").strip():
             frappe.throw(_("Write the message to send."))
+        if self.action == "Send WhatsApp Template":
+            if not self.whatsapp_template:
+                frappe.throw(_("Choose the WhatsApp template to send."))
+            if not self.channel_whatsapp:
+                frappe.throw(_("A WhatsApp template is only sent in WhatsApp chats: tick WhatsApp."))
+            if frappe.db.get_value("Support WhatsApp Template", self.whatsapp_template, "category") == "Authentication":
+                frappe.throw(_("Authentication templates carry a one-time code and are only sent by an agent."))
+            if self.text_when_window_open and not (self.message or "").strip():
+                frappe.throw(_("Write the message to send while the 24-hour window is open."))
         if not (self.channel_live_chat or self.channel_whatsapp or self.channel_portal):
             frappe.throw(_("Choose at least one channel."))
         if self.trigger == "Visitor on a Page":

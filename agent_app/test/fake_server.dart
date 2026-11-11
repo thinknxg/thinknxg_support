@@ -15,6 +15,7 @@ class FakeServer {
   final Map<String, List<Map<String, dynamic>>> ticketTimeline = {};
   final Set<String> seenRequestIds = {};
   final List<String> calls = [];
+  final Map<String, String> consent = {}; // conversation id -> Opted In | Opted Out
   int failNextWithTimeout = 0; // the server processes the request but the answer is "lost"
   bool offline = false; // no answer at all
   final Map<String, List<int>> files = {}; // message id -> bytes
@@ -135,6 +136,7 @@ class FakeServer {
         'link_customer': true,
         'create_ticket': c['ticket'] == null,
         'whatsapp_window_open': c['whatsapp_window_open'],
+        'send_template': open && c['whatsapp_window_open'] != null,
       },
       'customer_name': c['customer_name'],
       'insight': {'sentiment': c['sentiment'], 'urgency': c['urgency'], 'intent': c['sentiment'] == null ? null : 'late delivery',
@@ -305,6 +307,46 @@ class FakeServer {
             m['voice_seconds'] = int.parse('${b['voice_seconds']}');
           }
         }
+        messages[id]!.add(m);
+        return _ok({'message': m, 'duplicate': false});
+      case 'whatsapp_templates':
+        return _ok({
+          'templates': [
+            {
+              'name': 'order_update-en', 'template_name': 'order_update', 'language': 'en', 'category': 'Utility',
+              'raw': {'header': '', 'body': 'Hi {{1}}, your order {{2}} is on its way.', 'footer': 'thinkNXG', 'buttons': [{'text': 'Track'}]},
+              'variables': [
+                {'key': 'body.1', 'component': 'Body', 'position': '1', 'example': 'Salim', 'value': 'Salim'},
+                {'key': 'body.2', 'component': 'Body', 'position': '2', 'example': 'A100', 'value': ''},
+              ],
+              'blocked': null,
+            },
+            {
+              'name': 'summer_offer-en', 'template_name': 'summer_offer', 'language': 'en', 'category': 'Marketing',
+              'raw': {'header': '', 'body': 'Hello {{1}}, 20% off!', 'footer': '', 'buttons': []},
+              'variables': [
+                {'key': 'body.1', 'component': 'Body', 'position': '1', 'example': 'Salim', 'value': 'Salim'},
+              ],
+              'blocked': consent[q['name']] == 'Opted In' ? null : 'no_optin',
+            },
+          ],
+          'consent': {'required': true, 'status': consent[q['name']]},
+        });
+      case 'whatsapp_consent':
+        consent[b['name'] as String] = b['status'] as String;
+        return _ok({'required': true, 'status': b['status']});
+      case 'send_whatsapp_template':
+        final id = b['name'] as String;
+        final rid = b['client_request_id'] as String;
+        final existing = messages[id]!.where((m) => m['client_request_id'] == rid);
+        if (existing.isNotEmpty) return _ok({'message': existing.first, 'duplicate': true});
+        final values = jsonDecode(b['values'] as String) as Map<String, dynamic>;
+        if (values.values.any((v) => '$v'.trim().isEmpty)) {
+          return _err(422, 'Fill in every variable of the template.', {'error_code': 'whatsapp_template_error', 'actions': []});
+        }
+        final m = _msg('outbound', 'Template ${b['template']}: ${values.values.join(' / ')}', rid: rid);
+        m['template'] = b['template'];
+        m['delivery'] = {'status': 'Sent'};
         messages[id]!.add(m);
         return _ok({'message': m, 'duplicate': false});
       case 'closing_form':

@@ -62,6 +62,26 @@ def _message(conv, rule):
                 "Bot", f"Automation: {rule.name}")
 
 
+def _template(conv, rule) -> str:
+    """1.17: an approved WhatsApp template, with the 24-hour window open or closed. Never sends marketing to a number
+    that has not opted in, and never guesses a variable."""
+    from thinknxg_support.integrations import wa_templates, whatsapp
+
+    if conv.get("channel") != "WhatsApp":
+        return "skipped: not a WhatsApp chat"
+    if cint(rule.text_when_window_open) and (rule.message or "").strip() and whatsapp.window_open(conv):
+        _message(conv, rule)
+        return "message sent (window open)"
+    try:
+        wa_templates.send(conv, rule.whatsapp_template, user=None, source="system", automatic=rule.name,
+                          keep_status=conv.get("status") == "Closed")
+    except wa_templates.OptInRequired as e:
+        return f"skipped: {e}"[:300]
+    except wa_templates.TemplateError as e:
+        return f"skipped: {e}"[:300]
+    return "template sent"
+
+
 def _escalate(conv, rule, why: str):
     from thinknxg_support.integrations import escalations
 
@@ -78,6 +98,8 @@ def run(rule, conv, why: str = "") -> str:
     if a == "Send Message":
         _message(conv, rule)
         result = "message sent"
+    elif a == "Send WhatsApp Template":
+        result = _template(conv, rule)
     elif a == "Collect Details":
         from thinknxg_support.integrations import lead_capture
 

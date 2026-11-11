@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'api_client.dart';
 import 'models.dart';
 
@@ -103,6 +105,27 @@ class StaffApi {
     final r = _map(file == null ? await client.post('reply', fields) : await client.postFile('reply', fields, file));
     return (message: ChatMessage.fromJson(_map(r['message'])), duplicate: r['duplicate'] == true);
   }
+
+  /// 1.17: approved WhatsApp templates for this chat, with the variables filled in as far as the server knows them.
+  Future<WhatsAppTemplates> whatsappTemplates(String id) async =>
+      WhatsAppTemplates.fromJson(_map(await client.get('whatsapp_templates', {'name': id})));
+
+  /// Send an approved template (works with the 24-hour window open or closed). Retrying with the same
+  /// [clientRequestId] never sends twice.
+  Future<({ChatMessage message, bool duplicate})> sendWhatsappTemplate(String id, String template, Map<String, String> values,
+      {required String clientRequestId}) async {
+    final r = _map(await client.post('send_whatsapp_template', {
+      'name': id,
+      'template': template,
+      'values': jsonEncode(values),
+      'client_request_id': clientRequestId,
+    }));
+    return (message: ChatMessage.fromJson(_map(r['message'])), duplicate: r['duplicate'] == true);
+  }
+
+  /// Record that the customer agreed to (or stopped) marketing messages.
+  Future<void> whatsappConsent(String id, String status, String note) async =>
+      await client.post('whatsapp_consent', {'name': id, 'status': status, 'note': note});
 
   Future<List<CannedResponse>> cannedResponses({String? channel}) async =>
       [for (final c in _list(await client.get('canned_responses', {'channel': channel}))) CannedResponse.fromJson(_map(c))];

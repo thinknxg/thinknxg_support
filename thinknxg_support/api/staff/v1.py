@@ -89,7 +89,8 @@ def bootstrap():
 def _messaging_caps() -> dict:
     from thinknxg_support.integrations import messaging
 
-    return {**messaging.capabilities(), "reply_to": True, "edit": True, "remove": True, "changed_since": True}
+    return {**messaging.capabilities(), "reply_to": True, "edit": True, "remove": True, "changed_since": True,
+            "whatsapp_templates": True}
 
 
 def _copilot_on() -> bool:
@@ -269,7 +270,7 @@ def _actions(doc) -> dict:
     return {"claim": open_ and doc.assigned_agent != user, "transfer": open_, "reply": open_ and window is not False,
             "link_customer": True, "create_ticket": bool(not doc.helpdesk_ticket and helpdesk_agent.available()),
             "note": True, "close": open_, "take_over": open_ and doc.handling == "Bot", "return_to_assistant": can_return,
-            "whatsapp_window_open": window}
+            "whatsapp_window_open": window, "send_template": bool(open_ and window is not None)}
 
 
 def conversation_detail(doc) -> dict:
@@ -320,14 +321,16 @@ def _message_base(m, actions) -> dict:
             "internal": bool(cint(m.is_internal)), "sender_type": m.sender_type, "author": m.sender_name or m.sender,
             "author_user": m.sender, "html": m.content or "", "created_at": _iso(m.creation),
             "attachment": {"name": (m.attachment or "").rsplit("/", 1)[-1]} if m.attachment else None,
-            "delivery": {"status": m.delivery_status, "error": m.delivery_error} if m.delivery_status else None,
+            "delivery": {"status": m.delivery_status, "error": m.delivery_error, "code": m.get("delivery_code") or None}
+            if m.delivery_status else None,
+            "template": m.get("wa_template"),
             "client_request_id": m.client_message_id, "read_by_customer": bool(cint(m.read_by_customer)),
             "actions": actions}
 
 
 MSG_FIELDS = ["name", "direction", "sender", "sender_name", "content", "attachment", "is_internal", "creation",
               "delivery_status", "delivery_error", "sender_type", "client_message_id", "read_by_customer", "actions_json",
-              "conversation", "channel", "reply_to", "edited_on", "hidden", "hidden_by", "reactions_json", "voice_seconds"]
+              "conversation", "channel", "reply_to", "edited_on", "hidden", "hidden_by", "reactions_json", "voice_seconds", "wa_template", "delivery_code"]
 
 
 @frappe.whitelist(methods=["GET"])
@@ -542,7 +545,8 @@ def reply(name: str, text: str, client_request_id: str, internal: int = 0, reply
             raise ChannelActionRequired(
                 _("WhatsApp only allows free replies within 24 hours of the customer's last message. "
                   "Send an approved template from the web console, or wait for the customer to write."),
-                "whatsapp_window_closed", [{"action": "open_web_console", "label": _("Open in the web console")}])
+                "whatsapp_window_closed", [{"action": "send_template", "label": _("Send a template")},
+                                           {"action": "open_web_console", "label": _("Open in the web console")}])
     from thinknxg_support.integrations import conversations
 
     out = conversations.post_agent_message(doc, _text_html(text) if (text or "").strip() else "", internal=internal,
@@ -551,6 +555,58 @@ def reply(name: str, text: str, client_request_id: str, internal: int = 0, reply
     msg = frappe.db.get_value(MSG, out.get("name") or {"conversation": doc.name, "client_message_id": cid}, MSG_FIELDS,
                               as_dict=True)
     return {"message": _message(msg), "duplicate": bool(out.get("duplicate"))}
+
+
+# ------------------------------------------------------------------ 1.17: WhatsApp templates
+def _wa(fn, *a, **k):
+    from thinknxg_support.integrations import wa_templates
+
+    try:
+        return fn(wa_templates, *a, **k)
+    except wa_templates.OptInRequired as e:
+        raise ChannelActionRequired(str(e), "whatsapp_optin_required", [])
+    except wa_templates.TemplateError as e:
+        raise ChannelActionRequired(str(e), "whatsapp_template_error", [])
+
+
+@frappe.whitelist(methods=["GET"])
+def whatsapp_templates(name: str):
+    """Approved templates for this WhatsApp chat with the variables filled in as far as known, and the customer's
+    marketing consent."""
+    doc = _conv(name, "read")
+    return _wa(lambda m: m.api_options(doc, frappe.session.user))
+
+
+@frappe.whitelist(methods=["POST"])
+def send_whatsapp_template(name: str, template: str, client_request_id: str, values: str | dict | None = None):
+    """Send an approved template into this chat (works with the 24-hour window open or closed)."""
+    doc = _conv(name, "write")
+    cid = (client_request_id or "").strip()[:64]
+    if len(cid) < 8:
+        frappe.throw(_("client_request_id is required (use a UUID)."))
+    out = _wa(lambda m: m.api_send(doc, template, values, cid, frappe.session.user, "app"))
+    msg = frappe.db.get_value(MSG, out["name"], MSG_FIELDS, as_dict=True)
+    return {"message": _message(msg), "duplicate": bool(out.get("duplicate"))}
+
+
+@frappe.whitelist(methods=["POST"])
+def whatsapp_consent(name: str, status: str, note: str | None = None):
+    """Record that this customer agreed to (or stopped) marketing messages."""
+    doc = _conv(name, "write")
+    return _wa(lambda m: m.api_consent(doc, status, note, frappe.session.user))
+
+
+@frappe.whitelist(methods=["POST"])
+def start_whatsapp_chat(number: str, template: str, client_request_id: str, values: str | dict | None = None,
+                        customer: str | None = None):
+    """Start a WhatsApp conversation with a template: the customer has not written yet."""
+    staff_auth.require_staff()
+    frappe.has_permission(CONV, "create", throw=True)
+    cid = (client_request_id or "").strip()[:64]
+    if len(cid) < 8:
+        frappe.throw(_("client_request_id is required (use a UUID)."))
+    out = _wa(lambda m: m.api_start(number, template, values, cid, frappe.session.user, customer))
+    return conversation_detail(frappe.get_doc(CONV, out["conversation"]))
 
 
 # ------------------------------------------------------------------ 1.14: edit, remove, react, history

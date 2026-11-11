@@ -24,6 +24,7 @@ class Composer extends StatefulWidget {
   final VoidCallback? onCanned;
   final String cannedTooltip;
   final VoidCallback? onAi;
+  final VoidCallback? onTemplate;
   final Future<void> Function(UploadFile file, int seconds)? onVoice;
   final int maxVoiceSeconds;
 
@@ -43,6 +44,7 @@ class Composer extends StatefulWidget {
     this.onCanned,
     this.cannedTooltip = 'Canned responses (Ctrl+/)',
     this.onAi,
+    this.onTemplate,
     this.onVoice,
     this.maxVoiceSeconds = 120,
   });
@@ -168,7 +170,13 @@ class _ComposerState extends State<Composer> {
                       Text('Your text is kept. ${d.requestId != null ? 'Retrying will not send it twice.' : ''}',
                           style: TextStyle(fontSize: 12, color: s.onErrorContainer)),
                     for (final a in d.serverActions)
-                      Text('• ${a['label'] ?? a['action']}', style: TextStyle(fontSize: 12, color: s.onErrorContainer)),
+                      if (a['action'] == 'send_template' && widget.onTemplate != null)
+                        TextButton(
+                            key: const Key('composer-send-template'),
+                            onPressed: widget.onTemplate,
+                            child: Text('${a['label'] ?? 'Send a template'}'))
+                      else
+                        Text('• ${a['label'] ?? a['action']}', style: TextStyle(fontSize: 12, color: s.onErrorContainer)),
                   ]),
                 ),
               ),
@@ -212,6 +220,14 @@ class _ComposerState extends State<Composer> {
                   tooltip: 'AI copilot (Ctrl+I): suggest, rewrite, translate, summarise',
                   onPressed: sending ? null : widget.onAi,
                   icon: const Icon(Icons.auto_awesome),
+                ),
+              if (widget.onTemplate != null)
+                IconButton(
+                  key: const Key('composer-template'),
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Send an approved WhatsApp template',
+                  onPressed: sending ? null : widget.onTemplate,
+                  icon: const Icon(Icons.article_outlined),
                 ),
               if (widget.onCanned != null)
                 IconButton(

@@ -1,0 +1,272 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-24 10:00:00.000000",
+ "description": "",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "key",
+  "template_name",
+  "language",
+  "category",
+  "status",
+  "column_break_t1",
+  "enabled",
+  "quality",
+  "rejected_reason",
+  "last_synced_on",
+  "meta_id",
+  "parameter_format",
+  "content_section",
+  "header_format",
+  "header_text",
+  "header_media_url",
+  "body_text",
+  "footer_text",
+  "buttons_json",
+  "components_json",
+  "variables_section",
+  "variables"
+ ],
+ "fields": [
+  {
+   "fieldname": "key",
+   "fieldtype": "Data",
+   "label": "Key",
+   "hidden": 1,
+   "read_only": 1,
+   "unique": 1,
+   "idx": 1
+  },
+  {
+   "fieldname": "template_name",
+   "fieldtype": "Data",
+   "label": "Template Name",
+   "reqd": 1,
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "As created in WhatsApp Manager. Lowercase letters, digits and underscores",
+   "idx": 2
+  },
+  {
+   "fieldname": "language",
+   "fieldtype": "Data",
+   "label": "Language",
+   "reqd": 1,
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "e.g. en, en_US, ar",
+   "idx": 3
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "label": "Category",
+   "options": "Marketing\nUtility\nAuthentication",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 4
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Approved\nPending\nRejected\nPaused\nDisabled\nIn Appeal\nDeleted\nUnknown",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "idx": 5
+  },
+  {
+   "fieldname": "column_break_t1",
+   "fieldtype": "Column Break",
+   "idx": 6
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Available to Agents and Rules",
+   "default": "1",
+   "in_list_view": 1,
+   "description": "Switch off to stop using a template without deleting it in Meta",
+   "idx": 7
+  },
+  {
+   "fieldname": "quality",
+   "fieldtype": "Data",
+   "label": "Quality Rating",
+   "read_only": 1,
+   "idx": 8
+  },
+  {
+   "fieldname": "rejected_reason",
+   "fieldtype": "Small Text",
+   "label": "Rejected Reason",
+   "read_only": 1,
+   "idx": 9
+  },
+  {
+   "fieldname": "last_synced_on",
+   "fieldtype": "Datetime",
+   "label": "Last Synced On",
+   "read_only": 1,
+   "idx": 10
+  },
+  {
+   "fieldname": "meta_id",
+   "fieldtype": "Data",
+   "label": "Meta Template ID",
+   "read_only": 1,
+   "idx": 11
+  },
+  {
+   "fieldname": "parameter_format",
+   "fieldtype": "Select",
+   "label": "Parameter Format",
+   "options": "Positional\nNamed",
+   "default": "Positional",
+   "read_only": 1,
+   "idx": 12
+  },
+  {
+   "fieldname": "content_section",
+   "fieldtype": "Section Break",
+   "label": "Message",
+   "idx": 13
+  },
+  {
+   "fieldname": "header_format",
+   "fieldtype": "Select",
+   "label": "Header Format",
+   "options": "\nText\nImage\nVideo\nDocument\nLocation",
+   "read_only": 1,
+   "idx": 14
+  },
+  {
+   "fieldname": "header_text",
+   "fieldtype": "Data",
+   "label": "Header Text",
+   "read_only": 1,
+   "idx": 15
+  },
+  {
+   "fieldname": "header_media_url",
+   "fieldtype": "Data",
+   "label": "Header Media Link",
+   "depends_on": "eval:[\"Image\",\"Video\",\"Document\"].includes(doc.header_format)",
+   "description": "Public https:// link to the image, video or document sent in the header (Meta downloads it)",
+   "idx": 16
+  },
+  {
+   "fieldname": "body_text",
+   "fieldtype": "Long Text",
+   "label": "Body Text",
+   "read_only": 1,
+   "idx": 17
+  },
+  {
+   "fieldname": "footer_text",
+   "fieldtype": "Data",
+   "label": "Footer Text",
+   "read_only": 1,
+   "idx": 18
+  },
+  {
+   "fieldname": "buttons_json",
+   "fieldtype": "Code",
+   "label": "Buttons",
+   "options": "JSON",
+   "read_only": 1,
+   "idx": 19
+  },
+  {
+   "fieldname": "components_json",
+   "fieldtype": "Code",
+   "label": "Components Json",
+   "options": "JSON",
+   "read_only": 1,
+   "hidden": 1,
+   "idx": 20
+  },
+  {
+   "fieldname": "variables_section",
+   "fieldtype": "Section Break",
+   "label": "Variables",
+   "description": "Where each {{variable}} gets its value when this template is sent. Entered by Agent asks the agent; rules use the starting text",
+   "idx": 21
+  },
+  {
+   "fieldname": "variables",
+   "fieldtype": "Table",
+   "label": "Variables",
+   "options": "Support WhatsApp Template Variable",
+   "idx": 22
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 0,
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-24 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "thinkNXG Support",
+ "name": "Support WhatsApp Template",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Portal Administrator",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Support Agent",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "field:key",
+ "naming_rule": "By fieldname",
+ "title_field": "template_name",
+ "search_fields": "template_name,language,category,status"
+}

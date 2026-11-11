@@ -237,6 +237,8 @@ def add_inbound_message(conv, content: str, *, sender: str | None, sender_name: 
     publish_agent_event(conv, "message")
     from thinknxg_support.integrations import lead_capture  # 1.14: answers to "collect details" questions
 
+    if frappe.flags.get("thinknxg_skip_reply"):  # 1.17: a STOP / START keyword is handled by the opt-in list
+        return {"name": msg.name}
     if lead_capture.consume(conv, content):
         return {"name": msg.name}
     if conv.handling == "Bot":
@@ -271,7 +273,7 @@ def post_agent_message(conv, content: str, internal: int = 0, source: str = "des
                        external_id: str | None = None, sender_type: str = "Agent", response_source: str | None = None,
                        sender_name: str | None = None, actions: dict | None = None, confidence: str | None = None,
                        ai_usage: str | None = None, client_message_id: str | None = None, files=None,
-                       reply_to: str | None = None, voice_seconds=None) -> dict:
+                       reply_to: str | None = None, voice_seconds=None, template: dict | None = None) -> dict:
     """Every message TO the customer goes through here: agents, the assistant, chatbot rules and system notes.
     client_message_id (Agent Apps): a retried send returns the first message instead of a second one."""
     sender = sender or frappe.session.user
@@ -303,6 +305,8 @@ def post_agent_message(conv, content: str, internal: int = 0, source: str = "des
         "confidence": confidence,
         "actions_json": json.dumps(actions) if actions else None,
         "ai_usage": ai_usage,
+        "wa_template": (template or {}).get("doc"),
+        "wa_components": json.dumps({k: template[k] for k in ("name", "language", "components")}) if template else None,
     })
     if reply_to:
         from thinknxg_support.integrations import messaging

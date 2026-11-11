@@ -533,6 +533,19 @@ class ConversationController extends ChangeNotifier with _Polling {
     }
   }
 
+  /// 1.17: send an approved WhatsApp template. Errors go to the caller (the template dialog shows them).
+  Future<void> sendTemplate(String template, Map<String, String> values) async {
+    try {
+      final r = await api.sendWhatsappTemplate(id, template, values, clientRequestId: requestIdFactory());
+      _merge([r.message]);
+      await _acknowledge();
+      safeNotify();
+    } on SessionExpired {
+      onExpired();
+      rethrow;
+    }
+  }
+
   /// Send (or retry) the draft. Online only: failures keep the draft for a manual retry.
   Future<void> send() async {
     final text = draft.text.trim();
