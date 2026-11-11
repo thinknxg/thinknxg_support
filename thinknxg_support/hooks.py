@@ -98,6 +98,8 @@ scheduler_events = {
         # overdue escalations: flag and alert
         "*/5 * * * *": ["thinknxg_support.integrations.escalations.check_overdue",
                         "thinknxg_support.integrations.automation.check_quiet"],
+        # pushes Firebase could not take are sent again while they are still fresh
+        "* * * * *": ["thinknxg_support.integrations.push.retry_due"],
     },
     "hourly": [
         "thinknxg_support.integrations.alerts.expire_and_purge",
@@ -108,6 +110,7 @@ scheduler_events = {
     "daily": [
         "thinknxg_support.tasks.expire_access_and_grants",
         "thinknxg_support.tasks.purge_old_events",
+        "thinknxg_support.integrations.push.purge",
         "thinknxg_support.integrations.live_chat.purge_guest_chats",
         "thinknxg_support.integrations.ai.housekeeping.purge_usage_logs",
     ],

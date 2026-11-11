@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.15.0, 2026-11-11 — alerts when the app is not open
+* **Windows app**: starts with Windows in the background (installer option, on by default), stays in the system
+  tray when its window is closed, keeps receiving alerts and shows Windows notifications with sound; clicking one
+  opens the record. A second start brings the running app forward. Switches in the Alerts tab.
+* **macOS app** (new): the same workspace, in the menu bar, started at sign-in by a Launch Agent; with a signed
+  build, push through Apple's notification service (also when the app is not running) and a dock badge.
+* **Android and iOS**: icon badges with the number of waiting alerts; the Alerts tab says when notifications are
+  off or (Android) battery saving can hold alerts back, and opens the system settings.
+* **Push service**: every push is tracked (*Support Push Delivery*: Sent, Opened, Retrying, Failed, Token Removed)
+  and retried for a few minutes when Firebase cannot be reached; macOS devices; the badge count.
+* Staff API: `push_opened`; `register_device` accepts `macOS`.
+
 ## 1.14.2, 2026-11-10
 * **A lead for every website chat**: when a visitor fills in the start-chat form, a lead is created automatically
   (Support Portal Settings > Leads > "Create a Lead When a Visitor Starts a Chat", on by default; needs "Create Leads

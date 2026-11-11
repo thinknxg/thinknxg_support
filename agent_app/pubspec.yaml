@@ -1,7 +1,7 @@
 name: thinknxg_agent
-description: thinkNXG Support Agent app for Windows, Android and iOS.
+description: thinkNXG Support Agent app for Windows, macOS, Android and iOS.
 publish_to: none
-version: 1.14.0+5
+version: 1.15.0+6
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -23,6 +23,10 @@ dependencies:
   flutter_local_notifications: ">=19.0.0 <20.0.0"
   firebase_core: ">=3.6.0 <5.0.0"
   firebase_messaging: ">=15.1.0 <17.0.0"
+  tray_manager: ">=0.3.2 <0.6.0"
+  window_manager: ">=0.4.3 <0.6.0"
+  app_badge_plus: ">=1.1.5 <2.0.0"
+  permission_handler: ">=11.3.1 <13.0.0"
 
 dev_dependencies:
   flutter_test:
@@ -31,3 +35,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/  # tray icons, copied from the app icons by tool/configure_platforms.sh

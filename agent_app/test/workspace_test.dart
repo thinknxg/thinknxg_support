@@ -7,6 +7,7 @@ import 'package:thinknxg_agent/src/api/api_client.dart';
 import 'package:thinknxg_agent/src/api/models.dart';
 import 'package:thinknxg_agent/src/api/staff_api.dart';
 import 'package:thinknxg_agent/src/auth/token_store.dart';
+import 'package:thinknxg_agent/src/platform/desktop.dart' show macLaunchAgent;
 import 'package:thinknxg_agent/src/platform/files.dart';
 import 'package:thinknxg_agent/src/platform/services.dart';
 import 'package:thinknxg_agent/src/platform/voice.dart';
@@ -42,6 +43,25 @@ class FakeFiles implements FileService {
   Future<UploadFile?> pick({int maxBytes = 10 * 1024 * 1024}) async => next;
   @override
   Future<void> open(DownloadedFile file) async => opened = file;
+}
+
+class FakeShell implements DesktopShell {
+  @override
+  bool startAtLogin = false;
+  @override
+  bool keepRunning = true;
+  @override
+  bool windowHidden = false;
+  int shown = 0;
+  @override
+  Future<void> setStartAtLogin(bool on) async => startAtLogin = on;
+  @override
+  Future<void> setKeepRunning(bool on) async => keepRunning = on;
+  @override
+  Future<void> showWindow() async {
+    shown++;
+    windowHidden = false;
+  }
 }
 
 StaffApi apiFor(FakeServer s) =>
@@ -571,6 +591,53 @@ void main() {
       await tester.pumpAndSettle();
       expect(sink.played.last, 'Ring');
       expect(find.text('Test alert sent.'), findsOneWidget);
+    });
+
+    testWidgets('desktop: closed to the tray the app still notifies; a click opens the window; start-up switches', (tester) async {
+      final shell = FakeShell()..windowHidden = true;
+      AppServices.desktop = shell;
+      final badges = <int>[];
+      AppServices.setBadge = (n) async => badges.add(n);
+      addTearDown(() {
+        AppServices.desktop = null;
+        AppServices.setBadge = (_) async {};
+      });
+      final (_, server) = await signedIn(tester, const Size(1440, 900));
+      server.alertItems.add({
+        'id': 'AL-9',
+        'kind': 'New Chat',
+        'title': 'New chat: Asha',
+        'body': '',
+        'reference_doctype': 'Support Conversation Link',
+        'reference_name': 'CONV-100',
+      });
+      await tester.pump(const Duration(seconds: 16));
+      await tester.pumpAndSettle();
+      expect(sink.played, contains('Ring'));
+      expect(sink.notified, contains('New chat waiting'), reason: 'window closed to the tray: a system notification');
+      expect(badges.last, 1);
+      AppServices.pushOpened!('DELIVERY-1'); // a push was tapped
+      AppServices.pendingLink.value = (doctype: 'Support Conversation Link', name: 'CONV-100');
+      await tester.pumpAndSettle();
+      expect(shell.shown, 1, reason: 'clicking the notification brings the window back');
+      expect(server.pushOpened, ['DELIVERY-1']);
+      expect(find.text('Reply to customer'), findsOneWidget);
+      await tester.tap(find.text('Alerts'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<SwitchListTile>(find.byKey(const Key('start-at-login'))).value, isFalse);
+      await tester.tap(find.byKey(const Key('start-at-login')));
+      await tester.pumpAndSettle();
+      expect(shell.startAtLogin, isTrue);
+      await tester.tap(find.byKey(const Key('keep-running')));
+      await tester.pumpAndSettle();
+      expect(shell.keepRunning, isFalse);
+    });
+
+    test('macOS Launch Agent opens the app hidden at sign-in', () {
+      final plist = macLaunchAgent('com.thinknxg.agent', '/Applications/thinkNXG <Support> Agent.app');
+      expect(plist, contains('<key>RunAtLoad</key>'));
+      expect(plist, contains('THINKNXG_AGENT_HIDDEN=1'));
+      expect(plist, contains('/Applications/thinkNXG &lt;Support&gt; Agent.app'));
     });
 
     testWidgets('alerts ring in the app and acknowledging clears them on the server', (tester) async {

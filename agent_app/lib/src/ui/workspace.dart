@@ -51,7 +51,7 @@ class WorkspaceState extends State<Workspace> {
   }
 
   Future<void> _beat() async {
-    final active = _activeSinceBeat && _foreground;
+    final active = _activeSinceBeat && _visible;
     _activeSinceBeat = false;
     try {
       final s = await widget.session.api?.heartbeat(active: active);
@@ -77,9 +77,11 @@ class WorkspaceState extends State<Workspace> {
     void expired() => widget.session.markExpired();
     inbox = InboxController(api, onExpired: expired)..onReconnect = _refreshAll;
     tickets = TicketsController(api, onExpired: expired);
-    alertCenter = AlertCenter(AppServices.alertSink, appInForeground: () => _foreground)..start();
+    alertCenter = AlertCenter(AppServices.alertSink, appInForeground: () => _visible)..start();
     alerts = AlertsController(api, onExpired: expired, center: alertCenter);
+    alerts.addListener(_badge);
     alerts.loadConfig().then((_) => alerts.refresh());
+    AppServices.pushOpened = (d) => api.pushOpened(d).catchError((_) {});
     _startPolling();
     _refreshAll();
     HardwareKeyboard.instance.addHandler(_onKey);
@@ -101,10 +103,21 @@ class WorkspaceState extends State<Workspace> {
     _startPush();
   }
 
+  /// In front of the agent: not in the background, and (desktop) not closed to the tray.
+  bool get _visible => _foreground && !(AppServices.desktop?.windowHidden ?? false);
+
+  int _badgeShown = -1;
+  void _badge() {
+    if (alerts.items.length == _badgeShown) return;
+    _badgeShown = alerts.items.length;
+    AppServices.setBadge(_badgeShown).catchError((_) {});
+  }
+
   void _openPending() {
     final l = AppServices.pendingLink.value;
     if (l == null || !mounted) return;
     AppServices.pendingLink.value = null;
+    AppServices.desktop?.showWindow(); // a notification was clicked while the window was closed to the tray
     openLink(l.doctype, l.name); // access is checked by the server before anything opens
   }
 
@@ -151,6 +164,8 @@ class WorkspaceState extends State<Workspace> {
     myStatus.dispose();
     _life.dispose();
     AppServices.pendingLink.removeListener(_openPending);
+    AppServices.pushOpened = null;
+    AppServices.setBadge(0).catchError((_) {});
     alertCenter.dispose();
     inbox.dispose();
     tickets.dispose();

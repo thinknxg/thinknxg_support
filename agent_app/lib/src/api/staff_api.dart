@@ -268,5 +268,7 @@ class StaffApi {
   Future<void> registerDevice(String pushToken, String platform, {String? deviceName, String? appVersion}) =>
       client.post('register_device', {'push_token': pushToken, 'platform': platform, 'device_name': deviceName, 'app_version': appVersion});
 
+  Future<void> pushOpened(String delivery) => client.post('push_opened', {'delivery': delivery});
+
   Future<void> signOut({String? pushToken}) => client.post('sign_out', {'push_token': pushToken});
 }

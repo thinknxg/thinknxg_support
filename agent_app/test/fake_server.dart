@@ -31,6 +31,7 @@ class FakeServer {
         'seq': 2.0 + feed.length,
       });
   final List<String> acknowledged = [];
+  final List<String> pushOpened = [];
   int typingCalls = 0;
   final Map<String, Map<String, dynamic>> closed = {};
   final Map<String, Map<String, dynamic>> linked = {};
@@ -510,6 +511,9 @@ class FakeServer {
         if (q['name'] == 'SECRET') return _err(403, 'This conversation is in a queue you are not part of.');
         return _ok({'kind': q['doctype'] == 'HD Ticket' ? 'ticket' : 'conversation', 'id': q['name']});
       case 'sign_out':
+        return _ok({'ok': true});
+      case 'push_opened':
+        pushOpened.add('${b['delivery']}');
         return _ok({'ok': true});
     }
     return _err(404, 'Unknown method $method');

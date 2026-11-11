@@ -720,7 +720,7 @@ def register_device(push_token: str, platform: str, device_name: str | None = No
     staff_auth.require_staff()
     import hashlib
 
-    if platform not in ("Android", "iOS", "Windows"):
+    if platform not in ("Android", "iOS", "macOS", "Windows"):
         frappe.throw(_("Unknown platform."))
     token = (push_token or "").strip()
     if not token or len(token) > 4096:
@@ -747,6 +747,15 @@ def sign_out(push_token: str | None = None):
         h = hashlib.sha256(push_token.strip().encode()).hexdigest()
         frappe.db.delete("Support Agent Device", {"token_hash": h, "user": frappe.session.user})
     return {"ok": True}
+
+
+@frappe.whitelist(methods=["POST"])
+def push_opened(delivery: str):
+    """The agent tapped a push on their device (delivery tracking)."""
+    staff_auth.require_staff()
+    from thinknxg_support.integrations import push
+
+    return {"ok": push.opened(str(delivery or "")[:140], frappe.session.user)}
 
 
 # ------------------------------------------------------------------ workspace: canned, files, transfer, history, live

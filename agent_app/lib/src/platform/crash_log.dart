@@ -1,7 +1,8 @@
 import 'dart:io';
 
 /// Startup and crash log, so a failure on a customer PC can be diagnosed:
-/// Windows %LOCALAPPDATA%\thinkNXG Support Agent\agent.log (other platforms: the system temp folder).
+/// Windows %LOCALAPPDATA%\thinkNXG Support Agent\agent.log, macOS ~/Library/Application Support/thinkNXG Support
+/// Agent/agent.log (phones: the system temp folder). The desktop app's own settings live next to it.
 /// Never contains tokens or message text: only errors and stack traces.
 class CrashLog {
   static File? _file;
@@ -10,7 +11,9 @@ class CrashLog {
     if (_file != null) return _file!;
     final base = Platform.isWindows
         ? (Platform.environment['LOCALAPPDATA'] ?? Directory.systemTemp.path)
-        : Directory.systemTemp.path;
+        : Platform.isMacOS && Platform.environment['HOME'] != null
+            ? '${Platform.environment['HOME']}/Library/Application Support'
+            : Directory.systemTemp.path;
     final dir = Directory('$base${Platform.pathSeparator}thinkNXG Support Agent');
     try {
       dir.createSync(recursive: true);

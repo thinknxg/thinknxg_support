@@ -72,7 +72,7 @@ index on (conversation, client_message_id). Tickets: *Support Agent Request* log
 | `alerts` | GET | `since` (cursor) | `items` (open alerts), `events` (unstored alerts such as new messages since the cursor), `cursor` |
 | `acknowledge_alerts` | POST | `ids` | `acknowledged` (clears them in every tab and device) |
 | `open_target` | GET | `doctype`, `name` | `{kind: conversation\|ticket\|web, id\|url}` after checking access again |
-| `register_device` | POST | `push_token`, `platform` Android\|iOS\|Windows, `device_name`, `app_version` | `{device}` |
+| `register_device` | POST | `push_token`, `platform` Android\|iOS\|macOS\|Windows, `device_name`, `app_version` | `{device}` |
 | `canned_render` | POST | `name` (canned response, or `hd:<HD Canned Response>`), `conversation` | `{text, html}` with placeholders filled; counts as used |
 | `attachment` | GET | `message` | the file (download), after checking access to its conversation; logged |
 | `ticket_attachment` | GET | `name`, `file` | the file, when it belongs to the ticket or one of its e-mails |
@@ -83,6 +83,7 @@ index on (conversation, client_message_id). Tickets: *Support Agent Request* log
 | `heartbeat` | POST | `active` 0\|1 (1.14: used the app since the last heartbeat) | marks the agent online (routing, transfer list); the app sends it every 45 s |
 | `alert_config` | GET | | team alert rules merged with this agent's preferences (sound, popup, repeat, volume, mute) |
 | `send_test_push` | POST | | a test push to this agent's devices |
+| `push_opened` | POST | `delivery` (from the push's data) | `{ok}`: marks the delivery Opened (only the agent it was sent to) |
 | `send_test_alert` | POST | | a real test alert through the server |
 | `customer_search` | GET | `q`, `conversation` | customers (`name, customer_name, email_id, mobile_no, suggested`); matches for the visitor's e-mail / phone first |
 | `customer_contacts` | GET | `customer` | the customer's contacts |
@@ -143,7 +144,26 @@ Firebase) with generic lock-screen text ("New support activity"); opening a push
 * Devices whose token Firebase reports as unregistered are switched off automatically; `sign_out` removes the
   device. iOS goes through APNs: upload the APNs key to the same Firebase project.
 * App builds read the Firebase app settings from `--dart-define` (CI secrets `FCM_PROJECT_ID`, `FCM_API_KEY`,
-  `FCM_SENDER_ID`, `FCM_ANDROID_APP_ID`, `FCM_IOS_APP_ID`); without them the app is built without push.
+  `FCM_SENDER_ID`, `FCM_ANDROID_APP_ID`, `FCM_IOS_APP_ID`, `FCM_MACOS_APP_ID`); without them the app is built
+  without push.
+* 1.15 — **delivery tracking and retries**: every push is a *Support Push Delivery* record (Sent = accepted by
+  Firebase, Opened = tapped on the device, Retrying, Failed, Token Removed; kept 14 days). When Firebase cannot be
+  reached or answers 429 / 5xx the push is sent again after 1, 2 and 4 minutes (4 attempts, within 10 minutes: an
+  old alert is not worth a late push). The push carries the number of alerts waiting for the agent as the icon
+  **badge** (iOS, macOS; notification count on Android) and `delivery`, which the app reports with `push_opened`.
+
+## Alerts when the app is not open (1.15)
+
+| Platform | How alerts arrive | When they cannot |
+|---|---|---|
+| Android | Firebase Cloud Messaging: the system shows the notification (lock screen, sound, vibration, badge) with the app closed or the phone asleep | Notifications switched off; the phone maker's battery saver force-stopped the app (the Alerts tab says so and opens the settings); no network |
+| iOS | Apple Push Notification service through Firebase: shown by iOS with the app closed | Notifications switched off; Focus modes; no network. iOS gives the app no guaranteed background time, so the sound is the system's, once (the repeating in-app sounds need the app open) |
+| macOS | Signed build: Apple Push Notification service through Firebase, also when the app is not running. Any build: the app starts at sign-in (a Launch Agent in `~/Library/LaunchAgents`), stays in the menu bar when its window is closed and shows notifications in Notification Centre | Unsigned builds have no push; the agent quit the app from the menu bar and has no push; Login Items switched off in System Settings |
+| Windows | The app starts with Windows (installer option, on by default; a per-user `Run` registry value), stays in the system tray when its window is closed, keeps its connection (reconnects by itself) and shows Windows notifications with sound | The agent chose *Quit* in the tray menu, or switched off start-up (Alerts tab, Task Manager → Startup). Windows has no push here: WNS needs a Microsoft Store identity (planned if needed) |
+
+Both desktop switches are in the app's **Alerts** tab: *Start when I sign in to this computer* and *Keep running
+when the window is closed*. No app can deliver alerts to a device that is off, offline, or has notifications
+switched off.
 
 ## Alerts in the apps
 
@@ -158,6 +178,7 @@ alert everywhere; alerts acknowledged elsewhere stop ringing on the next poll.
 |---|---|---|
 | Windows | Inno Setup installer `thinkNXG-Support-Agent-Setup-<version>.exe` | `WINDOWS_CERT_BASE64`, `WINDOWS_CERT_PASSWORD` (signs app and installer) |
 | Android | `app-release.apk` and `app-release.aab` | `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `ANDROID_STORE_PASSWORD` (else debug-signed test builds) |
+| macOS | `thinkNXG-Support-Agent.dmg` (Developer ID, notarized) | `MACOS_P12_BASE64`, `MACOS_P12_PASSWORD` (Developer ID Application certificate), `MACOS_PROFILE_BASE64` (Developer ID provisioning profile with Push Notifications — needed for push), notarization: the `APP_STORE_CONNECT_KEY_*` secrets; push also needs `FCM_MACOS_APP_ID` (else an unsigned `.dmg` without push) |
 | iOS | `.ipa`, uploaded to TestFlight | `IOS_P12_BASE64`, `IOS_P12_PASSWORD`, `IOS_PROFILE_BASE64`, `IOS_TEAM_ID`; TestFlight: `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`, `APP_STORE_CONNECT_KEY_BASE64` (else an unsigned build) |
 
 ## Roadmap
