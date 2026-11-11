@@ -142,7 +142,8 @@ def overview() -> list[dict]:
     rows = []
 
     def add(label, kind, on, items, passages, **kw):
-        state = "Off" if not on else kw.pop("state", None) or ("Active" if passages else "Empty")
+        given = kw.pop("state", None)
+        state = "Off" if not on else given or ("Active" if passages else "Empty")
         rows.append({"label": label, "type": kind, "state": state, "items": items, "passages": passages if on else 0,
                      "priority": kw.pop("priority", "Normal"), "last": kw.pop("last", None), **kw})
 
