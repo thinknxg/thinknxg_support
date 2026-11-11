@@ -13,6 +13,7 @@
   "column_break_d1",
   "category",
   "language",
+  "priority",
   "status",
   "file_section",
   "file",
@@ -73,6 +74,15 @@
    "idx": 6
   },
   {
+   "fieldname": "priority",
+   "fieldtype": "Select",
+   "label": "Priority",
+   "options": "High\nNormal\nLow",
+   "default": "Normal",
+   "description": "When several sources match a question, High sources are preferred and Low ones come last",
+   "idx": 7
+  },
+  {
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
@@ -81,61 +91,61 @@
    "read_only": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "idx": 7
+   "idx": 8
   },
   {
    "fieldname": "file_section",
    "fieldtype": "Section Break",
    "label": "File",
    "description": "PDF (with selectable text), Word (.docx), Excel (.xlsx), CSV, text, Markdown or HTML, up to 25 MB. The file is kept private; only staff can open it",
-   "idx": 8
+   "idx": 9
   },
   {
    "fieldname": "file",
    "fieldtype": "Attach",
    "label": "File",
    "reqd": 1,
-   "idx": 9
+   "idx": 10
   },
   {
    "fieldname": "column_break_d2",
    "fieldtype": "Column Break",
-   "idx": 10
+   "idx": 11
   },
   {
    "fieldname": "file_type",
    "fieldtype": "Data",
    "label": "File Type",
    "read_only": 1,
-   "idx": 11
+   "idx": 12
   },
   {
    "fieldname": "pages",
    "fieldtype": "Int",
    "label": "Pages or Sheets",
    "read_only": 1,
-   "idx": 12
+   "idx": 13
   },
   {
    "fieldname": "characters",
    "fieldtype": "Int",
    "label": "Characters",
    "read_only": 1,
-   "idx": 13
+   "idx": 14
   },
   {
    "fieldname": "processed_on",
    "fieldtype": "Datetime",
    "label": "Processed On",
    "read_only": 1,
-   "idx": 14
+   "idx": 15
   },
   {
    "fieldname": "error",
    "fieldtype": "Small Text",
    "label": "Error",
    "read_only": 1,
-   "idx": 15
+   "idx": 16
   },
   {
    "fieldname": "text_section",
@@ -143,14 +153,14 @@
    "label": "Extracted Text",
    "collapsible": 1,
    "description": "What the assistant reads. Check it once after uploading",
-   "idx": 16
+   "idx": 17
   },
   {
    "fieldname": "extracted_text",
    "fieldtype": "Long Text",
    "label": "Extracted Text",
    "read_only": 1,
-   "idx": 17
+   "idx": 18
   }
  ],
  "index_web_pages_for_search": 0,

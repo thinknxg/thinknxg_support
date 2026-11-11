@@ -147,6 +147,8 @@ def auto_note(conv) -> dict:
 
 def queue_handoff_summary(conv):
     """Called by routing.handoff. Cheap when switched off; never blocks the handoff."""
+    if frappe.flags.get("thinknxg_no_ai"):  # 1.16: nothing found in the knowledge base: no AI call at all
+        return
     try:
         common.require("summary")
     except common.Unavailable:

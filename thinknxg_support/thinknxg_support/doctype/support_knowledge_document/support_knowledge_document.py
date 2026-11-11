@@ -28,7 +28,7 @@ class SupportKnowledgeDocument(Document):
         if self.status == "Pending":
             frappe.enqueue("thinknxg_support.integrations.ai.documents.process", queue="long", timeout=1800,
                            enqueue_after_commit=True, name=self.name)
-        elif any(self.has_value_changed(f) for f in ("enabled", "audience", "title")):
+        elif any(self.has_value_changed(f) for f in ("enabled", "audience", "title", "priority")):
             frappe.enqueue("thinknxg_support.integrations.ai.retrieval.index_source", queue="long",
                            enqueue_after_commit=True, doctype=self.doctype, name=self.name)
 

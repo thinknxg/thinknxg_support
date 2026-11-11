@@ -18,3 +18,4 @@ thinknxg_support.patches.v1_10.ai_copilot_defaults
 thinknxg_support.patches.v1_11.knowledge_defaults
 thinknxg_support.patches.v1_14.routing_defaults
 thinknxg_support.patches.v1_14.lead_defaults
+thinknxg_support.patches.v1_16.knowledge_sources

@@ -63,7 +63,8 @@ class AIBase(BaseTestCase):
             "index_documents": 1, "index_websites": 1, "index_snippets": 1, "use_embeddings": 0, "embedding_model": None,
             "min_relevance": 0.1, "top_k": 4, "knowledge_language": "en", "translate_questions": 1,
             "localize_messages": 1, "answer_language": "Customer's language", "model": "fake", "daily_token_budget": 0,
-            "analyze_messages": 0, "summary_on_handoff": 0})
+            "analyze_messages": 0, "summary_on_handoff": 0, "strict_no_result": 0, "priority_articles": "Normal",
+            "priority_snippets": "Normal"})
         frappe.clear_document_cache("Support AI Settings", "Support AI Settings")
         retrieval.bump_version()
         frappe.cache.delete_keys("thinknxg_support:l10n:")
@@ -266,6 +267,89 @@ class TestCrawler(AIBase):
         self.assertIn("nothing was removed", result)
         self.assertEqual({p.status for p in self._pages().values()}, {"Active"})
 
+    # ---------------------------------------------------------------- 1.16: multi-source knowledge base
+    def test_a_documentation_address_keeps_the_crawl_under_it(self):
+        SITE_PAGES["https://help.example.com/pricing"] = page("Pricing", "Our plans start at ten rials per month for teams.")
+        SITE_PAGES["https://help.example.com/help"] = page("Help centre", "Welcome to the help centre of Example Trading LLC.",
+                                                           links=["/help/returns", "/pricing", "/helpless"])
+        SITE_PAGES["https://help.example.com/sitemap.xml"] = (200, {}, b"<urlset><url><loc>https://help.example.com/pricing</loc></url></urlset>")
+        self.assertEqual(crawler.start_scope("https://thinknxg.com/thinknxgerp"), "/thinknxgerp")
+        self.assertEqual(crawler.start_scope("https://thinknxg.com/thinknxgerp/index.html"), "/thinknxgerp")
+        self.assertIsNone(crawler.start_scope("https://thinknxg.com/"))
+        crawler.crawl("Example Help")
+        self.assertNotIn("https://help.example.com/pricing", self.requested)
+        self.assertNotIn("https://help.example.com/helpless", self.requested)  # /helpless is not under /help
+        self.assertIn("https://help.example.com/help/returns", self._pages())
+        self.site.reload()
+        self.site.stay_under_start = 0
+        self.site.save()
+        crawler.crawl("Example Help")
+        self.assertIn("https://help.example.com/pricing", self._pages())
+
+    def test_single_page_source(self):
+        self.site.reload()
+        self.site.follow_links = 0
+        self.site.save()
+        crawler.crawl("Example Help")
+        self.assertEqual(set(self._pages()), {"https://help.example.com/help"})
+        self.assertNotIn("https://help.example.com/sitemap.xml", self.requested)
+
+    def test_pages_that_fail_are_listed(self):
+        SITE_PAGES["https://help.example.com/help"] = page("Help centre", "Welcome to the help centre of Example Trading LLC.",
+                                                           links=["/help/returns", "/help/broken"])
+        SITE_PAGES["https://help.example.com/help/broken"] = (500, {"content-type": "text/html"}, b"oops")
+        crawler.crawl("Example Help")
+        site = frappe.get_doc(SITE, "Example Help")
+        self.assertEqual(site.crawl_state, "Completed with Errors")
+        self.assertEqual(site.error_count, 1)
+        self.assertIn("https://help.example.com/help/broken: HTTP 500", site.crawl_log)
+        SITE_PAGES.pop("https://help.example.com/help/broken")
+        SITE_PAGES["https://help.example.com/help"] = page("Help centre", "Welcome to the help centre of Example Trading LLC.",
+                                                           links=["/help/returns"])
+        crawler.crawl("Example Help")
+        site.reload()
+        self.assertEqual((site.crawl_state, site.error_count, site.crawl_log), ("Completed", 0, None))
+        SITE_PAGES.clear()
+        crawler.crawl("Example Help")
+        self.assertEqual(frappe.db.get_value(SITE, "Example Help", "crawl_state"), "Failed")
+
+    def test_preferred_source_comes_first_and_sources_can_be_switched_off(self):
+        crawler.crawl("Example Help")
+        frappe.db.delete("Support Knowledge Snippet", {"question": "Returns"})
+        frappe.get_doc({"doctype": "Support Knowledge Snippet", "question": "Returns", "audience": "Everyone",
+                        "answer": "Returns are accepted within 30 days with the receipt."}).insert()
+        web = "https://help.example.com/help/returns"
+        q = "returns accepted 30 days receipt"
+
+        def first():
+            return retrieval.search(q, "Everyone")[0]
+
+        self.site.reload()
+        self.site.priority = "High"
+        self.site.save()
+        self.assertEqual(first()["route"], web)
+        self.site.priority = "Low"
+        self.site.save()
+        self.assertEqual(first()["doctype"], "Support Knowledge Snippet")
+        self.assertIn(web, [h["route"] for h in retrieval.search(q, "Everyone")], "both sources still answer")
+        # priority only orders real matches: an unrelated question still finds nothing
+        self.site.priority = "High"
+        self.site.save()
+        self.assertEqual(retrieval.search("zebra quantum lighthouse", "Everyone"), [])
+        rows = {r["label"]: r for r in retrieval.overview()}
+        self.assertEqual((rows["Example Help"]["type"], rows["Example Help"]["state"], rows["Example Help"]["items"]),
+                         ("Website", "Active", 4))
+        self.assertGreater(rows["Example Help"]["passages"], 0)
+        self.assertIn("Knowledge snippets", rows)
+        self.site.enabled = 0  # one source off: the others keep answering
+        self.site.save()
+        hits = retrieval.search(q, "Everyone")
+        self.assertNotIn(web, [h["route"] for h in hits])
+        self.assertEqual(hits[0]["doctype"], "Support Knowledge Snippet")
+        self.assertEqual({r["label"]: r for r in retrieval.overview()}["Example Help"]["state"], "Off")
+        frappe.db.delete("Support Knowledge Snippet", {"question": "Returns"})
+        frappe.db.delete(CHUNK, {"source_doctype": "Support Knowledge Snippet", "title": "Returns"})
+
     def test_robots_can_block_the_whole_site(self):
         SITE_PAGES["https://help.example.com/robots.txt"] = (200, {}, b"User-agent: *\nDisallow: /\n")
         crawler.crawl("Example Help")
@@ -350,3 +434,62 @@ class TestLanguages(AIBase):
         with patch.object(providers, "complete", side_effect=FakeAI()) as none:
             self.assertEqual(language.localize(english, "I've passed this to our team."), "I've passed this to our team.")
         self.assertEqual(none.call_count, 0)
+
+
+class TestNothingFound(AIBase):
+    """1.16: nothing in any source -> an agent, and (strict) not a single generative AI call."""
+
+    def setUp(self):
+        super().setUp()
+        frappe.db.set_single_value("Support AI Settings", {
+            "enable_ai": 1, "only_answer_from_kb": 1, "strict_no_result": 1, "summary_on_handoff": 1, "enable_copilot": 1,
+            "max_ai_replies": 15, "min_relevance": 0.3,
+            "no_answer_message": "I couldn't find that in our help articles, so I'm passing you to a member of our team."})
+        frappe.clear_document_cache("Support AI Settings", "Support AI Settings")
+        frappe.db.set_single_value("Support Portal Settings", {"enable_live_chat": 1, "allow_guest_chat": 1,
+                                                              "guest_chat_rate_limit": 1000})
+        frappe.cache.delete_keys("thinknxg_support:rl:")
+
+    def _chat(self, text):
+        as_user("Guest")
+        with patch("thinknxg_support.integrations.ai.engine.respond"):
+            r = live_chat.start_guest(text, name="Salim", email="salim.nothing@example.com")
+        as_user("Administrator")
+        return frappe.get_doc("Support Conversation Link", r["conversation"])
+
+    def _last_outbound(self, conv):
+        rows = frappe.get_all("Support Portal Message", filters={"conversation": conv.name, "direction": "Outbound"},
+                              fields=["content"], order_by="creation desc", limit=1)
+        return rows[0].content if rows else ""
+
+    def test_no_generative_call_when_nothing_is_found(self):
+        q = "أين يمكنني شراء تذاكر القطار إلى القمر؟"
+        conv = self._chat(q)
+        fake = FakeAI("Where can I buy train tickets to the moon?", "x", "y", "z")
+        with patch.object(providers, "complete", side_effect=fake):
+            engine.answer(conv, q)
+        self.assertEqual(fake.calls, [], "no translation, no answer, no summary")
+        conv.reload()
+        self.assertEqual(conv.handling, "Queued")
+        self.assertIn("passing you to a member of our team", self._last_outbound(conv))
+        self.assertTrue(frappe.db.exists("Support AI Usage Log", {"conversation": conv.name, "status": "Skipped"}))
+
+    def test_strict_can_be_switched_off(self):
+        frappe.db.set_single_value("Support AI Settings", "strict_no_result", 0)
+        frappe.clear_document_cache("Support AI Settings", "Support AI Settings")
+        q = "أين يمكنني شراء تذاكر القطار إلى المريخ؟"
+        conv = self._chat(q)
+        fake = FakeAI("Where can I buy train tickets to Mars?", "تم تحويلك إلى فريقنا.", "summary", "more")
+        with patch.object(providers, "complete", side_effect=fake):
+            engine.answer(conv, q)
+        self.assertGreaterEqual(len(fake.calls), 1, "the question is translated to search across languages")
+        conv.reload()
+        self.assertEqual(conv.handling, "Queued")
+
+    def test_website_answers_cite_the_page(self):
+        used = [{"title": "Returns", "route": "https://help.example.com/help/returns"},
+                {"title": "Manual", "route": None}]
+        conv = self._chat("How do returns work?")
+        links = engine._source_links(conv, used)
+        self.assertEqual(links[0], {"title": "Returns", "url": "https://help.example.com/help/returns"})
+        self.assertIsNone(links[1]["url"])  # uploaded files are private: named, not linked

@@ -411,6 +411,33 @@ Administrators can set lower limits, not higher. Over the limit: the assistant a
 budget; chats go to people), new guest chats are asked to try later, new documents and websites are refused, and
 crawls add no new pages.
 
+## Multi-source AI knowledge base (1.16)
+
+*Support AI Settings → Knowledge* lists every source the assistant may answer from: knowledge base articles,
+snippets, uploaded documents and each website, with its status, priority, number of items and passages, last
+indexing time and problems. **Add website source** opens a new *Support Knowledge Website*.
+
+| What | Where | Notes |
+|---|---|---|
+| Documentation site | *Support Knowledge Website*: Start Address `https://thinknxg.com/thinknxgerp` | *Stay Under the Start Address* (on for new sources) reads only pages under `/thinknxgerp`, not the rest of the site |
+| A single page | the same, *Include Linked Pages* off | only the start address is read |
+| Several sites | one *Support Knowledge Website* each | each has its own switch, priority, schedule and limits |
+| Scope | Link Depth, Max Pages, Only These Paths, Leave Out | robots.txt is obeyed; other domains and private or internal addresses are never read |
+| Sync | Refresh: Manual, Daily, Weekly; **Crawl Now** | changed pages are re-indexed, pages that are gone leave the index |
+| Progress and errors | Indexing Status, Pages With Errors, *Pages That Could Not Be Read* | Queued, Crawling (with a running count), Completed, Completed with Errors, Failed |
+| Priority | High, Normal or Low on each website and document; one each for articles and snippets | orders the matches (High first). A source never answers a question it does not match: the minimum relevance applies before priority |
+| Remove | delete the *Support Knowledge Website* | its pages and passages go with it |
+
+**Nothing found.** With *Answer Only From Knowledge Base*, a question that matches no enabled source goes to an agent
+before any answer is generated. *No AI Calls When Nothing Is Found* (on by default) extends this to every generative
+call: the question is not translated for a second search, the hand-over message is not translated (a translation
+made earlier is reused) and no AI summary is written for the agent. With **embeddings** switched on, searching still
+sends the question to the embedding model, which is not a generative call; for no model call of any kind, leave
+embeddings off (keyword search). Crawling and indexing always run in the background, never during a chat.
+
+**Sources in answers.** With *Show Sources*, answers list up to three sources: website pages with their address,
+articles with their portal link, uploaded files by title only (the files stay private).
+
 ## Documents, website crawling and languages (1.11)
 
 **Uploaded documents** (*Support Knowledge Document*): PDF with selectable text, Word (.docx), Excel (.xlsx), CSV,

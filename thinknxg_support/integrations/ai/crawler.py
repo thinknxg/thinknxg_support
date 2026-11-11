@@ -229,6 +229,15 @@ def queue(website: str):
                    website=website, job_id=f"thinknxg-crawl-{website}", deduplicate=True, enqueue_after_commit=True)
 
 
+def start_scope(start: str) -> str | None:
+    """The folder a start address stands for: /docs for /docs, /docs/ and /docs/index.html; None for the site root."""
+    path = urlparse(start).path or "/"
+    if "." in path.rsplit("/", 1)[-1]:  # a file: its folder
+        path = path.rsplit("/", 1)[0]
+    path = path.rstrip("/")
+    return path or None
+
+
 def _patterns(text: str | None) -> list[str]:
     return [x.strip() for x in (text or "").splitlines() if x.strip() and not x.strip().startswith("#")]
 
@@ -253,7 +262,7 @@ def crawl(website: str) -> str:
     stats = {"new": 0, "changed": 0, "same": 0, "gone": 0, "skipped": 0, "errors": 0}
     errors: list[str] = []
     try:
-        site.db_set("last_crawl_status", _("Crawling…"), update_modified=False)
+        site.db_set({"last_crawl_status": _("Crawling…"), "crawl_state": "Crawling"}, update_modified=False)
         frappe.db.commit()
         start = normalise(site.start_url)
         check_url(start)
@@ -263,6 +272,11 @@ def crawl(website: str) -> str:
         include, exclude = _patterns(site.include_paths), _patterns(site.exclude_patterns)
         max_pages = min(max(cint(site.max_pages) or 200, 1), MAX_PAGES)
         max_depth = min(max(cint(site.max_depth), 0), 10)
+        follow = site.get("follow_links") is None or cint(site.get("follow_links"))
+        if not follow:
+            max_depth = 0
+        # 1.16: https://example.com/docs means the documentation under /docs, not the whole of example.com
+        scope = start_scope(start) if cint(site.get("stay_under_start")) and not include else None
 
         def allowed(u: str) -> bool:
             q = urlparse(u)
@@ -271,10 +285,12 @@ def crawl(website: str) -> str:
                 return False
             if include and not any(q.path.startswith(i) for i in include) and u != start:
                 return False
+            if scope and u != start and not (q.path == scope or q.path.startswith(scope.rstrip("/") + "/")):
+                return False
             return not _excluded(u, exclude) and rp.can_fetch(AGENT, u)
 
         todo = deque([(start, 0)])
-        if site.use_sitemap:
+        if site.use_sitemap and follow:
             for u in sitemap_urls(fetcher, sitemaps or [f"{p.scheme}://{p.netloc}/sitemap.xml"], max_pages * 2):
                 nu = normalise(u)
                 if nu:
@@ -298,7 +314,7 @@ def crawl(website: str) -> str:
                 continue
             except (CrawlError, requests.RequestException) as e:
                 stats["errors"] += 1
-                errors.append(f"{url}: {str(e)[:80]}")
+                errors.append(f"{url}: {str(e)[:120]}")
                 continue
             final = normalise(final) or url
             if final != url:
@@ -352,6 +368,7 @@ def crawl(website: str) -> str:
                 break  # the site's crawled-page limit is reached (1.13)
             stored.add(final)
             if fetched % 20 == 0:
+                site.db_set("last_crawl_status", _("Crawling… {0} pages read so far").format(fetched), update_modified=False)
                 frappe.db.commit()
         complete = not todo and start_ok and not stats.get("limited")
         if complete:
@@ -369,15 +386,21 @@ def crawl(website: str) -> str:
                              _("The start page could not be read; nothing was removed."))
         if errors:
             result += " " + "; ".join(errors[:3])
+        state = "Completed with Errors" if errors else "Completed"
+        if not start_ok and not stored:
+            state = "Failed"
     except UnsafeURL as e:
-        result = str(e)
+        result, state = str(e), "Failed"
+        errors.append(f"{site.start_url}: {e}")
     except Exception as e:
         frappe.db.rollback()
         frappe.log_error(title="thinkNXG Support: website crawl failed")
-        result = _("Crawl failed: {0}").format(str(e)[:200])
+        result, state = _("Crawl failed: {0}").format(str(e)[:200]), "Failed"
+        errors.append(result)
     finally:
         frappe.cache.delete(lock)
-    site.db_set({"last_crawl_on": now_datetime(), "last_crawl_status": result[:1000],
+    site.db_set({"last_crawl_on": now_datetime(), "last_crawl_status": result[:1000], "crawl_state": state,
+                 "error_count": len(errors), "crawl_log": "\n".join(errors[:500]) or None,
                  "page_count": frappe.db.count(PAGE, {"website": site.name, "status": "Active"})},
                 update_modified=False)
     frappe.db.set_single_value("Support AI Settings", "chunk_count", frappe.db.count(CHUNK))

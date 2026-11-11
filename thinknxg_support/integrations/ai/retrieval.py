@@ -114,13 +114,88 @@ def sources(only=None):
                        p.url)
 
 
+BOOST = {"High": 1.25, "Normal": 1.0, "Low": 0.8}
+
+
+def boost_of(doctype: str, name: str) -> float:
+    """The source's priority as a ranking weight. It orders matches; it never lets a weak match through."""
+    conf = s()
+    if doctype in ("HD Article", "Support Knowledge Article"):
+        level = conf.get("priority_articles")
+    elif doctype == "Support Knowledge Snippet":
+        level = conf.get("priority_snippets")
+    elif doctype == "Support Knowledge Document":
+        level = frappe.db.get_value(doctype, name, "priority")
+    elif doctype == "Support Knowledge Web Page":
+        site = frappe.db.get_value(doctype, name, "website")
+        level = frappe.db.get_value("Support Knowledge Website", site, "priority") if site else None
+    else:
+        level = None
+    return BOOST.get(level or "Normal", 1.0)
+
+
+def overview() -> list[dict]:
+    """One row per knowledge source, for Support AI Settings: what it is, whether it is used, how much is indexed."""
+    conf = s()
+    counts = {d: frappe.db.count(CHUNK, {"source_doctype": d}) for d in (
+        "HD Article", "Support Knowledge Article", "Support Knowledge Snippet", "Support Knowledge Document")}
+    rows = []
+
+    def add(label, kind, on, items, passages, **kw):
+        state = "Off" if not on else kw.pop("state", None) or ("Active" if passages else "Empty")
+        rows.append({"label": label, "type": kind, "state": state, "items": items, "passages": passages if on else 0,
+                     "priority": kw.pop("priority", "Normal"), "last": kw.pop("last", None), **kw})
+
+    hd = capabilities.get().get("helpdesk", {})
+    articles = 0
+    if frappe.db.exists("DocType", "Support Knowledge Article"):
+        articles += frappe.db.count("Support Knowledge Article", {"status": "Published"})
+    if hd.get("article_doctype"):
+        articles += frappe.db.count("HD Article")
+    add("Knowledge base articles", "Knowledge Base", conf.index_helpdesk_articles, articles,
+        counts.get("HD Article", 0) + counts.get("Support Knowledge Article", 0),
+        priority=conf.get("priority_articles") or "Normal", last=conf.last_indexed_on,
+        detail="Published Helpdesk and thinkDesk articles")
+    add("Knowledge snippets", "Knowledge Base", conf.index_snippets,
+        frappe.db.count("Support Knowledge Snippet", {"enabled": 1}), counts.get("Support Knowledge Snippet", 0),
+        priority=conf.get("priority_snippets") or "Normal", last=conf.last_indexed_on,
+        route="/app/support-knowledge-snippet", detail="Short questions and answers")
+    if frappe.db.exists("DocType", "Support Knowledge Document"):
+        D = "Support Knowledge Document"
+        failed = frappe.db.count(D, {"status": "Failed"})
+        add("Uploaded documents", "Uploaded Files", conf.get("index_documents"),
+            frappe.db.count(D, {"enabled": 1, "status": "Ready"}), counts.get(D, 0), route="/app/support-knowledge-document",
+            priority="Per document",
+            last=(frappe.get_all(D, filters={"status": "Ready"}, order_by="processed_on desc", limit=1,
+                                 pluck="processed_on") or [None])[0],
+            errors=failed, note=f"{failed} file(s) could not be read" if failed else "",
+            detail="PDF, Word, Excel, CSV, text, Markdown and HTML files")
+    if frappe.db.exists("DocType", "Support Knowledge Website"):
+        W, P = "Support Knowledge Website", "Support Knowledge Web Page"
+        per_site = {r.website: r.n for r in frappe.db.sql(
+            f"""select p.website, count(c.name) as n from `tab{P}` p join `tab{CHUNK}` c
+                on c.source_doctype = %s and c.source_name = p.name group by p.website""", (P,), as_dict=True)}
+        for w in frappe.get_all(W, fields=["name", "enabled", "start_url", "priority", "page_count", "last_crawl_on",
+                                           "crawl_state", "error_count", "last_crawl_status"], order_by="creation asc"):
+            working = w.crawl_state in ("Queued", "Crawling")
+            state = "Working" if working else "Problem" if w.crawl_state == "Failed" else None
+            add(w.name, "Website", conf.get("index_websites") and w.enabled, w.page_count or 0, per_site.get(w.name, 0),
+                state=state, priority=w.priority or "Normal", last=w.last_crawl_on, detail=w.start_url,
+                route=f"/app/support-knowledge-website/{frappe.utils.quote(w.name)}", errors=w.error_count or 0,
+                note=(w.last_crawl_status or "")[:160] if (working or w.error_count or w.crawl_state == "Failed")
+                else (w.crawl_state or "Never crawled"))
+    return rows
+
+
 def _index_one(doctype, name, title, text, audience, route, existing: dict):
     conf = s()
+    boost = boost_of(doctype, name)
     pieces = split(title or name, text, int(conf.chunk_size or 900))
     model = conf.embedding_model if conf.use_embeddings else None
     want = []
     for i, piece in enumerate(pieces):
-        h = hashlib.sha256(f"{audience}|{route}|{model}|{piece}".encode()).hexdigest()
+        key = f"{audience}|{route}|{model}|{piece}" + (f"|{boost}" if boost != 1.0 else "")
+        h = hashlib.sha256(key.encode()).hexdigest()
         want.append((i, piece, h))
     keep = {h for _i, _p, h in want if h in existing}
     for h, cname in existing.items():
@@ -135,7 +210,7 @@ def _index_one(doctype, name, title, text, audience, route, existing: dict):
     for k, (i, piece, h) in enumerate(todo):
         frappe.get_doc({
             "doctype": CHUNK, "source_doctype": doctype, "source_name": name, "title": title, "chunk_index": i,
-            "audience": audience, "route": route, "content": piece, "content_hash": h, "embedding_model": model,
+            "audience": audience, "route": route, "content": piece, "content_hash": h, "embedding_model": model, "boost": boost,
             "embedding": pack(vectors[k]) if vectors else None,
         }).insert(ignore_permissions=True)
     return len(todo)
@@ -210,7 +285,7 @@ def _corpus(audiences: tuple):
     if rows is None:
         rows = frappe.get_all(CHUNK, filters={"audience": ["in", list(audiences)]},
                               fields=["name", "source_doctype", "source_name", "title", "route", "content",
-                                      "embedding", "embedding_model"], limit=50000)
+                                      "embedding", "embedding_model", "boost"], limit=50000)
         rows = [dict(r) for r in rows]
         frappe.cache.set_value(key, rows, expires_in_sec=3600)
     return rows
@@ -247,11 +322,12 @@ def search(query: str, audience: str = "Everyone", k: int | None = None) -> list
                 continue
             hit = sum(1.0 if t in words else 0 for t in q) + sum(0.5 for t in q if t in title)
             scored.append((min(1.0, hit / (len(q) * 1.0)), r))
-    scored.sort(key=lambda x: x[0], reverse=True)
+    # Only matches that reach the minimum relevance on their own count; among those, preferred sources come first.
+    floor = float(conf.min_relevance or 0)
+    scored = [(score, r) for score, r in scored if score >= floor]
+    scored.sort(key=lambda x: (x[0] * float(x[1].get("boost") or 1.0), x[0]), reverse=True)
     out, per_source = [], {}
     for score, r in scored:
-        if score < float(conf.min_relevance or 0):
-            break
         key = (r["source_doctype"], r["source_name"])
         if per_source.get(key, 0) >= 2:
             continue

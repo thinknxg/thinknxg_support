@@ -33,7 +33,9 @@ class SupportAISettings(Document):
         if changed:
             log_event("Administrative Change", reference_doctype=self.doctype, reference_name=self.name,
                       details={"changed": changed})
-        if self.has_value_changed("embedding_model") or self.has_value_changed("use_embeddings"):
+        if any(self.has_value_changed(f) for f in ("embedding_model", "use_embeddings", "priority_articles",
+                                                   "priority_snippets", "index_helpdesk_articles",
+                                                   "index_snippets", "index_documents", "index_websites")):
             frappe.enqueue("thinknxg_support.integrations.ai.retrieval.rebuild", queue="long",
                            enqueue_after_commit=True)
         frappe.clear_document_cache(self.doctype, self.name)
@@ -56,6 +58,14 @@ def rebuild_index():
     _admin()
     frappe.enqueue("thinknxg_support.integrations.ai.retrieval.rebuild", queue="long")
     return _("Rebuilding the knowledge index in the background.")
+
+
+@frappe.whitelist()
+def knowledge_sources():
+    frappe.only_for(["System Manager", "Support Portal Administrator", "Support Manager"])
+    from thinknxg_support.integrations.ai import retrieval
+
+    return retrieval.overview()
 
 
 @frappe.whitelist(methods=["POST"])
