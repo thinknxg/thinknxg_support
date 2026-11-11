@@ -33,7 +33,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
-Name: "startup"; Description: "Start with Windows (so alerts reach you)"; GroupDescription: "Options:"; Flags: unchecked
+Name: "startup"; Description: "Start with Windows, in the background (so alerts reach you without opening the app)"; GroupDescription: "Options:"
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -41,7 +41,18 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs 
 [Icons]
 Name: "{group}\thinkNXG Support Agent"; Filename: "{app}\thinknxg_agent.exe"
 Name: "{autodesktop}\thinkNXG Support Agent"; Filename: "{app}\thinknxg_agent.exe"; Tasks: desktopicon
-Name: "{userstartup}\thinkNXG Support Agent"; Filename: "{app}\thinknxg_agent.exe"; Tasks: startup
+
+[Registry]
+; Start at sign-in, hidden in the system tray. The app's Alerts tab switches the same value on and off.
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "thinkNXG Support Agent"; ValueData: """{app}\thinknxg_agent.exe"" --hidden"; Tasks: startup; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "thinkNXG Support Agent"; Flags: uninsdeletevalue dontcreatekey
+
+[InstallDelete]
+; 1.14 and earlier used a Startup-folder shortcut (which opened the window)
+Type: files; Name: "{userstartup}\thinkNXG Support Agent.lnk"
+
+[UninstallRun]
+Filename: "{cmd}"; Parameters: "/C taskkill /IM thinknxg_agent.exe /F"; Flags: runhidden; RunOnceId: "StopAgent"
 
 [Run]
 Filename: "{app}\thinknxg_agent.exe"; Description: "{cm:LaunchProgram,thinkNXG Support Agent}"; Flags: nowait postinstall skipifsilent

@@ -7,8 +7,9 @@ frappe.ui.form.on("Support Agent App Settings", {
             frm.add_custom_button(__("Send Test Push to Me"), () =>
                 frappe.call({ method: "thinknxg_support.api.staff.v1.send_test_push" }).then((r) => {
                     const m = r.message || {};
-                    frappe.msgprint(m.sent ? __("Sent to {0} device(s).", [m.sent]) : __("Not sent: {0}", [m.skipped || __("no devices registered for you")]));
+                    frappe.msgprint(m.sent ? __("Sent to {0} device(s).", [m.sent]) : __("Not sent: {0}", [m.skipped || (m.retrying ? __("Firebase is not reachable; retrying") : m.failed ? __("Firebase refused it; see Push Deliveries") : __("no devices registered for you"))]));
                 }));
+            frm.add_custom_button(__("Push Deliveries"), () => frappe.set_route("List", "Support Push Delivery"));
         }
         frm.set_intro(__("Agents sign in to the apps with their own staff account in the browser. Site address for the apps: {0}", [`<b>${frappe.utils.escape_html(window.location.origin)}</b>`]));
     },

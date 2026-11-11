@@ -34,7 +34,7 @@
    "fieldname": "platform",
    "fieldtype": "Select",
    "label": "Platform",
-   "options": "Android\niOS\nWindows",
+   "options": "Android\niOS\nmacOS\nWindows",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "idx": 2

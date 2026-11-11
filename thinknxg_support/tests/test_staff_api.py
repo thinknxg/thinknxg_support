@@ -384,6 +384,63 @@ class TestStaffApi(BaseTestCase):
         s.push_enabled = 0
         s.save()
 
+    def test_pushes_are_tracked_retried_and_carry_the_badge(self):
+        from frappe.utils import add_to_date, now_datetime
+
+        from thinknxg_support.integrations import push
+
+        DELIVERY = "Support Push Delivery"
+        frappe.db.delete(DELIVERY)
+        frappe.db.delete("Support Agent Device", {"user": self.a1})
+        as_user(self.a1)
+        v1.register_device("tok-mac-1", "macOS", "MacBook")
+        as_user("Administrator")
+        s = frappe.get_single("Support Agent App Settings")
+        s.update({"push_enabled": 1, "fcm_project_id": "demo-project"})
+        s.flags.ignore_permissions = True
+        s.save()
+        sent = []
+
+        class Down:
+            status_code = 503
+            text = "unavailable"
+
+        class Ok:
+            status_code = 200
+            text = "{}"
+
+        def post(url, headers=None, json=None, timeout=None):
+            sent.append(json["message"])
+            return Down() if len(sent) == 1 else Ok()
+
+        with patch.object(push, "access_token", return_value="x"), patch("requests.post", side_effect=post), \
+                patch.object(push, "badge_for", return_value=3):
+            out = push.deliver([self.a1], {"doctype": CONV, "name": "X2", "kind": "New Chat"})
+            self.assertEqual(out["retrying"], 1)
+            row = frappe.get_all(DELIVERY, filters={"user": self.a1}, fields=["name", "status", "attempts", "next_attempt"])[0]
+            self.assertEqual((row.status, row.attempts), ("Retrying", 1))
+            push.retry_due()  # not due yet
+            self.assertEqual(len(sent), 1)
+            frappe.db.set_value(DELIVERY, row.name, "next_attempt", add_to_date(now_datetime(), seconds=-5))
+            push.retry_due()
+        row = frappe.db.get_value(DELIVERY, row.name, ["status", "attempts", "platform"], as_dict=True)
+        self.assertEqual((row.status, row.attempts, row.platform), ("Sent", 2, "macOS"))
+        m = sent[-1]
+        self.assertEqual(m["apns"]["payload"]["aps"]["badge"], 3)
+        self.assertEqual(m["android"]["notification"]["notification_count"], 3)
+        delivery = m["data"]["delivery"]
+        as_user(self.a2)
+        self.assertFalse(v1.push_opened(delivery)["ok"])  # only the agent it was sent to
+        as_user(self.a1)
+        self.assertTrue(v1.push_opened(delivery)["ok"])
+        as_user("Administrator")
+        self.assertEqual(frappe.db.get_value(DELIVERY, delivery, "status"), "Opened")
+        frappe.db.set_value(DELIVERY, delivery, "creation", add_to_date(now_datetime(), days=-20))
+        push.purge()
+        self.assertFalse(frappe.db.exists(DELIVERY, delivery))
+        s.push_enabled = 0
+        s.save()
+
     def test_copilot_endpoint_returns_drafts_only(self):
         from thinknxg_support.integrations.ai import providers
 

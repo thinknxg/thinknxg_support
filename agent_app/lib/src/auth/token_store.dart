@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// What the app keeps between launches. Tokens live only in OS-backed secure storage
-/// (Android Keystore, iOS Keychain, Windows Credential Manager via DPAPI).
+/// (Android Keystore, iOS and macOS Keychain, Windows Credential Manager via DPAPI).
 class StoredSession {
   final String site;
   final String clientId;
@@ -70,6 +70,9 @@ class SecureTokenStore implements TokenStore {
             const FlutterSecureStorage(
               aOptions: AndroidOptions(encryptedSharedPreferences: true),
               iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device),
+              // macOS, outside the App Store: the login keychain (the data-protection keychain needs a
+              // keychain-sharing entitlement that unsigned and Developer ID test builds do not have)
+              mOptions: MacOsOptions(useDataProtectionKeyChain: false),
             );
 
   @override

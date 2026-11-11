@@ -48,7 +48,10 @@ class DeviceAlertSink implements AlertSink {
       await _notifications.initialize(
         const InitializationSettings(
           android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-          iOS: DarwinInitializationSettings(requestAlertPermission: true, requestSoundPermission: false),
+          // Permission is asked for below, without waiting: the question stays on screen until the user answers,
+          // and start-up must not wait for that.
+          iOS: DarwinInitializationSettings(requestAlertPermission: false, requestSoundPermission: false, requestBadgePermission: false),
+          macOS: DarwinInitializationSettings(requestAlertPermission: false, requestSoundPermission: false, requestBadgePermission: false),
           windows: WindowsInitializationSettings(
               appName: 'thinkNXG Support Agent',
               appUserModelId: 'com.thinknxg.agent',
@@ -59,7 +62,6 @@ class DeviceAlertSink implements AlertSink {
       final launch = await _notifications.getNotificationAppLaunchDetails();
       if (launch?.didNotificationLaunchApp == true) PendingLink.fromPayload(launch!.notificationResponse?.payload);
       final android = _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-      await android?.requestNotificationsPermission();
       // A channel's sound is fixed when it is created: 1.9.0 test builds made a silent one, so use a new channel
       // (with the system notification sound) and remove the old one. Pushes from the server use the same id.
       await android?.deleteNotificationChannel('support_alerts');
@@ -71,8 +73,24 @@ class DeviceAlertSink implements AlertSink {
         playSound: true,
         enableVibration: true,
       ));
+      unawaited(_askPermission(android)); // without waiting: sounds must work while the question is on screen
     } catch (e, st) {
       CrashLog.write('notifications unavailable', e, st);
+    }
+  }
+
+  /// The system's "allow notifications?" question stays up until the user answers; start-up does not wait for it.
+  Future<void> _askPermission(AndroidFlutterLocalNotificationsPlugin? android) async {
+    try {
+      await android?.requestNotificationsPermission();
+      await _notifications
+          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
+      await _notifications
+          .resolvePlatformSpecificImplementation<MacOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
+    } catch (e, st) {
+      CrashLog.write('notification permission', e, st);
     }
   }
 
@@ -98,6 +116,8 @@ class DeviceAlertSink implements AlertSink {
 
   @override
   Future<void> notify(int id, String title, String body, String payload) async {
+    // macOS with push: Apple's notification service already shows this alert, also when the app is not running.
+    if (Platform.isMacOS && PushService.token != null && payload.isNotEmpty) return;
     try {
       await _notifications.show(
         id,
@@ -107,6 +127,7 @@ class DeviceAlertSink implements AlertSink {
           android: AndroidNotificationDetails(alertChannelId, 'Support alerts',
               importance: Importance.high, priority: Priority.high, playSound: true, visibility: NotificationVisibility.public),
           iOS: DarwinNotificationDetails(presentSound: true),
+          macOS: DarwinNotificationDetails(presentSound: true),
           windows: WindowsNotificationDetails(),
         ),
         payload: payload,
@@ -131,15 +152,19 @@ class PushConfig {
   static const senderId = String.fromEnvironment('FCM_SENDER_ID');
   static const androidAppId = String.fromEnvironment('FCM_ANDROID_APP_ID');
   static const iosAppId = String.fromEnvironment('FCM_IOS_APP_ID');
+  static const macosAppId = String.fromEnvironment('FCM_MACOS_APP_ID');
   static const iosBundleId = String.fromEnvironment('FCM_IOS_BUNDLE_ID', defaultValue: 'com.thinknxg.thinknxgAgent');
 
   static bool get available =>
       projectId.isNotEmpty && apiKey.isNotEmpty && senderId.isNotEmpty &&
-      ((Platform.isAndroid && androidAppId.isNotEmpty) || (Platform.isIOS && iosAppId.isNotEmpty));
+      ((Platform.isAndroid && androidAppId.isNotEmpty) ||
+          (Platform.isIOS && iosAppId.isNotEmpty) ||
+          (Platform.isMacOS && macosAppId.isNotEmpty));
 }
 
-/// FCM on Android and iOS. The push itself only says "New support activity"; tapping it opens the record after
-/// the app has checked access with the server. Windows uses the app's own polling and notifications instead.
+/// FCM on Android, iOS and macOS (Apple devices through APNs). The push itself only says "New support activity";
+/// tapping it opens the record after the app has checked access with the server. Windows stays running in the
+/// system tray and uses the app's own connection and notifications instead.
 class PushService {
   static String? token;
 
@@ -149,7 +174,11 @@ class PushService {
       await Firebase.initializeApp(
         options: FirebaseOptions(
           apiKey: PushConfig.apiKey,
-          appId: Platform.isIOS ? PushConfig.iosAppId : PushConfig.androidAppId,
+          appId: Platform.isIOS
+              ? PushConfig.iosAppId
+              : Platform.isMacOS
+                  ? PushConfig.macosAppId
+                  : PushConfig.androidAppId,
           messagingSenderId: PushConfig.senderId,
           projectId: PushConfig.projectId,
           iosBundleId: PushConfig.iosBundleId,
@@ -157,7 +186,12 @@ class PushService {
       );
       final m = FirebaseMessaging.instance;
       await m.requestPermission(alert: true, sound: true, badge: true);
-      void open(RemoteMessage msg) => PendingLink.fromPayload('${msg.data['doctype'] ?? ''}|${msg.data['name'] ?? ''}');
+      void open(RemoteMessage msg) {
+        final delivery = '${msg.data['delivery'] ?? ''}';
+        if (delivery.isNotEmpty) AppServices.pushOpened?.call(delivery);
+        PendingLink.fromPayload('${msg.data['doctype'] ?? ''}|${msg.data['name'] ?? ''}');
+      }
+
       FirebaseMessaging.onMessageOpenedApp.listen(open);
       FirebaseMessaging.onMessage.listen((_) => onForeground()); // in the app: polling plays the sound
       final initial = await m.getInitialMessage();
@@ -169,8 +203,8 @@ class PushService {
       token = await m.getToken();
       if (token != null) onToken(token!);
       return token;
-    } catch (e) {
-      debugPrint('push unavailable: $e');
+    } catch (e, st) {
+      CrashLog.write('push unavailable', e, st);
       return null;
     }
   }

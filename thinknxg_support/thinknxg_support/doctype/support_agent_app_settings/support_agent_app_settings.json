@@ -125,7 +125,7 @@
    "fieldtype": "Password",
    "label": "Firebase Service Account JSON",
    "depends_on": "push_enabled",
-   "description": "Kept on the server only. Used for Android and, through Firebase, iOS (APNs key uploaded to Firebase)",
+   "description": "Kept on the server only. Used for Android and, through Firebase, iOS and macOS (APNs key uploaded to Firebase). The Windows app does not use push: it stays running in the system tray",
    "idx": 15
   }
  ],
