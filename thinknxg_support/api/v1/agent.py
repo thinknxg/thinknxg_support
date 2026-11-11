@@ -153,6 +153,43 @@ def reply(name, content=None, internal=0, reply_to=None, voice_seconds=None):
                                             reply_to=reply_to, voice_seconds=voice_seconds)
 
 
+# ------------------------------------------------------------------ 1.17: WhatsApp templates
+def _wa(fn):
+    from thinknxg_support.integrations import wa_templates
+
+    try:
+        return fn(wa_templates)
+    except wa_templates.TemplateError as e:
+        frappe.throw(str(e), title=_("WhatsApp template"))
+
+
+@frappe.whitelist()
+def whatsapp_templates(name):
+    doc = _doc(name)
+    return _wa(lambda m: m.api_options(doc, frappe.session.user))
+
+
+@frappe.whitelist(methods=["POST"])
+def send_whatsapp_template(name, template, values=None, client_request_id=None):
+    doc = _doc(name, "write")
+    return _wa(lambda m: m.api_send(doc, template, values, (client_request_id or "")[:64] or None,
+                                    frappe.session.user, "desk"))
+
+
+@frappe.whitelist(methods=["POST"])
+def whatsapp_consent(name, status, note=None):
+    doc = _doc(name, "write")
+    return _wa(lambda m: m.api_consent(doc, status, note, frappe.session.user))
+
+
+@frappe.whitelist(methods=["POST"])
+def start_whatsapp_chat(number, template, values=None, customer=None, client_request_id=None):
+    frappe.only_for(STAFF)
+    frappe.has_permission(CONV, "create", throw=True)
+    return _wa(lambda m: m.api_start(number, template, values, (client_request_id or "")[:64] or None,
+                                     frappe.session.user, customer))
+
+
 # 1.14: change messages after sending (same rules as the apps and the widget)
 @frappe.whitelist(methods=["POST"])
 def edit_message(name, message, text):

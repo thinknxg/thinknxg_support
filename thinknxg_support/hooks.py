@@ -111,6 +111,7 @@ scheduler_events = {
         "thinknxg_support.tasks.expire_access_and_grants",
         "thinknxg_support.tasks.purge_old_events",
         "thinknxg_support.integrations.push.purge",
+        "thinknxg_support.integrations.wa_templates.sync_daily",
         "thinknxg_support.integrations.live_chat.purge_guest_chats",
         "thinknxg_support.integrations.ai.housekeeping.purge_usage_logs",
     ],

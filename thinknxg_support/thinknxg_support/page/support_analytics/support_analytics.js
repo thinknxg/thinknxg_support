@@ -59,6 +59,7 @@ class SupportAnalytics {
 				<div class="col-md-6"><div class="frappe-card p-3 mb-3"><h6>${__("AI usage")}</h6><div class="sa-ai"></div></div></div>
 				<div class="col-md-6"><div class="frappe-card p-3 mb-3"><h6>${__("Usage and limits")}</h6><div class="sa-usage"></div></div></div>
 			</div>
+			<div class="frappe-card p-3 mb-3"><h6>${__("WhatsApp templates")}</h6><div class="sa-templates"></div></div>
 			<div class="frappe-card p-3 mb-3"><h6>${__("Security check")}</h6><div class="sa-security"></div></div>
 			<p class="text-muted small">${__("AI resolved: closed without a person replying, after the assistant answered. Human: a person replied. AI resolution rate: AI resolved out of the chats the assistant answered. First response: from handoff (or from the start) to the first agent reply. Figures refresh every five minutes; the live panel every 30 seconds.")}</p>`);
 		this.onRange(true);
@@ -140,6 +141,15 @@ class SupportAnalytics {
 		this.list(".sa-list-handoff", d.handoff_reasons);
 		this.list(".sa-list-intents", d.intents, __("Turn on message analysis in Support AI Settings to see this."));
 		this.list(".sa-list-languages", d.languages);
+		const wt = d.whatsapp_templates || [];
+		this.$body.find(".sa-templates").html(wt.length ? `<table class="table table-sm mb-0"><thead><tr>
+			<th>${__("Template")}</th><th>${__("Category")}</th><th>${__("Status")}</th><th class="text-right">${__("Sent")}</th>
+			<th class="text-right">${__("Delivered")}</th><th class="text-right">${__("Read")}</th><th class="text-right">${__("Failed")}</th><th>${__("Most common failure")}</th></tr></thead>
+			<tbody>${wt.map((r) => `<tr><td>${esc(r.template_name)} <span class="text-muted">${esc(r.language || "")}</span></td><td>${esc(__(r.category || ""))}</td>
+			<td>${esc(__(r.status || ""))}${r.quality ? ` · ${esc(__(r.quality))}` : ""}</td><td class="text-right">${num(r.sent + r.failed)}</td>
+			<td class="text-right">${pct(r.delivery_rate)}</td><td class="text-right">${pct(r.read_rate)}</td>
+			<td class="text-right">${num(r.failed)}</td><td class="small">${(r.errors || []).slice(0, 1).map((e) => esc(e.meaning || e.code) + ` (${num(e.count)})`).join("")}</td></tr>`).join("")}</tbody></table>`
+			: `<p class="text-muted">${__("No WhatsApp templates were sent in this period.")}</p>`);
 		this.list(".sa-ai", (d.ai_usage || []).concat((d.automation || []).map((r) => ({ label: __("Rule: {0}", [r.label]), count: r.count }))), __("No AI calls in this period."));
 	}
 

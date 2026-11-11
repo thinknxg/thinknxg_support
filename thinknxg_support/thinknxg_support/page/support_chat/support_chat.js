@@ -42,6 +42,7 @@ class SupportChatConsole {
 		this.lastTyping = 0;
 		this.build();
 		this.page.set_secondary_action(__("Settings"), () => frappe.set_route("Form", "Support Portal Settings"));
+		this.page.add_menu_item(__("New WhatsApp chat"), () => this.newWhatsAppChat());
 		this.page.add_menu_item(__("AI Assistant Settings"), () => frappe.set_route("Form", "Support AI Settings"));
 		this.page.add_menu_item(__("Chatbots"), () => frappe.set_route("List", "Support Chatbot"));
 		this.page.add_menu_item(__("Queues"), () => frappe.set_route("List", "Support Chat Queue"));
@@ -349,7 +350,7 @@ class SupportChatConsole {
 		if (c.channel === "WhatsApp") {
 			pills.push(c.window_open
 				? `<span class="txk-pill ok">${__("Reply window open until {0}", [frappe.datetime.str_to_user(c.whatsapp_window_expires)])}</span>`
-				: `<span class="txk-pill warn">${__("24-hour window closed: replies are sent as the template")}</span>`);
+				: `<span class="txk-pill warn">${__("24-hour window closed: send an approved template")}</span>`);
 		}
 		if (c.is_guest && c.channel === "Live Chat") {
 			pills.push(c.visitor_online ? `<span class="txk-pill ok">${__("Visitor online")}</span>` : `<span class="txk-pill">${__("Visitor away")}</span>`);
@@ -416,6 +417,7 @@ class SupportChatConsole {
 								<li><a class="dropdown-item" data-ai="note">${__("Add summary as internal note")}</a></li>
 							</ul>
 						</span>
+						${c.channel === "WhatsApp" ? `<button class="btn btn-default btn-sm txk-template-btn" title="${__("Send an approved WhatsApp template")}">${__("Template")}</button>` : ""}
 						<button class="btn btn-default btn-sm txk-canned-btn" title="${__("Insert a canned response (or type / in the box)")}">${__("Canned responses")}</button>
 						<label class="btn btn-default btn-sm" title="${__("Attach a file")}" style="margin:0">📎<input type="file" class="txk-attach" hidden></label>
 						${(c.messaging || {}).voice && window.MediaRecorder ? `<button class="btn btn-default btn-sm txk-voice" title="${__("Record a voice note")}">🎤</button>` : ""}
@@ -432,6 +434,7 @@ class SupportChatConsole {
 		});
 		$ta.on("input", () => this.suggest($ta, c));
 		this.$main.find(".txk-canned-btn").on("click", () => this.cannedDialog(c));
+		this.$main.find(".txk-template-btn").on("click", () => this.templateDialog(c));
 		this.$main.find("[data-ai]").on("click", (e) => { e.preventDefault(); this.copilot(e.currentTarget.dataset.ai, c, data); });
 		this.showInsight(c);
 		$ta.on("input", () => {
@@ -781,6 +784,125 @@ class SupportChatConsole {
 			d.show();
 			setTimeout(() => d.fields_dict.q.$input.trigger("focus"), 200);
 		});
+	}
+
+	// ---------------------------------------------------------------- WhatsApp templates
+	newWhatsAppChat() {
+		const d = new frappe.ui.Dialog({
+			title: __("New WhatsApp chat"),
+			fields: [
+				{ fieldname: "number", fieldtype: "Data", label: __("WhatsApp number with country code"), reqd: 1 },
+				{ fieldname: "tpl", fieldtype: "Link", options: "Support WhatsApp Template", label: __("Template"), reqd: 1,
+					get_query: () => ({ filters: { status: "Approved", enabled: 1 } }) },
+				{ fieldname: "customer", fieldtype: "Link", options: "Customer", label: __("Customer (optional)") },
+				{ fieldname: "vars", fieldtype: "HTML" },
+			],
+			primary_action_label: __("Send template"),
+			primary_action: (v) => {
+				const values = {};
+				d.fields_dict.vars.$wrapper.find(".txk-var").each((_, el) => { values[el.dataset.key] = el.value; });
+				frappe.call({ method: API + "start_whatsapp_chat", type: "POST",
+					args: { number: v.number, template: v.tpl, values: JSON.stringify(values), customer: v.customer,
+						client_request_id: frappe.utils.get_random(16) } })
+					.then((r) => { d.hide(); this.refresh(); this.open((r.message || {}).conversation); });
+			},
+		});
+		d.fields_dict.tpl.df.onchange = () => {
+			const name = d.get_value("tpl");
+			if (!name) return;
+			frappe.db.get_doc("Support WhatsApp Template", name).then((t) => {
+				const esc = frappe.utils.escape_html;
+				d.fields_dict.vars.$wrapper.html((t.variables || []).map((v) => `
+					<div class="form-group"><label class="control-label">${esc(v.component)} {{${esc(v.position)}}}
+						<span class="text-muted small">${v.example ? __("e.g. {0}", [esc(v.example)]) : ""}</span></label>
+						<input class="form-control txk-var" data-key="${esc(v.key)}"
+							value="${v.source === "Fixed Text" || v.source === "Entered by Agent" ? esc(v.fixed_text || "") : ""}"></div>`).join(""));
+			});
+		};
+		d.show();
+	}
+
+	// Pick an approved template, fill its variables, see the message, send. Marketing needs a recorded opt-in.
+	templateDialog(c) {
+		const esc = frappe.utils.escape_html;
+		frappe.call({ method: API + "whatsapp_templates", args: { name: c.name }, type: "GET" }).then((r) => {
+			const data = r.message || { templates: [], consent: {} };
+			const rows = data.templates;
+			if (!rows.length) {
+				frappe.msgprint(__("No approved templates yet. Create them in WhatsApp Manager, then open Support WhatsApp Template and choose Sync from Meta."));
+				return;
+			}
+			const d = new frappe.ui.Dialog({
+				title: __("Send a WhatsApp template"), size: "large",
+				fields: [
+					{ fieldname: "tpl", fieldtype: "Select", label: __("Template"), reqd: 1,
+						options: rows.map((t) => ({ value: t.name, label: `${t.template_name} (${t.language}) · ${__(t.category || "")}` })) },
+					{ fieldname: "vars", fieldtype: "HTML" },
+					{ fieldname: "preview", fieldtype: "HTML" },
+					{ fieldname: "consent", fieldtype: "HTML" },
+				],
+				primary_action_label: __("Send template"),
+				primary_action: () => {
+					const t = cur();
+					const values = {};
+					d.fields_dict.vars.$wrapper.find(".txk-var").each((_, el) => { values[el.dataset.key] = el.value; });
+					d.disable_primary_action();
+					frappe.call({ method: API + "send_whatsapp_template", type: "POST",
+						args: { name: c.name, template: t.name, values: JSON.stringify(values), client_request_id: frappe.utils.get_random(16) } })
+						.then(() => { d.hide(); frappe.show_alert({ message: __("Template sent"), indicator: "green" }); this.open(c.name); })
+						.catch(() => d.enable_primary_action());
+				},
+			});
+			const cur = () => rows.find((t) => t.name === d.get_value("tpl")) || rows[0];
+			const fill = (text, comp, vals) => (text || "").replace(/\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g, (m, k) => vals[`${comp}.${k}`] || m);
+			const preview = () => {
+				const t = cur(), vals = {};
+				d.fields_dict.vars.$wrapper.find(".txk-var").each((_, el) => { vals[el.dataset.key] = el.value; });
+				const raw = t.raw || {};
+				d.fields_dict.preview.$wrapper.html(`<div style="background:var(--control-bg);border-radius:8px;padding:10px 12px;white-space:pre-wrap">
+					${raw.header ? `<b>${esc(fill(raw.header, "header", vals))}</b><br>` : ""}${esc(fill(raw.body, "body", vals))}
+					${raw.footer ? `<div class="text-muted small">${esc(raw.footer)}</div>` : ""}
+					${(raw.buttons || []).length ? `<div class="text-muted small">[ ${raw.buttons.map((b) => esc(b.text)).join(" · ")} ]</div>` : ""}</div>`);
+			};
+			const blockedHtml = (t) => {
+				if (!t.blocked) return "";
+				const out = t.blocked === "opted_out";
+				return `<div class="alert alert-warning" style="margin-top:8px">${out
+					? __("This customer asked to stop marketing messages.")
+					: __("This is a marketing template and this customer has not agreed to receive marketing messages.")}
+					<a href="#" class="txk-optin">${__("Record opt-in")}</a></div>`;
+			};
+			const render = () => {
+				const t = cur();
+				d.fields_dict.vars.$wrapper.html((t.variables || []).map((v) => `
+					<div class="form-group"><label class="control-label">${esc(v.component)} {{${esc(v.position)}}}
+						<span class="text-muted small">${v.example ? __("e.g. {0}", [esc(v.example)]) : ""}</span></label>
+						<input class="form-control txk-var" data-key="${esc(v.key)}" value="${esc(v.value)}"></div>`).join(""));
+				d.fields_dict.vars.$wrapper.find(".txk-var").on("input", preview);
+				d.fields_dict.consent.$wrapper.html(blockedHtml(t));
+				d.fields_dict.consent.$wrapper.find(".txk-optin").on("click", (e) => { e.preventDefault(); this.optInDialog(c, () => { d.hide(); this.templateDialog(c); }); });
+				t.blocked ? d.disable_primary_action() : d.enable_primary_action();
+				preview();
+			};
+			d.fields_dict.tpl.$input.on("change", render);
+			d.set_value("tpl", rows[0].name);
+			d.show();
+			render();
+		});
+	}
+
+	optInDialog(c, done) {
+		const d = new frappe.ui.Dialog({
+			title: __("Record marketing opt-in"),
+			fields: [
+				{ fieldtype: "HTML", options: `<p class="text-muted">${__("Only record this when the customer agreed to receive WhatsApp marketing messages. Say how and when.")}</p>` },
+				{ fieldname: "note", fieldtype: "Small Text", label: __("How did the customer agree?"), reqd: 1 },
+			],
+			primary_action_label: __("Save opt-in"),
+			primary_action: (v) => frappe.call({ method: API + "whatsapp_consent", type: "POST",
+				args: { name: c.name, status: "Opted In", note: v.note } }).then(() => { d.hide(); done && done(); }),
+		});
+		d.show();
 	}
 
 	// ---------------------------------------------------------------- end chat with wrap-up

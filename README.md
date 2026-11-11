@@ -543,6 +543,41 @@ Agent replies are sent as text inside the window and as the template outside it;
 read / failed receipts show on each message. Out-of-hours auto reply is optional. Outbound
 attachments and interactive messages are not sent in this version.
 
+## WhatsApp message templates (1.17)
+
+Templates are written and approved in **WhatsApp Manager** (marketing, utility or authentication); thinkNXG
+Support reads them and uses them. It never creates or edits a template in Meta.
+
+1. Enter the **Business Account ID** in *Support Portal Settings → WhatsApp* and subscribe the Meta app webhook to
+   `message_template_status_update`, `message_template_quality_update` and `template_category_update` (statuses are
+   also read every day without the webhook).
+2. *Support WhatsApp Template → Sync from Meta* (or *WhatsApp → Sync WhatsApp Templates* on the settings form) reads
+   name, language, category, status, quality, the header / body / footer / buttons and every `{{variable}}`.
+   Templates removed in Meta are marked Deleted. A re-sync keeps the variable map you set.
+3. On each template, the **Variables** table says where a value comes from: Customer First Name, Customer Name,
+   Phone Number, Chat Reference, Ticket Reference, Agent Name, Agent First Name, Company, Portal Link, Fixed Text,
+   or *Entered by Agent*. Variables in the header, the body and URL / copy-code buttons are supported (positional
+   `{{1}}` and named `{{name}}`). An image, video or document header needs a public https link on the template.
+4. **Agents**: *Template* button in the web console (WhatsApp chats) and the template button in the agent apps; the
+   dialog shows the variables with values filled in, a live preview, and sends the template whether or not the
+   24-hour window is open. *New WhatsApp chat* (console menu) starts a chat with a template.
+5. **Automation rules**: action *Send WhatsApp Template* for *Customer Quiet*, *Chat Closed Needing Follow-up* and
+   *New Chat Outside Chat Hours*; optionally the plain message while the window is still open. A rule never guesses a
+   missing variable and never sends an authentication template.
+6. **Marketing needs an opt-in**: marketing templates are only sent to numbers in *Support WhatsApp Consent* as Opted
+   In (setting *Marketing Needs Opt-in*, on by default). An agent records the opt-in with a note saying how the
+   customer agreed. A customer who sends STOP / UNSUBSCRIBE (or the Arabic equivalents) as the whole message is
+   opted out and gets the *Reply to STOP* text; START opts them in again. The assistant does not answer these words.
+   Only a Support Manager can record a new opt-in for a customer who opted out.
+7. **Delivery**: each template message shows its sent / delivered / read / failed state; a failure stores Meta's
+   error code with a plain explanation. Codes that mean the template itself is paused, disabled or missing
+   (132015, 132016, 132001) stop it being offered, and status changes tell the Support Managers. *Support
+   Analytics → WhatsApp templates* shows sent, delivery rate, read rate, failures and the most common failure
+   reason per template.
+
+Authentication templates carry a one-time code: an agent enters it when sending (it goes into the body and the
+copy-code button). Generating and checking codes is not part of this release.
+
 ## Portal routes
 
 `/thinkdesk` · `/thinkdesk/tickets` · `/thinkdesk/tickets/new` · `/thinkdesk/tickets/:id` ·

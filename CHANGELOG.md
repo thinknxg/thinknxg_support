@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.17.0, 2026-11-11 — WhatsApp message templates
+* **Templates from WhatsApp Manager** (*Support WhatsApp Template*): synced from Meta (button, and daily), with
+  category, status, quality and the header, body, footer and buttons. Creating templates stays in WhatsApp Manager.
+* **Variables**: a variable map per template (customer name, agent, references, fixed text, or entered by the agent)
+  for header, body, URL and copy-code buttons; positional and named; authentication templates carry the code.
+* **Send a template from a chat**: web console and the agent apps (with the 24-hour window open or closed), with a
+  preview and the variables filled in; start a new WhatsApp chat with a template. The old *Re-engagement Template*
+  now fills its variables from the map too.
+* **Automation**: new action *Send WhatsApp Template*.
+* **Marketing opt-in and opt-out** (*Support WhatsApp Consent*): marketing templates are blocked without a recorded
+  opt-in; STOP / START from the customer; the assistant does not answer those words.
+* **Tracking**: Meta error codes explained on failed messages and stored; paused / disabled templates stop being
+  offered; template status, quality and category events alert Support Managers; new *WhatsApp templates* table in
+  Support Analytics.
+* Agent API: `whatsapp_templates`, `send_whatsapp_template`, `whatsapp_consent`, `start_whatsapp_chat`;
+  `actions.send_template`; message `template` and `delivery.code`.
+* Agent apps 1.17.0: template dialog.
+
 ## 1.16.0, 2026-11-11 — multi-source AI knowledge base
 * **AI Knowledge Sources** overview in Support AI Settings: every source (knowledge base articles, snippets,
   uploaded documents, each website) with status, priority, items, passages, last indexing and problems; *Add website

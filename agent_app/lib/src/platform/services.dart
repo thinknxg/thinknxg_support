@@ -40,7 +40,7 @@ class AppServices {
           : defaultTargetPlatform == TargetPlatform.macOS
               ? 'macOS'
               : 'Windows';
-  static String appVersion = '1.15.0';
+  static String appVersion = '1.17.0';
 }
 
 /// The desktop app's life outside its window.

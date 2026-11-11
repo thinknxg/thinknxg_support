@@ -183,6 +183,30 @@ void main() {
       c.dispose();
     });
 
+    test('WhatsApp templates: listed, blocked without opt-in, sent once, shown in the thread', () async {
+      final s = FakeServer();
+      final id = s.conversations[2]['id'] as String; // WhatsApp, window closed
+      final c = ConversationController(apiFor(s, Tokens('token-1')), id, onExpired: () {});
+      await c.load();
+      expect(c.detail!.actions.reply, isFalse);
+      expect(c.detail!.actions.sendTemplate, isTrue);
+      final t = await c.api.whatsappTemplates(id);
+      expect(t.templates.map((x) => x.id), ['order_update-en', 'summer_offer-en']);
+      final order = t.templates.first;
+      expect(order.preview({'body.1': 'Salim', 'body.2': 'A100'}), contains('Hi Salim, your order A100 is on its way.'));
+      expect(order.preview({'body.1': 'Salim'}), contains('{{2}}')); // an unfilled variable stays visible
+      expect(t.templates.last.blocked, 'no_optin');
+      // a missing variable is refused by the server and nothing is sent
+      await expectLater(c.sendTemplate('order_update-en', {'body.1': 'Salim', 'body.2': ''}), throwsA(isA<ApiException>()));
+      final before = c.messages.length;
+      await c.sendTemplate('order_update-en', {'body.1': 'Salim', 'body.2': 'A100'});
+      expect(c.messages.length, before + 1);
+      expect(c.messages.last.text, contains('order_update-en'));
+      await c.api.whatsappConsent(id, 'Opted In', 'Asked on the phone');
+      expect((await c.api.whatsappTemplates(id)).templates.last.blocked, isNull);
+      c.dispose();
+    });
+
     test('opening the thread acknowledges it as read', () async {
       final s = FakeServer();
       final c = ConversationController(apiFor(s, Tokens('token-1')), 'CONV-100', onExpired: () {});

@@ -12,6 +12,7 @@ import 'composer.dart';
 import 'copilot_sheet.dart';
 import 'message_actions.dart';
 import 'pickers.dart';
+import 'template_dialog.dart';
 import '../platform/voice.dart';
 
 /// Pick a file for the composer and report problems inline (size, cancelled picker).
@@ -186,6 +187,7 @@ class _ConversationViewState extends State<ConversationView> {
             onAttach: () => pickInto(context, c.attach),
             onRemoveFile: () => c.attach(null),
             onAi: widget.copilot ? () => CopilotSheet.show(context, c) : null,
+            onTemplate: d.actions.sendTemplate && d.channel == 'WhatsApp' ? () => TemplateDialog.show(context, c) : null,
             onVoice: widget.messaging.voice && d.actions.reply ? (f, s) => c.sendVoice(f, s) : null,
             maxVoiceSeconds: widget.messaging.maxVoiceSeconds,
             onCanned: () async {

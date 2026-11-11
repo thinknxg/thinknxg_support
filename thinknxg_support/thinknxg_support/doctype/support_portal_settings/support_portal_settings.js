@@ -2,7 +2,7 @@ frappe.ui.form.on("Support Portal Settings", {
     refresh(frm) {
         if (frm.doc.whatsapp_webhook_url) {
             frm.set_df_property("whatsapp_webhook_url", "description",
-                __("Paste this URL and your Verify Token into the Meta app (WhatsApp > Configuration > Webhook) and subscribe to the 'messages' field."));
+                __("Paste this URL and your Verify Token into the Meta app (WhatsApp > Configuration > Webhook) and subscribe to the 'messages' field, plus message_template_status_update, message_template_quality_update and template_category_update to follow your templates."));
         }
         if (frm.doc.enable_whatsapp) {
             frm.add_custom_button(__("Send WhatsApp Test"), () => {
@@ -15,6 +15,15 @@ frappe.ui.form.on("Support Portal Settings", {
                     __("WhatsApp Test"), __("Send")
                 );
             });
+        }
+        if (frm.doc.enable_whatsapp && frm.doc.whatsapp_business_account_id) {
+            frm.add_custom_button(__("Sync WhatsApp Templates"), () => frappe.call({
+                method: "thinknxg_support.thinknxg_support.doctype.support_whatsapp_template.support_whatsapp_template.sync_templates",
+                freeze: true, freeze_message: __("Reading your templates from WhatsApp…"),
+            }).then((r) => { frappe.show_alert({ message: r.message, indicator: "green" }); frm.reload_doc(); }),
+            __("WhatsApp"));
+            frm.add_custom_button(__("WhatsApp Templates"), () => frappe.set_route("List", "Support WhatsApp Template"), __("WhatsApp"));
+            frm.add_custom_button(__("Marketing Opt-ins"), () => frappe.set_route("List", "Support WhatsApp Consent"), __("WhatsApp"));
         }
         frm.add_custom_button(__("Open Chat Console"), () => frappe.set_route("support-chat"));
         frm.add_custom_button(__("Preview Landing Page"), () => window.open("/thinkdesk", "_blank"));

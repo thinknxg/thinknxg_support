@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import html as html_lib
+import json
 import re
 
 import frappe
@@ -181,12 +182,42 @@ def send_reaction(message: str, emoji: str = ""):
                   details=f"whatsapp reaction failed: {str(e)[:200]}", user="Administrator")
 
 
-def _send_template(to: str) -> str:
+def _send_template(to: str, conv=None) -> str:
     s = settings()
     if not s.whatsapp_template_name:
         raise WhatsAppError(_("The 24-hour reply window has closed and no re-engagement template is set."))
+    template = {"name": s.whatsapp_template_name, "language": {"code": s.whatsapp_template_language or "en"}}
+    key = f"{s.whatsapp_template_name}-{s.whatsapp_template_language or 'en'}"
+    if conv is not None and frappe.db.exists("Support WhatsApp Template", key):  # 1.17: fill its variables
+        from thinknxg_support.integrations import wa_templates
+
+        tpl = frappe.get_cached_doc("Support WhatsApp Template", key)
+        if tpl.variables and tpl.status == "Approved" and tpl.category != "Marketing":
+            try:
+                prep = wa_templates.prepare(tpl, conv)
+                wa_templates.check_complete(tpl, prep["values"])
+                template["components"] = wa_templates.components(tpl, prep["values"])
+            except wa_templates.TemplateError as e:
+                raise WhatsAppError(str(e))
+    return _send({"to": to, "type": "template", "template": template})
+
+
+def _send_stored_template(to: str, msg) -> str:
+    """1.17: a template an agent or a rule chose: exactly the components stored on the message."""
+    t = json.loads(msg.wa_components)
     return _send({"to": to, "type": "template", "template": {
-        "name": s.whatsapp_template_name, "language": {"code": s.whatsapp_template_language or "en"}}})
+        "name": t["name"], "language": {"code": t["language"]}, "components": t.get("components") or []}})
+
+
+def _failed(msg, err: WhatsAppError):
+    """Store a failure with what the Meta code means, and stop offering a template Meta paused or disabled."""
+    from thinknxg_support.integrations import wa_templates
+
+    code = cint(err.code) if err.code else None
+    msg.db_set({"delivery_status": "Failed", "delivery_error": (wa_templates.explain(code, str(err)) or str(err))[:500],
+                "delivery_code": code})
+    if msg.get("wa_template"):
+        wa_templates.on_send_error(msg.wa_template, code)
 
 
 def html_to_text(html: str) -> str:
@@ -221,7 +252,10 @@ def deliver(message: str):
         if not available():
             raise WhatsAppError(_("WhatsApp is not enabled in Support Portal Settings."))
         to = conv.whatsapp_number
-        if window_open(conv):
+        if msg.get("wa_components"):  # 1.17: a chosen template goes out whether or not the window is open
+            ext_id = _send_stored_template(to, msg)
+            note = None
+        elif window_open(conv):
             text = html_to_text(msg.content)
             ext_id = None
             context = None  # 1.14: WhatsApp shows the quoted message above the reply
@@ -245,16 +279,16 @@ def deliver(message: str):
             except WhatsAppError as e:
                 if e.code not in WINDOW_CLOSED_CODES:
                     raise
-                ext_id = _send_template(to)
+                ext_id = _send_template(to, conv)
                 note = _("Sent the re-engagement template because WhatsApp reported the reply window as closed.")
         else:
-            ext_id = _send_template(to)
+            ext_id = _send_template(to, conv)
             note = _("The 24-hour reply window had closed, so the approved template was sent instead. "
                      "Your text reaches the customer after they reply.")
         msg.db_set({"external_message_id": ext_id, "delivery_status": "Sent", "delivery_error": note})
         _map(key, conv.name, "Outbound", msg.name, ext_id, "Delivered")
     except WhatsAppError as e:
-        msg.db_set({"delivery_status": "Failed", "delivery_error": str(e)})
+        _failed(msg, e)
         _map(key, conv.name, "Outbound", msg.name, None, "Failed", ("network: " if e.retryable else "") + str(e))
         log_event("Integration Error", severity="Error", reference_doctype=CONV, reference_name=conv.name,
                   details=f"whatsapp send failed: {str(e)[:200]}", user="Administrator")
@@ -307,6 +341,12 @@ def handle_webhook(payload: dict):
     s = settings()
     for entry in payload.get("entry") or []:
         for change in entry.get("changes") or []:
+            from thinknxg_support.integrations import wa_templates
+
+            if change.get("field") in wa_templates.TEMPLATE_EVENTS:  # 1.17
+                if str(entry.get("id") or "") == str(s.whatsapp_business_account_id or entry.get("id") or ""):
+                    wa_templates.on_webhook(change["field"], change.get("value") or {})
+                continue
             if change.get("field") != "messages":
                 continue
             value = change.get("value") or {}
@@ -405,9 +445,17 @@ def process_inbound(message: dict, profile_name: str | None = None):
     profile_name = (profile_name or "").strip()[:80] or None
     conv = _open_conversation(wa_id, profile_name)
     text, media = _content(message)
-    result = conversations.add_inbound_message(
-        conv, text, sender=conv.started_by, sender_name=profile_name or f"+{wa_id}",
-        external_id=message.get("id"), allow_html=False, reopen=True, reply_to=reply_context_of(message, conv.name))
+    from thinknxg_support.integrations import wa_templates
+
+    keyword = wa_templates.keyword(text) if message.get("type") == "text" else None
+    frappe.flags.thinknxg_skip_reply = bool(keyword)  # STOP / START are for the opt-in list: no assistant answer
+    try:
+        result = conversations.add_inbound_message(
+            conv, text, sender=conv.started_by, sender_name=profile_name or f"+{wa_id}",
+            external_id=message.get("id"), allow_html=False, reopen=True,
+            reply_to=reply_context_of(message, conv.name))
+    finally:
+        frappe.flags.thinknxg_skip_reply = False
     conv.db_set({"whatsapp_window_expires": add_to_date(now_datetime(), hours=24),
                  "whatsapp_profile_name": profile_name or conv.whatsapp_profile_name}, update_modified=False)
     if media and result.get("name") and not result.get("duplicate"):
@@ -418,7 +466,19 @@ def process_inbound(message: dict, profile_name: str | None = None):
                       details=f"whatsapp media download failed: {str(e)[:200]}", user="Administrator")
     _map(key, conv.name, "Inbound", result.get("name"), message.get("id"), "Delivered")
     _mark_read(message.get("id"))
+    if keyword:
+        _opt_keyword(conv, wa_id, text)
+        return
     _auto_reply(conv)
+
+
+def _opt_keyword(conv, wa_id: str, text: str):
+    from thinknxg_support.integrations import wa_templates
+
+    out = wa_templates.on_inbound(conv, wa_id, text)
+    if out and "\n" in out:  # the confirmation the customer gets (free text: they just wrote, the window is open)
+        conversations.post_agent_message(conv, out.split("\n", 1)[1], sender="Administrator", source="system",
+                                         sender_type="System", response_source="Opt-in list")
 
 
 def _attach_media(msg_name: str, media: dict, kind: str):
@@ -470,7 +530,14 @@ def update_status(st: dict):
     if status == "Failed":
         err = (st.get("errors") or [{}])[0]
         detail = (err.get("error_data") or {}).get("details") or err.get("title") or _("Delivery failed")
-        frappe.db.set_value(MSG, row.name, {"delivery_status": "Failed", "delivery_error": str(detail)[:500]})
+        from thinknxg_support.integrations import wa_templates
+
+        code = cint(err.get("code")) or None
+        frappe.db.set_value(MSG, row.name, {"delivery_status": "Failed", "delivery_code": code,
+                                            "delivery_error": (wa_templates.explain(code, str(detail)) or str(detail))[:500]})
+        tpl = frappe.db.get_value(MSG, row.name, "wa_template")
+        if tpl:
+            wa_templates.on_send_error(tpl, code)
     elif STATUS_RANK.get(status, 0) > STATUS_RANK.get(row.delivery_status or "Pending", 0):
         frappe.db.set_value(MSG, row.name, "delivery_status", status)
     else:
