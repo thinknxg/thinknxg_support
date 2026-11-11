@@ -321,7 +321,7 @@ def _message_base(m, actions) -> dict:
             "internal": bool(cint(m.is_internal)), "sender_type": m.sender_type, "author": m.sender_name or m.sender,
             "author_user": m.sender, "html": m.content or "", "created_at": _iso(m.creation),
             "attachment": {"name": (m.attachment or "").rsplit("/", 1)[-1]} if m.attachment else None,
-            "delivery": {"status": m.delivery_status, "error": m.delivery_error, "code": m.get("delivery_code")}
+            "delivery": {"status": m.delivery_status, "error": m.delivery_error, "code": m.get("delivery_code") or None}
             if m.delivery_status else None,
             "template": m.get("wa_template"),
             "client_request_id": m.client_message_id, "read_by_customer": bool(cint(m.read_by_customer)),

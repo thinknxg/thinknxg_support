@@ -215,7 +215,7 @@ def _failed(msg, err: WhatsAppError):
 
     code = cint(err.code) if err.code else None
     msg.db_set({"delivery_status": "Failed", "delivery_error": (wa_templates.explain(code, str(err)) or str(err))[:500],
-                "delivery_code": code})
+                "delivery_code": code or 0})
     if msg.get("wa_template"):
         wa_templates.on_send_error(msg.wa_template, code)
 
@@ -533,7 +533,7 @@ def update_status(st: dict):
         from thinknxg_support.integrations import wa_templates
 
         code = cint(err.get("code")) or None
-        frappe.db.set_value(MSG, row.name, {"delivery_status": "Failed", "delivery_code": code,
+        frappe.db.set_value(MSG, row.name, {"delivery_status": "Failed", "delivery_code": code or 0,
                                             "delivery_error": (wa_templates.explain(code, str(detail)) or str(detail))[:500]})
         tpl = frappe.db.get_value(MSG, row.name, "wa_template")
         if tpl:
