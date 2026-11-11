@@ -107,6 +107,9 @@ if [ -f "$MAIN_CPP" ] && ! grep -q 'thinknxg-single-instance' "$MAIN_CPP"; then
   perl -0pi -e 's#(wWinMain\([^)]*\)\s*\{)#$1\n  // thinknxg-single-instance\n  if (HWND running = ::FindWindow(L"FLUTTER_RUNNER_WIN32_WINDOW", L"thinkNXG Support Agent")) {\n    ::ShowWindow(running, SW_SHOWNORMAL);\n    ::SetForegroundWindow(running);\n    return EXIT_SUCCESS;\n  }\n#' "$MAIN_CPP"
 fi
 
+if [ -f "$FW" ] && grep -q 'this->Show();' "$FW"; then echo "configure: could not patch $FW (hidden start)"; exit 1; fi
+if [ -f "$MAIN_CPP" ] && ! grep -q 'thinknxg-single-instance' "$MAIN_CPP"; then echo "configure: could not patch $MAIN_CPP (single instance)"; exit 1; fi
+
 # Android: notifications on Android 13+, vibration, and Firebase's default channel = the app's alert channel
 if ! grep -q 'android.permission.POST_NOTIFICATIONS' "$MANIFEST"; then
   perl -0pi -e 's#<application#<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.VIBRATE"/>\n    <application#' "$MANIFEST"

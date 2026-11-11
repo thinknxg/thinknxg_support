@@ -48,8 +48,10 @@ class DeviceAlertSink implements AlertSink {
       await _notifications.initialize(
         const InitializationSettings(
           android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-          iOS: DarwinInitializationSettings(requestAlertPermission: true, requestSoundPermission: true, requestBadgePermission: true),
-          macOS: DarwinInitializationSettings(requestAlertPermission: true, requestSoundPermission: true, requestBadgePermission: true),
+          // Permission is asked for below, without waiting: the question stays on screen until the user answers,
+          // and start-up must not wait for that.
+          iOS: DarwinInitializationSettings(requestAlertPermission: false, requestSoundPermission: false, requestBadgePermission: false),
+          macOS: DarwinInitializationSettings(requestAlertPermission: false, requestSoundPermission: false, requestBadgePermission: false),
           windows: WindowsInitializationSettings(
               appName: 'thinkNXG Support Agent',
               appUserModelId: 'com.thinknxg.agent',
@@ -57,10 +59,17 @@ class DeviceAlertSink implements AlertSink {
         ),
         onDidReceiveNotificationResponse: (r) => PendingLink.fromPayload(r.payload),
       );
+      unawaited(Future.sync(() async {
+        await _notifications
+            .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+            ?.requestPermissions(alert: true, badge: true, sound: true);
+        await _notifications
+            .resolvePlatformSpecificImplementation<MacOSFlutterLocalNotificationsPlugin>()
+            ?.requestPermissions(alert: true, badge: true, sound: true);
+      }).catchError((Object e) => CrashLog.write('notification permission', e)));
       final launch = await _notifications.getNotificationAppLaunchDetails();
       if (launch?.didNotificationLaunchApp == true) PendingLink.fromPayload(launch!.notificationResponse?.payload);
       final android = _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-      await android?.requestNotificationsPermission();
       // A channel's sound is fixed when it is created: 1.9.0 test builds made a silent one, so use a new channel
       // (with the system notification sound) and remove the old one. Pushes from the server use the same id.
       await android?.deleteNotificationChannel('support_alerts');
@@ -72,6 +81,9 @@ class DeviceAlertSink implements AlertSink {
         playSound: true,
         enableVibration: true,
       ));
+      // asked without waiting, like on Apple devices: the sounds must work while the question is on screen
+      unawaited(Future.sync(() async => await android?.requestNotificationsPermission())
+          .catchError((Object e) => CrashLog.write('notification permission', e)));
     } catch (e, st) {
       CrashLog.write('notifications unavailable', e, st);
     }
