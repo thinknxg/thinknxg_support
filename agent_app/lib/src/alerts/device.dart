@@ -59,14 +59,6 @@ class DeviceAlertSink implements AlertSink {
         ),
         onDidReceiveNotificationResponse: (r) => PendingLink.fromPayload(r.payload),
       );
-      unawaited(Future.sync(() async {
-        await _notifications
-            .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
-            ?.requestPermissions(alert: true, badge: true, sound: true);
-        await _notifications
-            .resolvePlatformSpecificImplementation<MacOSFlutterLocalNotificationsPlugin>()
-            ?.requestPermissions(alert: true, badge: true, sound: true);
-      }).catchError((Object e) => CrashLog.write('notification permission', e)));
       final launch = await _notifications.getNotificationAppLaunchDetails();
       if (launch?.didNotificationLaunchApp == true) PendingLink.fromPayload(launch!.notificationResponse?.payload);
       final android = _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
@@ -81,11 +73,24 @@ class DeviceAlertSink implements AlertSink {
         playSound: true,
         enableVibration: true,
       ));
-      // asked without waiting, like on Apple devices: the sounds must work while the question is on screen
-      unawaited(Future.sync(() async => await android?.requestNotificationsPermission())
-          .catchError((Object e) => CrashLog.write('notification permission', e)));
+      unawaited(_askPermission(android)); // without waiting: sounds must work while the question is on screen
     } catch (e, st) {
       CrashLog.write('notifications unavailable', e, st);
+    }
+  }
+
+  /// The system's "allow notifications?" question stays up until the user answers; start-up does not wait for it.
+  Future<void> _askPermission(AndroidFlutterLocalNotificationsPlugin? android) async {
+    try {
+      await android?.requestNotificationsPermission();
+      await _notifications
+          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
+      await _notifications
+          .resolvePlatformSpecificImplementation<MacOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
+    } catch (e, st) {
+      CrashLog.write('notification permission', e, st);
     }
   }
 
