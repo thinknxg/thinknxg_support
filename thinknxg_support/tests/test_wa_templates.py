@@ -51,7 +51,8 @@ class TestWhatsAppTemplates(BaseTestCase):
             frappe.db.delete(dt)
         s = frappe.get_single("Support Portal Settings")
         s.update({"enable_whatsapp": 1, "whatsapp_phone_number_id": "1234567890", "whatsapp_access_token": "tok",
-                  "whatsapp_business_account_id": "WABA1", "enable_raven": 0, "whatsapp_template_name": "",
+                  "whatsapp_business_account_id": "WABA1", "whatsapp_app_secret": "secret-for-tests",
+                  "whatsapp_verify_token": "verify-me", "enable_raven": 0, "whatsapp_template_name": "",
                   "whatsapp_auto_reply": "", "whatsapp_link_contacts": 1, "whatsapp_require_optin": 1,
                   "whatsapp_optout_reply": "You will no longer receive marketing messages from us.",
                   "whatsapp_optin_reply": "Thank you, you will receive our updates again."})

@@ -327,10 +327,10 @@ class FakeServer {
               'variables': [
                 {'key': 'body.1', 'component': 'Body', 'position': '1', 'example': 'Salim', 'value': 'Salim'},
               ],
-              'blocked': consent[b['name']] == 'Opted In' ? null : 'no_optin',
+              'blocked': consent[q['name']] == 'Opted In' ? null : 'no_optin',
             },
           ],
-          'consent': {'required': true, 'status': consent[b['name']]},
+          'consent': {'required': true, 'status': consent[q['name']]},
         });
       case 'whatsapp_consent':
         consent[b['name'] as String] = b['status'] as String;
