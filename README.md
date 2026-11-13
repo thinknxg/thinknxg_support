@@ -1,22 +1,22 @@
 # thinkNXG Support
 
-Unified, branded customer service portal for **thinkNXG ERP (ERPNext) v16**, bringing together
-**Frappe Helpdesk** ticketing, **Raven** messaging and ERPNext self-service at `/thinkdesk` — without
+Unified, branded customer service portal for **thinkNXG ERP (thinkNXG ERP) v16**, bringing together
+**thinkDesk** ticketing, **thinkNXG Raven** messaging and thinkNXG self-service at `/thinkdesk` — without
 exposing the desk UI and without duplicating Helpdesk or Raven records.
 
 | Concern | Source of truth | thinkNXG Support role |
 |---|---|---|
-| Customers & contacts | ERPNext / Frappe Contact | Resolve identity and access |
-| Tickets, replies, SLA, KB | Frappe Helpdesk (`HD Ticket`, `HD Article`) | Unified ticket UI via adapter |
+| Customers & contacts | thinkNXG ERP / thinkNXG Contact | Resolve identity and access |
+| Tickets, replies, SLA, KB | thinkNXG Helpdesk (`HD Ticket`, `HD Article`) | Unified ticket UI via adapter |
 | Team chat | Raven | Private agent channel per conversation via bot bridge |
-| Orders, invoices, payments | ERPNext | Read-only, field allow-listed views |
+| Orders, invoices, payments | thinkNXG ERP | Read-only, field allow-listed views |
 | Portal preferences, links, audit | thinkNXG Support | Its own 12 DocTypes |
 
 ## Requirements
 
-* Frappe Framework / thinkNXG Framework **v16**, ERPNext **v16** (required — identity resolves to `Customer`)
-* Optional: Frappe Helpdesk (tickets + knowledge base), Raven (agent messaging bridge)
-* Node 18+ (bundled by `bench build`; uses Vue 3, already present in Frappe's toolchain)
+* thinkNXG Framework / thinkNXG Framework **v16**, thinkNXG ERP **v16** (required — identity resolves to `Customer`)
+* Optional: thinkNXG Helpdesk (tickets + knowledge base), Raven (agent messaging bridge)
+* Node 18+ (bundled by `bench build`; uses Vue 3, already present in thinkNXG's toolchain)
 
 The app installs and runs **without** Helpdesk or Raven. Missing integrations show an
 administrator notice in the portal and on *Support Portal Settings*; customers see a friendly
@@ -25,7 +25,7 @@ administrator notice in the portal and on *Support Portal Settings*; customers s
 ## Install
 
 ```bash
-cd frappe-bench
+cd thinkNXG-bench
 bench get-app /path/to/thinknxg_support          # or your git URL
 bench --site your.site install-app thinknxg_support
 bench --site your.site migrate
@@ -108,14 +108,14 @@ Customers-only snippets, and the Services section lists only services open to al
 
 
 
-The portal lives at **`/thinkdesk`** (guest chat at `/thinkdesk/chat`). ERPNext already
+The portal lives at **`/thinkdesk`** (guest chat at `/thinkdesk/chat`). thinkNXG ERP already
 ships its own customer support page at `/support`, so this app never uses that path and never
 overrides it: its page files are named `www/thinknxg_support_portal.*` and
 `www/thinknxg_support_chat.*`, and the public URL is mapped through `website_route_rules`.
 To use a different path, change `PORTAL_ROUTE` in the generator's `common.py` (it feeds `hooks.py`,
 `constants.py` and the page boot data) and rebuild. If you want visitors who open `/support` to land on
 the new portal, add a route redirect (`/support` → `/thinkdesk`) under Website Settings → Route Redirects on that site; this
-app does not add one, so ERPNext's page keeps working unless you choose to redirect it.
+app does not add one, so thinkNXG ERP's page keeps working unless you choose to redirect it.
 
 ## Knowledge base and help-article importer (1.4)
 
@@ -143,9 +143,9 @@ see *Everyone* articles when **Public Knowledge Base** is on in Support Portal S
 
 ### Importing and rebranding articles
 
-1. Open **Support Knowledge Source → Frappe Help Centre** (created disabled on install).
+1. Open **Support Knowledge Source → thinkNXG Help Centre** (created disabled on install).
 2. **Access**: a Helpdesk site answers visitors with *HTTP 403 "Please sign in to read the knowledge
-   base"* unless its own *Public Knowledge Base* setting is on, and support.frappe.io has it off. Choose:
+   base"* unless its own *Public Knowledge Base* setting is on, and support.thinkNXG.io has it off. Choose:
    * *Login*: username and password of an account on that site (not for single sign-on accounts);
    * *Browser Session*: sign in to the site in your browser, open developer tools → Application →
      Cookies, copy the `sid` value and paste it (it stops working when that browser session ends);
@@ -155,19 +155,19 @@ see *Everyone* articles when **Public Knowledge Base** is on in Support Portal S
 
    | Find | Replace with |
    |---|---|
-   | Frappe Framework | thinkNXG Framework |
-   | Frappe Cloud | thinkNXG Cloud |
-   | Frappe HR | thinkNXG HR |
-   | ERPNext | thinkNXG ERP |
-   | Frappe | thinkNXG |
+   | thinkNXG Framework | thinkNXG Framework |
+   | thinkNXG Cloud | thinkNXG Cloud |
+   | thinkNXG HR | thinkNXG HR |
+   | thinkNXG ERP | thinkNXG ERP |
+   | thinkNXG | thinkNXG |
 
    Only readable text changes (titles, paragraphs, headings, image descriptions, category names).
-   Code blocks, commands, URLs, e-mail addresses, file paths and API names such as `frappe.get_doc`
+   Code blocks, commands, URLs, e-mail addresses, file paths and API names such as `thinkNXG.get_doc`
    stay exactly as they are, so instructions still work.
 4. **Website and E-mail Rebranding** moves links, web addresses and e-mail addresses in the articles to
-   thinkNXG's own sites. One rule is on by default: `docs.frappe.io/erpnext` → `https://docs.thinknxg.com/thinknxgerp`,
-   keeping the rest of the path. Rows for frappe.io, frappe.cloud, erpnext.com, frappehr.com, the other docs.frappe.io
-   sections, discuss.frappe.io, school.frappe.io and Frappe e-mail domains are listed but off: fill in the
+   thinkNXG's own sites. One rule is on by default: `docs.thinkNXG.io/thinkNXG ERP` → `https://docs.thinknxg.com/thinknxgerp`,
+   keeping the rest of the path. Rows for thinkNXG.io, thinkNXG.cloud, thinkNXG ERP.com, thinkNXGhr.com, the other docs.thinkNXG.io
+   sections, discuss.thinkNXG.io, school.thinkNXG.io and thinkNXG e-mail domains are listed but off: fill in the
    thinkNXG address and tick **Enabled**. Code, image sources, links to the import source and the attribution
    footer are never changed. After changing rules, **Re-apply Rebrand Rules** updates proposals and
    **Apply Link Rules to Published Articles** updates what is already live.
@@ -178,8 +178,8 @@ see *Everyone* articles when **Public Knowledge Base** is on in Support Portal S
    article. **Nothing is published yet.**
 7. Review in **Support Article Import**. Each proposal shows the original and the rebranded version
    side by side, the number of names replaced, and *Check before publishing* notes. Proposals with
-   notes are set to *Needs Review*: for example Frappe's own websites or e-mail addresses, prices
-   or plans, or Frappe Cloud hosting steps that may differ on thinkNXG Cloud. Edit the proposed text
+   notes are set to *Needs Review*: for example thinkNXG's own websites or e-mail addresses, prices
+   or plans, or thinkNXG Cloud hosting steps that may differ on thinkNXG Cloud. Edit the proposed text
    if needed, then **Approve and Publish**. You can also select many in the list and use
    **Actions → Approve and Publish**.
 8. Published articles appear in `/thinkdesk/knowledge`, in the landing page's *Popular Articles* and
@@ -193,11 +193,11 @@ The source can also be a list of page URLs (Markdown `.md` or HTML), one per lin
 
 ### Licence and attribution — read before publishing
 
-* Frappe's legal page says its **documentation** is licensed CC BY-SA, while its **website content and
+* thinkNXG's legal page says its **documentation** is licensed CC BY-SA, while its **website content and
   marketing material** are reserved and may not be copied or used commercially without permission.
-  It also reserves Frappe's trademarks. The help articles at support.frappe.io are not clearly placed
-  in either group. **Get written confirmation from Frappe** before you publish them, or import from
-  the documentation instead (docs.frappe.io, for example `https://docs.frappe.io/erpnext/<page>.md`, using a
+  It also reserves thinkNXG's trademarks. The help articles at support.thinkNXG.io are not clearly placed
+  in either group. **Get written confirmation from thinkNXG** before you publish them, or import from
+  the documentation instead (docs.thinkNXG.io, for example `https://docs.thinkNXG.io/thinkNXG ERP/<page>.md`, using a
   *Page URLs* source).
 * Publishing is blocked until **I Have Checked the Source's Licence** is ticked on the source. Ticking it
   is recorded in the audit log.
@@ -206,7 +206,7 @@ The source can also be a list of page URLs (Markdown `.md` or HTML), one per lin
   source link, owner and licence. CC BY-SA also requires that you share the adapted articles under
   the same licence.
 * Rebranding changes product names in the text, not the facts. The *Check before publishing* notes
-  exist because hosting steps, prices, support contacts and partner programmes described for Frappe
+  exist because hosting steps, prices, support contacts and partner programmes described for thinkNXG
   may not be true for thinkNXG.
 
 ## Customer feedback after chats (1.8)
@@ -508,7 +508,7 @@ are kept only when they point to your site or a cited passage. The model has no 
 to ERP records, orders or invoices in this version.
 
 **Streaming and live updates.** Answers are generated in a background job and streamed into Redis
-as they arrive. The agent console uses Frappe's websocket for new conversations and handoffs, and a
+as they arrive. The agent console uses thinkNXG's websocket for new conversations and handoffs, and a
 2-second poll for typing. Customer and guest widgets use an adaptive poll: 0.7 s while the assistant
 is writing or an agent is typing, 2 to 3 s while open, 20 s while minimised; message lists are
 fetched only when the conversation's version changes.
@@ -588,12 +588,12 @@ English and Arabic (RTL) are built in; light/dark follows the user's preference.
 
 ## API (v1)
 
-Logical routes from the specification map to Frappe whitelisted methods under
+Logical routes from the specification map to thinkNXG whitelisted methods under
 `/api/method/thinknxg_support.api.v1.<module>.<function>`. GET methods are read-only; all writes
 are POST with the CSRF token. `organization` (or header `X-Support-Organization`) is optional and is
 always validated against the caller's grants.
 
-| Logical route | Method | Frappe method |
+| Logical route | Method | thinkNXG method |
 |---|---|---|
 | `/api/v1/portal/dashboard` | GET | `dashboard.get_dashboard` |
 | `/api/v1/portal/profile` | GET / PATCH | `profile.get_profile` / `profile.update_profile` (POST) |
@@ -613,7 +613,7 @@ always validated against the caller's grants.
 | Live chat (customers) | GET / POST | `livechat.my_chat`, `livechat.customer_send`, `livechat.customer_end` |
 | WhatsApp webhook | GET / POST | `whatsapp.webhook` (Meta only) |
 | Agent console | GET / POST | `agent.inbox`, `agent.thread`, `agent.reply`, `agent.assign`, `agent.set_status`, `agent.retry`, `agent.summary` |
-| (ERPNext) | GET | `account.orders`, `account.order`, `account.invoices`, `account.invoice`, `account.invoice_pdf`, `account.statement`, `account.customer_profile`, `account.members`; POST `account.request_member` |
+| (thinkNXG ERP) | GET | `account.orders`, `account.order`, `account.invoices`, `account.invoice`, `account.invoice_pdf`, `account.statement`, `account.customer_profile`, `account.members`; POST `account.request_member` |
 
 Send `client_message_id` (any UUID) with `start_conversation` / `send_message`; retries with the
 same id return the original message instead of creating a duplicate.
@@ -663,7 +663,7 @@ Ticket tests run only when Helpdesk is installed.
 * Upgrade: `git pull` (or replace the folder) → `bench --site x migrate` → `bench build --app thinknxg_support`.
   `after_migrate` re-creates missing roles and refreshes the integration map.
 * Uninstall: `bench --site x uninstall-app thinknxg_support` drops this app's DocTypes only;
-  Helpdesk tickets, Raven channels/messages and ERPNext records are untouched. Portal roles are left
+  Helpdesk tickets, Raven channels/messages and thinkNXG ERP records are untouched. Portal roles are left
   in place deliberately — delete them manually if no longer used. Take a backup first
   (`bench --site x backup --with-files`).
 
